@@ -30,8 +30,12 @@ import {
   IconSettings,
   IconChevronUp,
 } from "@tabler/icons-react";
+import { SignOutButton, useClerk } from "@clerk/nextjs";
+
+// this needs to be refactored into their respective components for maintainability
 
 export default function DashboardPage() {
+  const { signOut } = useClerk();
   const [opened, { toggle }] = useDisclosure();
 
   const incomeStats = [
@@ -186,9 +190,11 @@ export default function DashboardPage() {
                 color="red"
                 leftSection={<IconLogout size={12} />}
                 style={{ fontSize: '11px' }}
+                onClick={() => signOut({ redirectUrl: '/' })}
               >
                 Logout
               </Menu.Item>
+
             </Menu.Dropdown>
           </Menu>
         </AppShell.Section>
@@ -231,7 +237,11 @@ export default function DashboardPage() {
                 title="Daily Operations"
                 subtitle={
                   <Badge variant="light" color="blue" radius="sm" styles={{ label: { fontSize: '9px' }, root: { height: 18 } }}>
-                    April 18, 2026
+                    {new Date().toLocaleDateString('en-US', {
+                      month: 'long',
+                      day: 'numeric',
+                      year: 'numeric'
+                    })}
                   </Badge>
                 }
               />
@@ -276,7 +286,7 @@ export default function DashboardPage() {
             w="100%"
           >
             <CardHeader title="Live Fleet" subtitle={<Text style={{ fontSize: '10px' }} c="dimmed">Real-time status</Text>} />
-            
+
             {/* Dedicated Fixed Header Row */}
             <Table horizontalSpacing="xs">
               <Table.Thead>

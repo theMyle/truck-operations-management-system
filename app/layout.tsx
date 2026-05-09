@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { ClerkProvider } from "@clerk/nextjs"
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
@@ -39,7 +40,9 @@ export default function RootLayout({
         <ColorSchemeScript />
       </head>
       <body>
-        <MantineProvider theme={theme}>{children}</MantineProvider>
+        <ClerkProvider>
+          <MantineProvider theme={theme}>{children}</MantineProvider>
+        </ClerkProvider>
       </body>
     </html>
   );
