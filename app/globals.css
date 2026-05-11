@@ -1,0 +1,14 @@
+@import "tailwindcss";
+@import "@mantine/core/styles.css";
+@import "mantine-datatable/styles.css";
+
+/* 
+  Sane defaults:
+  We let Mantine handle the color scheme and body backgrounds.
+  We only ensure the html and body take up the full height for the AppShell.
+*/
+html,
+body {
+  height: 100%;
+  margin: 0;
+}
