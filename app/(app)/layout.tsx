@@ -36,9 +36,8 @@ export default function DashboardLayout({
 
   const navItems = [
     { label: "Dashboard", icon: IconDashboard, href: "/dashboard" },
-    { label: "Dispatch", icon: IconSend, href: "/dashboard/dispatch" },
-    { label: "Tracking", icon: IconMapPin, href: "/dashboard/tracking" },
-    { label: "Billing", icon: IconReceipt2, href: "/dashboard/billing" },
+    { label: "Dispatch", icon: IconSend, href: "/dispatch" },
+    { label: "Billing", icon: IconReceipt2, href: "/billing" },
   ];
 
   return (
