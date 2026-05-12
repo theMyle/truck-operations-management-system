@@ -20,7 +20,8 @@ import {
   InputBase,
   useCombobox,
 } from "@mantine/core";
-import React, { useState } from "react";
+import { notifications } from "@mantine/notifications";
+import React, { useState, useCallback } from "react";
 import {
   IconSend,
   IconPlus,
@@ -28,6 +29,7 @@ import {
   IconSpeedboat,
   IconRoute,
   IconTruckDelivery,
+  IconCheck,
 } from "@tabler/icons-react";
 
 /* ── Predefined data ── */
@@ -84,6 +86,7 @@ function CreatableSelect({
   value,
   onChange,
   styles: externalStyles,
+  error,
 }: {
   label: string;
   placeholder: string;
@@ -91,6 +94,7 @@ function CreatableSelect({
   value: string | null;
   onChange: (val: string | null) => void;
   styles?: Record<string, React.CSSProperties>;
+  error?: string;
 }) {
   const combobox = useCombobox({
     onDropdownClose: () => combobox.resetSelectedOption(),
@@ -151,6 +155,7 @@ function CreatableSelect({
             setSearch(value || "");
           }}
           styles={externalStyles}
+          error={error}
         />
       </Combobox.Target>
 
@@ -204,6 +209,90 @@ export default function DispatchPage() {
   const [selectedDriver, setSelectedDriver] = useState<string | null>(null);
   const [selectedHelper, setSelectedHelper] = useState<string | null>(null);
   const [selectedUnit, setSelectedUnit] = useState<string | null>(null);
+
+  /* ── Field value state ── */
+  const [odoStart, setOdoStart] = useState("");
+  const [odoEnd, setOdoEnd] = useState("");
+  const [rentalOdoStart, setRentalOdoStart] = useState("");
+  const [rentalOdoEnd, setRentalOdoEnd] = useState("");
+  const [lastTripOdoStart, setLastTripOdoStart] = useState("");
+  const [lastTripOdoEnd, setLastTripOdoEnd] = useState("");
+  const [lastTripOdoEndDrop, setLastTripOdoEndDrop] = useState("");
+  const [secondTripOdoStart, setSecondTripOdoStart] = useState("");
+  const [secondTripOdoEnd, setSecondTripOdoEnd] = useState("");
+  const [ruta, setRuta] = useState("");
+  const [bookingDr, setBookingDr] = useState("");
+  const [noOfDrops, setNoOfDrops] = useState<string | number>("");
+  const [plateNo, setPlateNo] = useState("");
+
+  /* ── Error state ── */
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  /* ── Helpers ── */
+  const isNumeric = (v: string) => v === "" || /^\d+(\.\d*)?$/.test(v);
+
+  const setNumericField = (setter: (v: string) => void) => (val: string) => {
+    if (isNumeric(val)) setter(val);
+  };
+
+  const totalKm =
+    odoStart && odoEnd
+      ? Math.max(0, Number(odoEnd) - Number(odoStart)).toString()
+      : "";
+
+  /* ── Validation ── */
+  const validate = useCallback((): boolean => {
+    const e: Record<string, string> = {};
+
+    // Odometer
+    if (!odoStart.trim()) e.odoStart = "Odometer start is required";
+    else if (!/^\d+(\.\d+)?$/.test(odoStart)) e.odoStart = "Must be a number";
+    if (!odoEnd.trim()) e.odoEnd = "Odometer end is required";
+    else if (!/^\d+(\.\d+)?$/.test(odoEnd)) e.odoEnd = "Must be a number";
+    if (odoStart && odoEnd && Number(odoEnd) <= Number(odoStart))
+      e.odoEnd = "Must be greater than start";
+
+    // Rental (optional section — validate format only if filled)
+    if (rentalOdoStart && !/^\d+(\.\d+)?$/.test(rentalOdoStart))
+      e.rentalOdoStart = "Must be a number";
+    if (rentalOdoEnd && !/^\d+(\.\d+)?$/.test(rentalOdoEnd))
+      e.rentalOdoEnd = "Must be a number";
+    if (
+      rentalOdoStart &&
+      rentalOdoEnd &&
+      Number(rentalOdoEnd) <= Number(rentalOdoStart)
+    )
+      e.rentalOdoEnd = "Must be greater than start";
+
+    // Booking details (right column)
+    if (!selectedClient) e.client = "Client is required";
+    if (!ruta.trim()) e.ruta = "Route is required";
+    if (!bookingDr.trim()) e.bookingDr = "Booking / DR# is required";
+    if (!noOfDrops || Number(noOfDrops) < 1)
+      e.noOfDrops = "At least 1 drop required";
+    if (!selectedUnit) e.unit = "Unit is required";
+    if (!plateNo.trim()) e.plateNo = "Plate number is required";
+    else if (!/^[A-Za-z0-9 -]{3,}$/.test(plateNo.trim()))
+      e.plateNo = "Invalid plate format (min 3 characters)";
+    if (!selectedDriver) e.driver = "Driver is required";
+
+    setErrors(e);
+    return Object.keys(e).length === 0;
+  }, [
+    odoStart, odoEnd, rentalOdoStart, rentalOdoEnd,
+    selectedClient, ruta, bookingDr, noOfDrops,
+    selectedUnit, plateNo, selectedDriver,
+  ]);
+
+  const handleSubmit = () => {
+    if (!validate()) return;
+    notifications.show({
+      title: "Dispatch submitted",
+      message: "The dispatch form was submitted successfully.",
+      color: "green",
+      icon: <IconCheck size={16} />,
+    });
+  };
 
   const addTrip = () => {
     setTrips((prev) => [
@@ -346,12 +435,16 @@ export default function DispatchPage() {
                   placeholder="Enter start reading"
                   styles={inputStyles}
                   style={{ flex: 1 }}
+                  value={odoStart}
+                  onChange={(e) => setNumericField(setOdoStart)(e.currentTarget.value)}
+                  error={errors.odoStart}
                 />
                 <TextInput
                   label="Total Kilometer"
                   placeholder="Auto-calculated"
                   styles={inputStyles}
                   style={{ flex: 1 }}
+                  value={totalKm}
                   readOnly
                 />
                 <TextInput
@@ -359,6 +452,9 @@ export default function DispatchPage() {
                   placeholder="Enter end reading"
                   styles={inputStyles}
                   style={{ flex: 1 }}
+                  value={odoEnd}
+                  onChange={(e) => setNumericField(setOdoEnd)(e.currentTarget.value)}
+                  error={errors.odoEnd}
                 />
               </Flex>
             </Paper>
@@ -380,12 +476,18 @@ export default function DispatchPage() {
                   placeholder="Enter value"
                   styles={inputStyles}
                   style={{ flex: 1 }}
+                  value={rentalOdoStart}
+                  onChange={(e) => setNumericField(setRentalOdoStart)(e.currentTarget.value)}
+                  error={errors.rentalOdoStart}
                 />
                 <TextInput
                   label="ODO End - Garage"
                   placeholder="Enter value"
                   styles={inputStyles}
                   style={{ flex: 1 }}
+                  value={rentalOdoEnd}
+                  onChange={(e) => setNumericField(setRentalOdoEnd)(e.currentTarget.value)}
+                  error={errors.rentalOdoEnd}
                 />
               </Flex>
             </Paper>
@@ -411,18 +513,24 @@ export default function DispatchPage() {
                       placeholder="Enter value"
                       styles={inputStyles}
                       style={{ flex: 1 }}
+                      value={lastTripOdoStart}
+                      onChange={(e) => setNumericField(setLastTripOdoStart)(e.currentTarget.value)}
                     />
                     <TextInput
                       label="ODO Start - ODO End ng Last Trip"
                       placeholder="Enter value"
                       styles={inputStyles}
                       style={{ flex: 1 }}
+                      value={lastTripOdoEnd}
+                      onChange={(e) => setNumericField(setLastTripOdoEnd)(e.currentTarget.value)}
                     />
                     <TextInput
                       label="ODO End - Last Drop Off"
                       placeholder="Enter value"
                       styles={inputStyles}
                       style={{ flex: 1 }}
+                      value={lastTripOdoEndDrop}
+                      onChange={(e) => setNumericField(setLastTripOdoEndDrop)(e.currentTarget.value)}
                     />
                   </Flex>
                 </Box>
@@ -446,12 +554,16 @@ export default function DispatchPage() {
                       placeholder="Enter value"
                       styles={inputStyles}
                       style={{ flex: 1 }}
+                      value={secondTripOdoStart}
+                      onChange={(e) => setNumericField(setSecondTripOdoStart)(e.currentTarget.value)}
                     />
                     <TextInput
                       label="ODO End - Garage"
                       placeholder="Enter value"
                       styles={inputStyles}
                       style={{ flex: 1 }}
+                      value={secondTripOdoEnd}
+                      onChange={(e) => setNumericField(setSecondTripOdoEnd)(e.currentTarget.value)}
                     />
                   </Flex>
                 </Box>
@@ -470,35 +582,50 @@ export default function DispatchPage() {
                 value={selectedClient}
                 onChange={setSelectedClient}
                 styles={inputStyles}
+                error={errors.client}
               />
               <TextInput
                 label="Ruta"
                 placeholder="Enter route"
                 styles={inputStyles}
+                value={ruta}
+                onChange={(e) => setRuta(e.currentTarget.value)}
+                error={errors.ruta}
               />
               <TextInput
                 label="Booking / DR#"
                 placeholder="Enter booking or DR number"
                 styles={inputStyles}
+                value={bookingDr}
+                onChange={(e) => setBookingDr(e.currentTarget.value)}
+                error={errors.bookingDr}
               />
               <NumberInput
                 label="No. of Drops"
                 placeholder="Enter number of drops"
-                min={0}
+                min={1}
                 styles={inputStyles}
+                value={noOfDrops}
+                onChange={setNoOfDrops}
+                error={errors.noOfDrops}
               />
               <CreatableSelect
                 label="Unit"
-                placeholder="Search or add client"
+                placeholder="Search or add unit"
                 data={DEFAULT_UNIT_TYPES}
                 value={selectedUnit}
                 onChange={setSelectedUnit}
                 styles={inputStyles}
+                error={errors.unit}
               />
               <TextInput
                 label="Plate#"
-                placeholder="Enter plate number"
+                placeholder="e.g. ABC 1234"
                 styles={inputStyles}
+                value={plateNo}
+                onChange={(e) => setPlateNo(e.currentTarget.value.toUpperCase())}
+                error={errors.plateNo}
+                maxLength={15}
               />
               <CreatableSelect
                 label="Driver"
@@ -507,6 +634,7 @@ export default function DispatchPage() {
                 value={selectedDriver}
                 onChange={setSelectedDriver}
                 styles={inputStyles}
+                error={errors.driver}
               />
               <CreatableSelect
                 label="Helper"
@@ -527,6 +655,7 @@ export default function DispatchPage() {
                   root: { height: 36 },
                   label: { fontSize: "11px", fontWeight: 700 },
                 }}
+                onClick={handleSubmit}
               >
                 Submit Dispatch
               </Button>
