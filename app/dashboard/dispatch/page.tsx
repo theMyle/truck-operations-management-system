@@ -16,6 +16,9 @@ import {
   ScrollArea,
   NumberInput,
   Select,
+  Combobox,
+  InputBase,
+  useCombobox,
 } from "@mantine/core";
 import React, { useState } from "react";
 import {
@@ -27,6 +30,156 @@ import {
   IconTruckDelivery,
 } from "@tabler/icons-react";
 
+/* ── Predefined data ── */
+const DEFAULT_CLIENTS = [
+  "Flash Express",
+  "IPI",
+  "Inteluck Corp",
+  "KTS Rentals",
+  "Transportify",
+  "XMD Logistics",
+  "Urenholt",
+];
+
+const DEFAULT_DRIVERS = [
+  "Alvin Paluga",
+  "Aniceto Abo",
+  "Edcel Ralo",
+  "Elesio Batallones Jr",
+  "Ever Bacvano",
+  "Gerald Roco",
+  "Jomarie Divina",
+  "Lim Ubal",
+  "Noel Asumbrado",
+  "Ricky Pantua",
+  "Romano Ancheta",
+  "Rommel Lumacang",
+];
+
+const DEFAULT_HELPERS = [
+  "No Helper",
+  "Chester Evasco",
+  "Felipe Guban",
+  "James Eric Manabo",
+  "Jeric Juanico",
+  "Ramil Diana",
+  "Richard Roda",
+  "Rizalito Domingo",
+  "Vince Marzonia",
+];
+
+const DEFAULT_UNIT_TYPES = [
+  "Alawa Trucking",
+  "Gerald Roco",
+  "Kris Domingo",
+  "Lito Diana",
+  "Rochele Flores",
+];
+
+/* ── Creatable Select component ── */
+function CreatableSelect({
+  label,
+  placeholder,
+  data: initialData,
+  value,
+  onChange,
+  styles: externalStyles,
+}: {
+  label: string;
+  placeholder: string;
+  data: string[];
+  value: string | null;
+  onChange: (val: string | null) => void;
+  styles?: Record<string, React.CSSProperties>;
+}) {
+  const combobox = useCombobox({
+    onDropdownClose: () => combobox.resetSelectedOption(),
+  });
+
+  const [data, setData] = useState(initialData);
+  const [search, setSearch] = useState(value || "");
+
+  const exactMatch = data.some(
+    (item) => item.toLowerCase() === search.toLowerCase().trim(),
+  );
+
+  const filtered = data.filter((item) =>
+    item.toLowerCase().includes(search.toLowerCase().trim()),
+  );
+
+  const options = filtered.map((item) => (
+    <Combobox.Option value={item} key={item}>
+      <Text style={{ fontSize: "11px" }} fw={600}>
+        {item}
+      </Text>
+    </Combobox.Option>
+  ));
+
+  return (
+    <Combobox
+      store={combobox}
+      withinPortal={true}
+      onOptionSubmit={(val) => {
+        if (val === "$create") {
+          const trimmed = search.trim();
+          setData((prev) => [...prev, trimmed]);
+          onChange(trimmed);
+          setSearch(trimmed);
+        } else {
+          onChange(val);
+          setSearch(val);
+        }
+        combobox.closeDropdown();
+      }}
+    >
+      <Combobox.Target>
+        <InputBase
+          label={label}
+          placeholder={placeholder}
+          rightSection={<Combobox.Chevron />}
+          rightSectionPointerEvents="none"
+          value={search}
+          onChange={(e) => {
+            combobox.openDropdown();
+            combobox.updateSelectedOptionIndex();
+            setSearch(e.currentTarget.value);
+          }}
+          onClick={() => combobox.openDropdown()}
+          onFocus={() => combobox.openDropdown()}
+          onBlur={() => {
+            combobox.closeDropdown();
+            setSearch(value || "");
+          }}
+          styles={externalStyles}
+        />
+      </Combobox.Target>
+
+      <Combobox.Dropdown>
+        <Combobox.Options mah={200} style={{ overflowY: "auto" }}>
+          {options}
+          {!exactMatch && search.trim().length > 0 && (
+            <Combobox.Option value="$create">
+              <Group gap={6}>
+                <IconPlus size={10} color="var(--mantine-color-blue-6)" />
+                <Text style={{ fontSize: "11px" }} fw={600} c="blue.6">
+                  Add &ldquo;{search.trim()}&rdquo;
+                </Text>
+              </Group>
+            </Combobox.Option>
+          )}
+          {options.length === 0 && search.trim().length === 0 && (
+            <Combobox.Empty>
+              <Text style={{ fontSize: "11px" }} c="dimmed">
+                No options
+              </Text>
+            </Combobox.Empty>
+          )}
+        </Combobox.Options>
+      </Combobox.Dropdown>
+    </Combobox>
+  );
+}
+
 interface TripRow {
   id: number;
   trip: string;
@@ -37,8 +190,20 @@ interface TripRow {
 
 export default function DispatchPage() {
   const [trips, setTrips] = useState<TripRow[]>([
-    { id: 1, trip: "", odometerNo: "", pictureNo: "", bahatOdoStartAtEndBaGc: "" },
+    {
+      id: 1,
+      trip: "",
+      odometerNo: "",
+      pictureNo: "",
+      bahatOdoStartAtEndBaGc: "",
+    },
   ]);
+
+  /* ── Combo box state ── */
+  const [selectedClient, setSelectedClient] = useState<string | null>(null);
+  const [selectedDriver, setSelectedDriver] = useState<string | null>(null);
+  const [selectedHelper, setSelectedHelper] = useState<string | null>(null);
+  const [selectedUnit, setSelectedUnit] = useState<string | null>(null);
 
   const addTrip = () => {
     setTrips((prev) => [
@@ -61,7 +226,7 @@ export default function DispatchPage() {
 
   const updateTrip = (id: number, field: keyof TripRow, value: string) => {
     setTrips((prev) =>
-      prev.map((t) => (t.id === id ? { ...t, [field]: value } : t))
+      prev.map((t) => (t.id === id ? { ...t, [field]: value } : t)),
     );
   };
 
@@ -78,7 +243,13 @@ export default function DispatchPage() {
       <Group justify="space-between" align="center">
         <Group gap={6}>
           {icon}
-          <Text fw={700} style={{ fontSize: "10px" }} c="gray.9" tt="uppercase" lts={1}>
+          <Text
+            fw={700}
+            style={{ fontSize: "10px" }}
+            c="gray.9"
+            tt="uppercase"
+            lts={1}
+          >
             {title}
           </Text>
         </Group>
@@ -121,7 +292,11 @@ export default function DispatchPage() {
               radius="sm"
               styles={{
                 root: { height: 22, padding: "0 8px" },
-                label: { fontSize: "10px", fontWeight: 800, textTransform: "none" },
+                label: {
+                  fontSize: "10px",
+                  fontWeight: 800,
+                  textTransform: "none",
+                },
               }}
             >
               Dispatch Form
@@ -147,14 +322,23 @@ export default function DispatchPage() {
           </Badge>
         </Group>
 
-        <Flex gap="md" direction={{ base: "column", lg: "row" }} align="flex-start">
+        <Flex
+          gap="md"
+          direction={{ base: "column", lg: "row" }}
+          align="flex-start"
+        >
           {/* Left Column */}
           <Stack style={{ flex: 7 }} gap="md" w="100%">
             {/* Odometer Details */}
             <Paper withBorder radius="md" p="md">
               <CardHeader
                 title="Odometer Details"
-                icon={<IconSpeedboat size={12} color="var(--mantine-color-blue-6)" />}
+                icon={
+                  <IconSpeedboat
+                    size={12}
+                    color="var(--mantine-color-blue-6)"
+                  />
+                }
               />
               <Flex gap="md" direction={{ base: "column", sm: "row" }}>
                 <TextInput
@@ -179,119 +363,16 @@ export default function DispatchPage() {
               </Flex>
             </Paper>
 
-            {/* Trip Table */}
-            <Paper withBorder radius="md" p="md">
-              <CardHeader
-                title="Trip Records"
-                icon={<IconRoute size={12} color="var(--mantine-color-blue-6)" />}
-                subtitle={
-                  <Button
-                    variant="light"
-                    color="blue"
-                    size="compact-xs"
-                    leftSection={<IconPlus size={10} />}
-                    onClick={addTrip}
-                    styles={{
-                      root: { height: 22 },
-                      label: { fontSize: "10px", fontWeight: 700 },
-                    }}
-                  >
-                    Add Trip
-                  </Button>
-                }
-              />
-              <Table verticalSpacing={4} horizontalSpacing="xs">
-                <Table.Thead>
-                  <Table.Tr>
-                    <Table.Th w={50}>
-                      <Text style={{ fontSize: "10px" }} c="dimmed" fw={700}>
-                        TRIP
-                      </Text>
-                    </Table.Th>
-                    <Table.Th>
-                      <Text style={{ fontSize: "10px" }} c="dimmed" fw={700}>
-                        ODOMETER NO
-                      </Text>
-                    </Table.Th>
-                    <Table.Th>
-                      <Text style={{ fontSize: "10px" }} c="dimmed" fw={700}>
-                        PICTURE NO
-                      </Text>
-                    </Table.Th>
-                    <Table.Th>
-                      <Text style={{ fontSize: "10px" }} c="dimmed" fw={700}>
-                        BAHAT ODO START AT END BA GC
-                      </Text>
-                    </Table.Th>
-                    <Table.Th w={40} ta="center">
-                      <Text style={{ fontSize: "10px" }} c="dimmed" fw={700}>
-                        ⋯
-                      </Text>
-                    </Table.Th>
-                  </Table.Tr>
-                </Table.Thead>
-                <Table.Tbody>
-                  {trips.map((trip, idx) => (
-                    <Table.Tr key={trip.id}>
-                      <Table.Td>
-                        <Text style={{ fontSize: "11px" }} fw={700} c="blue.6">
-                          {idx + 1}
-                        </Text>
-                      </Table.Td>
-                      <Table.Td>
-                        <TextInput
-                          variant="filled"
-                          size="xs"
-                          placeholder="—"
-                          value={trip.odometerNo}
-                          onChange={(e) => updateTrip(trip.id, "odometerNo", e.target.value)}
-                          styles={{ input: { fontSize: "11px", fontWeight: 600 } }}
-                        />
-                      </Table.Td>
-                      <Table.Td>
-                        <TextInput
-                          variant="filled"
-                          size="xs"
-                          placeholder="—"
-                          value={trip.pictureNo}
-                          onChange={(e) => updateTrip(trip.id, "pictureNo", e.target.value)}
-                          styles={{ input: { fontSize: "11px", fontWeight: 600 } }}
-                        />
-                      </Table.Td>
-                      <Table.Td>
-                        <TextInput
-                          variant="filled"
-                          size="xs"
-                          placeholder="—"
-                          value={trip.bahatOdoStartAtEndBaGc}
-                          onChange={(e) =>
-                            updateTrip(trip.id, "bahatOdoStartAtEndBaGc", e.target.value)
-                          }
-                          styles={{ input: { fontSize: "11px", fontWeight: 600 } }}
-                        />
-                      </Table.Td>
-                      <Table.Td ta="center">
-                        <ActionIcon
-                          variant="subtle"
-                          color="red"
-                          size="xs"
-                          onClick={() => removeTrip(trip.id)}
-                          disabled={trips.length <= 1}
-                        >
-                          <IconTrash size={12} />
-                        </ActionIcon>
-                      </Table.Td>
-                    </Table.Tr>
-                  ))}
-                </Table.Tbody>
-              </Table>
-            </Paper>
-
             {/* Rental Trip */}
             <Paper withBorder radius="md" p="md">
               <CardHeader
                 title="For Rental Trip"
-                icon={<IconTruckDelivery size={12} color="var(--mantine-color-blue-6)" />}
+                icon={
+                  <IconTruckDelivery
+                    size={12}
+                    color="var(--mantine-color-blue-6)"
+                  />
+                }
               />
               <Flex gap="md" direction={{ base: "column", sm: "row" }}>
                 <TextInput
@@ -379,18 +460,15 @@ export default function DispatchPage() {
           </Stack>
 
           {/* Right Column — Trip Booking Details */}
-          <Paper
-            withBorder
-            radius="md"
-            p="md"
-            style={{ flex: 3 }}
-            w="100%"
-          >
+          <Paper withBorder radius="md" p="md" style={{ flex: 3 }} w="100%">
             <CardHeader title="Trip Booking Details" />
             <Stack gap="sm">
-              <TextInput
+              <CreatableSelect
                 label="Kliyente"
-                placeholder="Enter client name"
+                placeholder="Search or add client"
+                data={DEFAULT_CLIENTS}
+                value={selectedClient}
+                onChange={setSelectedClient}
                 styles={inputStyles}
               />
               <TextInput
@@ -409,27 +487,33 @@ export default function DispatchPage() {
                 min={0}
                 styles={inputStyles}
               />
-              <Select
+              <CreatableSelect
                 label="Unit"
-                placeholder="Select unit"
-                data={[]}
+                placeholder="Search or add client"
+                data={DEFAULT_UNIT_TYPES}
+                value={selectedUnit}
+                onChange={setSelectedUnit}
                 styles={inputStyles}
-                searchable
-                clearable
               />
               <TextInput
                 label="Plate#"
                 placeholder="Enter plate number"
                 styles={inputStyles}
               />
-              <TextInput
+              <CreatableSelect
                 label="Driver"
-                placeholder="Enter driver name"
+                placeholder="Search or add driver"
+                data={DEFAULT_DRIVERS}
+                value={selectedDriver}
+                onChange={setSelectedDriver}
                 styles={inputStyles}
               />
-              <TextInput
+              <CreatableSelect
                 label="Helper"
-                placeholder="Enter helper name"
+                placeholder="Search or add helper"
+                data={DEFAULT_HELPERS}
+                value={selectedHelper}
+                onChange={setSelectedHelper}
                 styles={inputStyles}
               />
 
