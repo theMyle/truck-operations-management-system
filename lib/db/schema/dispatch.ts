@@ -1,0 +1,1 @@
+// id, pickup_date, client, driver, helpers, plate_number, booking_status (book, unassgined), call_time, booking_no, pickup_location, dropoff_location, gross_rate, payment_terms, booking_remarks, trip_budget, shell_card_load, tol_fee, trip_budget_reference_no, odometer_start, odometer_end, total_kilometer
