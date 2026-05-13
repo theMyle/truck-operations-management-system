@@ -8,6 +8,20 @@
       "when": 1778675347339,
       "tag": "0000_bumpy_junta",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1778676266929,
+      "tag": "0001_pale_hellfire_club",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1778676901881,
+      "tag": "0002_icy_carnage",
+      "breakpoints": true
     }
   ]
 }

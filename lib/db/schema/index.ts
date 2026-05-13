@@ -1,3 +1,5 @@
 // always export all files/schema within this schema folder
-export * from "./samples";
 export * from "./trucks";
+export * from "./drivers";
+export * from "./clients";
+export * from "./dispatch";
