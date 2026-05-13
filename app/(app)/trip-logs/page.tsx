@@ -9,13 +9,13 @@ import {
   TextInput,
   Table,
   Badge,
-  Flex,
   Divider,
   Button,
   ActionIcon,
   ScrollArea,
   Modal,
   Tooltip,
+  Select,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { useRouter } from "next/navigation";
@@ -25,13 +25,15 @@ import {
   IconTrash,
   IconEye,
   IconSearch,
-  IconCheck,
   IconAlertTriangle,
   IconClipboardList,
+  IconEdit,
 } from "@tabler/icons-react";
 
+import { useDispatch } from "../context/dispatch-context";
+
 /* ── Types ── */
-interface DispatchRecord {
+export interface DispatchRecord {
   id: number;
   date: string;
   client: string;
@@ -56,7 +58,7 @@ interface DispatchRecord {
 }
 
 /* ── Mock Data (referencing dispatch combobox defaults) ── */
-const MOCK_RECORDS: DispatchRecord[] = [
+export const MOCK_RECORDS: DispatchRecord[] = [
   {
     id: 1,
     date: "2025-05-01",
@@ -301,10 +303,12 @@ function ViewModal({
   opened,
   onClose,
   record,
+  onEdit,
 }: {
   opened: boolean;
   onClose: () => void;
   record: DispatchRecord | null;
+  onEdit: (record: DispatchRecord) => void;
 }) {
   if (!record) return null;
 
@@ -439,6 +443,17 @@ function ViewModal({
         <Divider />
         <Group justify="flex-end">
           <Button
+            color="blue.6"
+            leftSection={<IconEdit size={14} />}
+            styles={{
+              root: { height: 34 },
+              label: { fontSize: "11px", fontWeight: 700 },
+            }}
+            onClick={() => onEdit(record)}
+          >
+            Edit
+          </Button>
+          <Button
             variant="light"
             color="gray"
             styles={{
@@ -561,19 +576,29 @@ export default function DispatchRecordsPage() {
 
   const [deleteRecord, setDeleteRecord] = useState<DispatchRecord | null>(null);
   const [deleteOpened, setDeleteOpened] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<string | null>(null);
+
+  const { setEditingRecord } = useDispatch();
 
   /* ── Search filter (searches across all string fields) ── */
   const filtered = useMemo(() => {
     const q = search.toLowerCase().trim();
-    if (!q) return records;
-    return records.filter((r) =>
-      Object.values(r).some((v) => String(v).toLowerCase().includes(q)),
-    );
-  }, [search, records]);
+    return records.filter((r) => {
+      const matchesSearch =
+        !q || Object.values(r).some((v) => String(v).toLowerCase().includes(q));
+      const matchesStatus = !statusFilter || r.status === statusFilter;
+      return matchesSearch && matchesStatus;
+    });
+  }, [search, statusFilter, records]);
 
   const handleView = (record: DispatchRecord) => {
     setViewRecord(record);
     setViewOpened(true);
+  };
+
+  const handleEdit = (record: DispatchRecord) => {
+    setEditingRecord(record);
+    router.push("/dispatch");
   };
 
   const handleDeleteClick = (record: DispatchRecord) => {
@@ -618,6 +643,7 @@ export default function DispatchRecordsPage() {
         opened={viewOpened}
         onClose={() => setViewOpened(false)}
         record={viewRecord}
+        onEdit={handleEdit}
       />
       <DeleteModal
         opened={deleteOpened}
@@ -682,21 +708,38 @@ export default function DispatchRecordsPage() {
           </Group>
 
           {/* Search Bar */}
-          <TextInput
-            placeholder="Search by client, driver, plate, booking, route..."
-            leftSection={
-              <IconSearch size={14} color="var(--mantine-color-gray-5)" />
-            }
-            value={search}
-            onChange={(e) => setSearch(e.currentTarget.value)}
-            styles={{
-              input: {
-                fontSize: "11px",
-                fontWeight: 500,
-              },
-            }}
-            radius="md"
-          />
+          <Group gap="sm">
+            <TextInput
+              placeholder="Search by client, driver, plate, booking, route..."
+              leftSection={
+                <IconSearch size={14} color="var(--mantine-color-gray-5)" />
+              }
+              value={search}
+              onChange={(e) => setSearch(e.currentTarget.value)}
+              styles={{
+                input: {
+                  fontSize: "11px",
+                  fontWeight: 500,
+                },
+              }}
+              radius="md"
+              w={400}
+            />
+            <Select
+              placeholder="All Statuses"
+              data={[
+                { value: "Completed", label: "Completed" },
+                { value: "In Transit", label: "In Transit" },
+                { value: "Pending", label: "Pending" },
+              ]}
+              value={statusFilter}
+              onChange={setStatusFilter}
+              clearable
+              styles={{ input: { fontSize: "11px", fontWeight: 500 } }}
+              radius="md"
+              style={{ width: 160 }}
+            />
+          </Group>
 
           {/* Table */}
           <Paper withBorder radius="md" p={0} style={{ overflow: "hidden" }}>
