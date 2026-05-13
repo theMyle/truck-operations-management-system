@@ -12,10 +12,8 @@ import {
   Flex,
   Divider,
   Button,
-  ActionIcon,
   ScrollArea,
   NumberInput,
-  Select,
   Combobox,
   InputBase,
   useCombobox,
@@ -23,19 +21,16 @@ import {
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { useRouter } from "next/navigation";
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import {
-  IconSend,
   IconPlus,
-  IconTrash,
   IconSpeedboat,
-  IconRoute,
   IconTruckDelivery,
   IconCheck,
   IconEdit,
   IconEye,
 } from "@tabler/icons-react";
-
+import { useDispatch } from "../context/dispatch-context";
 /* ── Predefined data ── */
 const DEFAULT_CLIENTS = [
   "Flash Express",
@@ -415,6 +410,8 @@ export default function DispatchPage() {
   /* ── Review modal state ── */
   const [reviewOpened, setReviewOpened] = useState(false);
 
+  const { editingRecord, setEditingRecord, setRecords } = useDispatch();
+
   /* ── Helpers ── */
   const isNumeric = (v: string) => v === "" || /^\d+(\.\d*)?$/.test(v);
 
@@ -501,15 +498,54 @@ export default function DispatchPage() {
     setReviewOpened(true);
   };
 
-  /* ── Confirm submit ── */
   const handleConfirmSubmit = () => {
     setReviewOpened(false);
-    notifications.show({
-      title: "Dispatch submitted",
-      message: "The dispatch form was submitted successfully.",
-      color: "green",
-      icon: <IconCheck size={16} />,
-    });
+
+    if (editingRecord) {
+      // Update existing record
+      setRecords((prev) =>
+        prev.map((r) =>
+          r.id === editingRecord.id
+            ? {
+                ...r,
+                odoStart,
+                odoEnd,
+                totalKm: String(Math.max(0, Number(odoEnd) - Number(odoStart))),
+                rentalOdoStart,
+                rentalOdoEnd,
+                lastTripOdoStart,
+                lastTripOdoEnd,
+                lastTripOdoEndDrop,
+                secondTripOdoStart,
+                secondTripOdoEnd,
+                client: selectedClient || "",
+                ruta,
+                bookingDr,
+                noOfDrops: Number(noOfDrops),
+                unit: selectedUnit || "",
+                plateNo,
+                driver: selectedDriver || "",
+                helper: selectedHelper || "",
+              }
+            : r,
+        ),
+      );
+      setEditingRecord(null); // clear editing state
+      notifications.show({
+        title: "Dispatch updated",
+        message: "The record has been updated successfully.",
+        color: "blue",
+        icon: <IconCheck size={16} />,
+      });
+    } else {
+      // New record — just notify for now (no ID generation without DB)
+      notifications.show({
+        title: "Dispatch submitted",
+        message: "The dispatch form was submitted successfully.",
+        color: "green",
+        icon: <IconCheck size={16} />,
+      });
+    }
   };
 
   /* ── Edit → redirect to /dispatch ── */
@@ -543,6 +579,27 @@ export default function DispatchPage() {
     );
   };
 
+  useEffect(() => {
+    if (!editingRecord) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setOdoStart(editingRecord.odoStart);
+    setOdoEnd(editingRecord.odoEnd);
+    setRentalOdoStart(editingRecord.rentalOdoStart);
+    setRentalOdoEnd(editingRecord.rentalOdoEnd);
+    setLastTripOdoStart(editingRecord.lastTripOdoStart);
+    setLastTripOdoEnd(editingRecord.lastTripOdoEnd);
+    setLastTripOdoEndDrop(editingRecord.lastTripOdoEndDrop);
+    setSecondTripOdoStart(editingRecord.secondTripOdoStart);
+    setSecondTripOdoEnd(editingRecord.secondTripOdoEnd);
+    setRuta(editingRecord.ruta);
+    setBookingDr(editingRecord.bookingDr);
+    setNoOfDrops(editingRecord.noOfDrops);
+    setPlateNo(editingRecord.plateNo);
+    setSelectedClient(editingRecord.client);
+    setSelectedDriver(editingRecord.driver);
+    setSelectedHelper(editingRecord.helper);
+    setSelectedUnit(editingRecord.unit);
+  }, [editingRecord]);
   const CardHeader = ({
     title,
     subtitle,
@@ -643,7 +700,7 @@ export default function DispatchPage() {
                   },
                 }}
               >
-                Dispatch Form
+                {editingRecord ? "Edit Dispatch" : "Dispatch Form"} 
               </Badge>
               <Text style={{ fontSize: "10px" }} c="dimmed" fw={500}>
                 Create and manage trip dispatches
