@@ -19,8 +19,10 @@ import {
   Combobox,
   InputBase,
   useCombobox,
+  Modal,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
+import { useRouter } from "next/navigation";
 import React, { useState, useCallback } from "react";
 import {
   IconSend,
@@ -30,6 +32,8 @@ import {
   IconRoute,
   IconTruckDelivery,
   IconCheck,
+  IconEdit,
+  IconEye,
 } from "@tabler/icons-react";
 
 /* ── Predefined data ── */
@@ -193,7 +197,187 @@ interface TripRow {
   bahatOdoStartAtEndBaGc: string;
 }
 
+/* ── Review Modal ── */
+function ReviewModal({
+  opened,
+  onClose,
+  onConfirm,
+  onEdit,
+  data,
+}: {
+  opened: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+  onEdit: () => void;
+  data: Record<string, string>;
+}) {
+  const sections = [
+    {
+      title: "Odometer Details",
+      rows: [
+        { label: "Odometer Start", key: "odoStart" },
+        { label: "Odometer End", key: "odoEnd" },
+        { label: "Total KM", key: "totalKm" },
+      ],
+    },
+    {
+      title: "Rental Trip",
+      rows: [
+        { label: "ODO Start – Garage", key: "rentalOdoStart" },
+        { label: "ODO End – Garage", key: "rentalOdoEnd" },
+      ],
+    },
+    {
+      title: "Multiple Trips – Last Trip",
+      rows: [
+        { label: "ODO Start – Garage", key: "lastTripOdoStart" },
+        { label: "ODO Start – Last Trip End", key: "lastTripOdoEnd" },
+        { label: "ODO End – Last Drop Off", key: "lastTripOdoEndDrop" },
+      ],
+    },
+    {
+      title: "Multiple Trips – 2nd Trip",
+      rows: [
+        { label: "ODO Start – Garage", key: "secondTripOdoStart" },
+        { label: "ODO End – Garage", key: "secondTripOdoEnd" },
+      ],
+    },
+    {
+      title: "Trip Booking Details",
+      rows: [
+        { label: "Client (Kliyente)", key: "client" },
+        { label: "Route (Ruta)", key: "ruta" },
+        { label: "Booking / DR#", key: "bookingDr" },
+        { label: "No. of Drops", key: "noOfDrops" },
+        { label: "Unit", key: "unit" },
+        { label: "Plate #", key: "plateNo" },
+        { label: "Driver", key: "driver" },
+        { label: "Helper", key: "helper" },
+      ],
+    },
+  ];
+
+  return (
+    <Modal
+      opened={opened}
+      onClose={onClose}
+      title={
+        <Group gap={8}>
+          <IconEye size={16} color="var(--mantine-color-blue-6)" />
+          <Text fw={700} style={{ fontSize: "13px" }} tt="uppercase" lts={0.5}>
+            Review Dispatch Submission
+          </Text>
+        </Group>
+      }
+      size="lg"
+      radius="md"
+      centered
+      scrollAreaComponent={ScrollArea.Autosize}
+    >
+      <Stack gap="md">
+        <Text style={{ fontSize: "11px" }} c="dimmed">
+          Please review all details below before confirming. Click{" "}
+          <strong>Edit</strong> to go back and make changes.
+        </Text>
+
+        {sections.map((section) => {
+          // Only render section if at least one field has a value
+          const hasValues = section.rows.some((r) => data[r.key]);
+          if (!hasValues) return null;
+
+          return (
+            <Box key={section.title}>
+              <Text
+                fw={800}
+                style={{ fontSize: "9px" }}
+                tt="uppercase"
+                lts={1}
+                c="blue.6"
+                mb={6}
+              >
+                {section.title}
+              </Text>
+              <Paper
+                withBorder
+                radius="sm"
+                p={0}
+                style={{ overflow: "hidden" }}
+              >
+                <Table
+                  styles={{
+                    td: { padding: "6px 12px", fontSize: "11px" },
+                    th: { padding: "6px 12px", fontSize: "10px" },
+                  }}
+                >
+                  <Table.Tbody>
+                    {section.rows.map((row) => (
+                      <Table.Tr key={row.key}>
+                        <Table.Td
+                          style={{
+                            width: "45%",
+                            color: "var(--mantine-color-gray-6)",
+                            fontWeight: 600,
+                            backgroundColor: "var(--mantine-color-gray-0)",
+                            borderRight:
+                              "1px solid var(--mantine-color-gray-2)",
+                          }}
+                        >
+                          {row.label}
+                        </Table.Td>
+                        <Table.Td
+                          style={{
+                            fontWeight: 700,
+                            color: data[row.key]
+                              ? "var(--mantine-color-gray-9)"
+                              : "var(--mantine-color-gray-4)",
+                          }}
+                        >
+                          {data[row.key] || "—"}
+                        </Table.Td>
+                      </Table.Tr>
+                    ))}
+                  </Table.Tbody>
+                </Table>
+              </Paper>
+            </Box>
+          );
+        })}
+
+        <Divider />
+
+        <Group justify="flex-end" gap="sm">
+          <Button
+            variant="light"
+            color="gray"
+            leftSection={<IconEdit size={14} />}
+            styles={{
+              root: { height: 34 },
+              label: { fontSize: "11px", fontWeight: 700 },
+            }}
+            onClick={onEdit}
+          >
+            Edit
+          </Button>
+          <Button
+            color="blue.6"
+            leftSection={<IconCheck size={14} />}
+            styles={{
+              root: { height: 34 },
+              label: { fontSize: "11px", fontWeight: 700 },
+            }}
+            onClick={onConfirm}
+          >
+            Confirm & Submit
+          </Button>
+        </Group>
+      </Stack>
+    </Modal>
+  );
+}
+
 export default function DispatchPage() {
+  const router = useRouter();
+
   const [trips, setTrips] = useState<TripRow[]>([
     {
       id: 1,
@@ -228,12 +412,34 @@ export default function DispatchPage() {
   /* ── Error state ── */
   const [errors, setErrors] = useState<Record<string, string>>({});
 
+  /* ── Review modal state ── */
+  const [reviewOpened, setReviewOpened] = useState(false);
+
   /* ── Helpers ── */
   const isNumeric = (v: string) => v === "" || /^\d+(\.\d*)?$/.test(v);
 
-  const setNumericField = (setter: (v: string) => void) => (val: string) => {
-    if (isNumeric(val)) setter(val);
-  };
+  const setNumericField =
+    (setter: (v: string) => void, errorKey: string) => (val: string) => {
+      if (isNumeric(val)) {
+        setter(val);
+        // Clear error as soon as user types something valid
+        if (val.trim()) {
+          setErrors((prev) => {
+            const next = { ...prev };
+            delete next[errorKey];
+            return next;
+          });
+        }
+      }
+    };
+
+  /** Clear a single error key when the user changes the field */
+  const clearError = (key: string) =>
+    setErrors((prev) => {
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
 
   const totalKm =
     odoStart && odoEnd
@@ -244,7 +450,6 @@ export default function DispatchPage() {
   const validate = useCallback((): boolean => {
     const e: Record<string, string> = {};
 
-    // Odometer
     if (!odoStart.trim()) e.odoStart = "Odometer start is required";
     else if (!/^\d+(\.\d+)?$/.test(odoStart)) e.odoStart = "Must be a number";
     if (!odoEnd.trim()) e.odoEnd = "Odometer end is required";
@@ -252,7 +457,6 @@ export default function DispatchPage() {
     if (odoStart && odoEnd && Number(odoEnd) <= Number(odoStart))
       e.odoEnd = "Must be greater than start";
 
-    // Rental (optional section — validate format only if filled)
     if (rentalOdoStart && !/^\d+(\.\d+)?$/.test(rentalOdoStart))
       e.rentalOdoStart = "Must be a number";
     if (rentalOdoEnd && !/^\d+(\.\d+)?$/.test(rentalOdoEnd))
@@ -264,7 +468,6 @@ export default function DispatchPage() {
     )
       e.rentalOdoEnd = "Must be greater than start";
 
-    // Booking details (right column)
     if (!selectedClient) e.client = "Client is required";
     if (!ruta.trim()) e.ruta = "Route is required";
     if (!bookingDr.trim()) e.bookingDr = "Booking / DR# is required";
@@ -279,19 +482,40 @@ export default function DispatchPage() {
     setErrors(e);
     return Object.keys(e).length === 0;
   }, [
-    odoStart, odoEnd, rentalOdoStart, rentalOdoEnd,
-    selectedClient, ruta, bookingDr, noOfDrops,
-    selectedUnit, plateNo, selectedDriver,
+    odoStart,
+    odoEnd,
+    rentalOdoStart,
+    rentalOdoEnd,
+    selectedClient,
+    ruta,
+    bookingDr,
+    noOfDrops,
+    selectedUnit,
+    plateNo,
+    selectedDriver,
   ]);
 
-  const handleSubmit = () => {
+  /* ── Open review modal (validate first) ── */
+  const handleOpenReview = () => {
     if (!validate()) return;
+    setReviewOpened(true);
+  };
+
+  /* ── Confirm submit ── */
+  const handleConfirmSubmit = () => {
+    setReviewOpened(false);
     notifications.show({
       title: "Dispatch submitted",
       message: "The dispatch form was submitted successfully.",
       color: "green",
       icon: <IconCheck size={16} />,
     });
+  };
+
+  /* ── Edit → redirect to /dispatch ── */
+  const handleEditRedirect = () => {
+    setReviewOpened(false);
+    router.push("/dispatch");
   };
 
   const addTrip = () => {
@@ -369,300 +593,399 @@ export default function DispatchPage() {
     },
   };
 
+  /* ── Data snapshot for review modal ── */
+  const reviewData: Record<string, string> = {
+    odoStart,
+    odoEnd,
+    totalKm: totalKm ? `${totalKm} km` : "",
+    rentalOdoStart,
+    rentalOdoEnd,
+    lastTripOdoStart,
+    lastTripOdoEnd,
+    lastTripOdoEndDrop,
+    secondTripOdoStart,
+    secondTripOdoEnd,
+    client: selectedClient || "",
+    ruta,
+    bookingDr,
+    noOfDrops: noOfDrops?.toString() || "",
+    unit: selectedUnit || "",
+    plateNo,
+    driver: selectedDriver || "",
+    helper: selectedHelper || "",
+  };
+
   return (
-    <ScrollArea h="calc(100vh - 72px)" scrollbars="y">
-      <Stack gap="md">
-        {/* Page Title */}
-        <Group justify="space-between" align="center">
-          <Group gap={8}>
+    <>
+      <ReviewModal
+        opened={reviewOpened}
+        onClose={() => setReviewOpened(false)}
+        onConfirm={handleConfirmSubmit}
+        onEdit={handleEditRedirect}
+        data={reviewData}
+      />
+
+      <ScrollArea h="calc(100vh - 72px)" scrollbars="y">
+        <Stack gap="md">
+          {/* Page Title */}
+          <Group justify="space-between" align="center">
+            <Group gap={8}>
+              <Badge
+                variant="filled"
+                color="blue.6"
+                radius="sm"
+                styles={{
+                  root: { height: 22, padding: "0 8px" },
+                  label: {
+                    fontSize: "10px",
+                    fontWeight: 800,
+                    textTransform: "none",
+                  },
+                }}
+              >
+                Dispatch Form
+              </Badge>
+              <Text style={{ fontSize: "10px" }} c="dimmed" fw={500}>
+                Create and manage trip dispatches
+              </Text>
+            </Group>
             <Badge
-              variant="filled"
-              color="blue.6"
+              variant="light"
+              color="blue"
               radius="sm"
               styles={{
-                root: { height: 22, padding: "0 8px" },
-                label: {
-                  fontSize: "10px",
-                  fontWeight: 800,
-                  textTransform: "none",
-                },
+                label: { fontSize: "9px" },
+                root: { height: 18 },
               }}
             >
-              Dispatch Form
+              {new Date().toLocaleDateString("en-US", {
+                month: "long",
+                day: "numeric",
+                year: "numeric",
+              })}
             </Badge>
-            <Text style={{ fontSize: "10px" }} c="dimmed" fw={500}>
-              Create and manage trip dispatches
-            </Text>
           </Group>
-          <Badge
-            variant="light"
-            color="blue"
-            radius="sm"
-            styles={{
-              label: { fontSize: "9px" },
-              root: { height: 18 },
-            }}
+
+          <Flex
+            gap="md"
+            direction={{ base: "column", lg: "row" }}
+            align="flex-start"
           >
-            {new Date().toLocaleDateString("en-US", {
-              month: "long",
-              day: "numeric",
-              year: "numeric",
-            })}
-          </Badge>
-        </Group>
-
-        <Flex
-          gap="md"
-          direction={{ base: "column", lg: "row" }}
-          align="flex-start"
-        >
-          {/* Left Column */}
-          <Stack style={{ flex: 7 }} gap="md" w="100%">
-            {/* Odometer Details */}
-            <Paper withBorder radius="md" p="md">
-              <CardHeader
-                title="Odometer Details"
-                icon={
-                  <IconSpeedboat
-                    size={12}
-                    color="var(--mantine-color-blue-6)"
+            {/* Left Column */}
+            <Stack style={{ flex: 7 }} gap="md" w="100%">
+              {/* Odometer Details */}
+              <Paper withBorder radius="md" p="md">
+                <CardHeader
+                  title="Odometer Details"
+                  icon={
+                    <IconSpeedboat
+                      size={12}
+                      color="var(--mantine-color-blue-6)"
+                    />
+                  }
+                />
+                <Flex gap="md" direction={{ base: "column", sm: "row" }}>
+                  <TextInput
+                    label="Odometer Start"
+                    placeholder="Enter start reading"
+                    styles={inputStyles}
+                    style={{ flex: 1 }}
+                    value={odoStart}
+                    onChange={(e) => {
+                      setNumericField(
+                        setOdoStart,
+                        "odoStart",
+                      )(e.currentTarget.value);
+                    }}
+                    error={errors.odoStart}
                   />
-                }
-              />
-              <Flex gap="md" direction={{ base: "column", sm: "row" }}>
-                <TextInput
-                  label="Odometer Start"
-                  placeholder="Enter start reading"
-                  styles={inputStyles}
-                  style={{ flex: 1 }}
-                  value={odoStart}
-                  onChange={(e) => setNumericField(setOdoStart)(e.currentTarget.value)}
-                  error={errors.odoStart}
-                />
-                <TextInput
-                  label="Total Kilometer"
-                  placeholder="Auto-calculated"
-                  styles={inputStyles}
-                  style={{ flex: 1 }}
-                  value={totalKm}
-                  readOnly
-                />
-                <TextInput
-                  label="Odometer End"
-                  placeholder="Enter end reading"
-                  styles={inputStyles}
-                  style={{ flex: 1 }}
-                  value={odoEnd}
-                  onChange={(e) => setNumericField(setOdoEnd)(e.currentTarget.value)}
-                  error={errors.odoEnd}
-                />
-              </Flex>
-            </Paper>
-
-            {/* Rental Trip */}
-            <Paper withBorder radius="md" p="md">
-              <CardHeader
-                title="For Rental Trip"
-                icon={
-                  <IconTruckDelivery
-                    size={12}
-                    color="var(--mantine-color-blue-6)"
+                  <TextInput
+                    label="Total Kilometer"
+                    placeholder="Auto-calculated"
+                    styles={inputStyles}
+                    style={{ flex: 1 }}
+                    value={totalKm}
+                    readOnly
                   />
-                }
-              />
-              <Flex gap="md" direction={{ base: "column", sm: "row" }}>
-                <TextInput
-                  label="ODO Start - Garage"
-                  placeholder="Enter value"
-                  styles={inputStyles}
-                  style={{ flex: 1 }}
-                  value={rentalOdoStart}
-                  onChange={(e) => setNumericField(setRentalOdoStart)(e.currentTarget.value)}
-                  error={errors.rentalOdoStart}
-                />
-                <TextInput
-                  label="ODO End - Garage"
-                  placeholder="Enter value"
-                  styles={inputStyles}
-                  style={{ flex: 1 }}
-                  value={rentalOdoEnd}
-                  onChange={(e) => setNumericField(setRentalOdoEnd)(e.currentTarget.value)}
-                  error={errors.rentalOdoEnd}
-                />
-              </Flex>
-            </Paper>
+                  <TextInput
+                    label="Odometer End"
+                    placeholder="Enter end reading"
+                    styles={inputStyles}
+                    style={{ flex: 1 }}
+                    value={odoEnd}
+                    onChange={(e) => {
+                      setNumericField(
+                        setOdoEnd,
+                        "odoEnd",
+                      )(e.currentTarget.value);
+                    }}
+                    error={errors.odoEnd}
+                  />
+                </Flex>
+              </Paper>
 
-            {/* Multiple Trips */}
-            <Paper withBorder radius="md" p="md">
-              <CardHeader title="For Multiple Trips" />
+              {/* Rental Trip */}
+              <Paper withBorder radius="md" p="md">
+                <CardHeader
+                  title="For Rental Trip"
+                  icon={
+                    <IconTruckDelivery
+                      size={12}
+                      color="var(--mantine-color-blue-6)"
+                    />
+                  }
+                />
+                <Flex gap="md" direction={{ base: "column", sm: "row" }}>
+                  <TextInput
+                    label="ODO Start - Garage"
+                    placeholder="Enter value"
+                    styles={inputStyles}
+                    style={{ flex: 1 }}
+                    value={rentalOdoStart}
+                    onChange={(e) =>
+                      setNumericField(
+                        setRentalOdoStart,
+                        "rentalOdoStart",
+                      )(e.currentTarget.value)
+                    }
+                    error={errors.rentalOdoStart}
+                  />
+                  <TextInput
+                    label="ODO End - Garage"
+                    placeholder="Enter value"
+                    styles={inputStyles}
+                    style={{ flex: 1 }}
+                    value={rentalOdoEnd}
+                    onChange={(e) =>
+                      setNumericField(
+                        setRentalOdoEnd,
+                        "rentalOdoEnd",
+                      )(e.currentTarget.value)
+                    }
+                    error={errors.rentalOdoEnd}
+                  />
+                </Flex>
+              </Paper>
+
+              {/* Multiple Trips */}
+              <Paper withBorder radius="md" p="md">
+                <CardHeader title="For Multiple Trips" />
+                <Stack gap="sm">
+                  <Box>
+                    <Text
+                      fw={700}
+                      style={{ fontSize: "10px" }}
+                      c="blue.6"
+                      tt="uppercase"
+                      lts={0.5}
+                      mb={6}
+                    >
+                      Last Trip
+                    </Text>
+                    <Flex gap="md" direction={{ base: "column", sm: "row" }}>
+                      <TextInput
+                        label="ODO Start - Garage"
+                        placeholder="Enter value"
+                        styles={inputStyles}
+                        style={{ flex: 1 }}
+                        value={lastTripOdoStart}
+                        onChange={(e) =>
+                          setNumericField(
+                            setLastTripOdoStart,
+                            "lastTripOdoStart",
+                          )(e.currentTarget.value)
+                        }
+                      />
+                      <TextInput
+                        label="ODO Start - ODO End ng Last Trip"
+                        placeholder="Enter value"
+                        styles={inputStyles}
+                        style={{ flex: 1 }}
+                        value={lastTripOdoEnd}
+                        onChange={(e) =>
+                          setNumericField(
+                            setLastTripOdoEnd,
+                            "lastTripOdoEnd",
+                          )(e.currentTarget.value)
+                        }
+                      />
+                      <TextInput
+                        label="ODO End - Last Drop Off"
+                        placeholder="Enter value"
+                        styles={inputStyles}
+                        style={{ flex: 1 }}
+                        value={lastTripOdoEndDrop}
+                        onChange={(e) =>
+                          setNumericField(
+                            setLastTripOdoEndDrop,
+                            "lastTripOdoEndDrop",
+                          )(e.currentTarget.value)
+                        }
+                      />
+                    </Flex>
+                  </Box>
+
+                  <Divider my={4} />
+
+                  <Box>
+                    <Text
+                      fw={700}
+                      style={{ fontSize: "10px" }}
+                      c="blue.6"
+                      tt="uppercase"
+                      lts={0.5}
+                      mb={6}
+                    >
+                      2nd Trip
+                    </Text>
+                    <Flex gap="md" direction={{ base: "column", sm: "row" }}>
+                      <TextInput
+                        label="ODO Start - Garage"
+                        placeholder="Enter value"
+                        styles={inputStyles}
+                        style={{ flex: 1 }}
+                        value={secondTripOdoStart}
+                        onChange={(e) =>
+                          setNumericField(
+                            setSecondTripOdoStart,
+                            "secondTripOdoStart",
+                          )(e.currentTarget.value)
+                        }
+                      />
+                      <TextInput
+                        label="ODO End - Garage"
+                        placeholder="Enter value"
+                        styles={inputStyles}
+                        style={{ flex: 1 }}
+                        value={secondTripOdoEnd}
+                        onChange={(e) =>
+                          setNumericField(
+                            setSecondTripOdoEnd,
+                            "secondTripOdoEnd",
+                          )(e.currentTarget.value)
+                        }
+                      />
+                    </Flex>
+                  </Box>
+                </Stack>
+              </Paper>
+            </Stack>
+
+            {/* Right Column — Trip Booking Details */}
+            <Paper withBorder radius="md" p="md" style={{ flex: 3 }} w="100%">
+              <CardHeader title="Trip Booking Details" />
               <Stack gap="sm">
-                <Box>
-                  <Text
-                    fw={700}
-                    style={{ fontSize: "10px" }}
-                    c="blue.6"
-                    tt="uppercase"
-                    lts={0.5}
-                    mb={6}
-                  >
-                    Last Trip
-                  </Text>
-                  <Flex gap="md" direction={{ base: "column", sm: "row" }}>
-                    <TextInput
-                      label="ODO Start - Garage"
-                      placeholder="Enter value"
-                      styles={inputStyles}
-                      style={{ flex: 1 }}
-                      value={lastTripOdoStart}
-                      onChange={(e) => setNumericField(setLastTripOdoStart)(e.currentTarget.value)}
-                    />
-                    <TextInput
-                      label="ODO Start - ODO End ng Last Trip"
-                      placeholder="Enter value"
-                      styles={inputStyles}
-                      style={{ flex: 1 }}
-                      value={lastTripOdoEnd}
-                      onChange={(e) => setNumericField(setLastTripOdoEnd)(e.currentTarget.value)}
-                    />
-                    <TextInput
-                      label="ODO End - Last Drop Off"
-                      placeholder="Enter value"
-                      styles={inputStyles}
-                      style={{ flex: 1 }}
-                      value={lastTripOdoEndDrop}
-                      onChange={(e) => setNumericField(setLastTripOdoEndDrop)(e.currentTarget.value)}
-                    />
-                  </Flex>
-                </Box>
+                <CreatableSelect
+                  label="Kliyente"
+                  placeholder="Search or add client"
+                  data={DEFAULT_CLIENTS}
+                  value={selectedClient}
+                  onChange={(val) => {
+                    setSelectedClient(val);
+                    if (val) clearError("client");
+                  }}
+                  styles={inputStyles}
+                  error={errors.client}
+                />
+                <TextInput
+                  label="Ruta"
+                  placeholder="Enter route"
+                  styles={inputStyles}
+                  value={ruta}
+                  onChange={(e) => {
+                    setRuta(e.currentTarget.value);
+                    if (e.currentTarget.value.trim()) clearError("ruta");
+                  }}
+                  error={errors.ruta}
+                />
+                <TextInput
+                  label="Booking / DR#"
+                  placeholder="Enter booking or DR number"
+                  styles={inputStyles}
+                  value={bookingDr}
+                  onChange={(e) => {
+                    setBookingDr(e.currentTarget.value);
+                    if (e.currentTarget.value.trim()) clearError("bookingDr");
+                  }}
+                  error={errors.bookingDr}
+                />
+                <NumberInput
+                  label="No. of Drops"
+                  placeholder="Enter number of drops"
+                  min={1}
+                  styles={inputStyles}
+                  value={noOfDrops}
+                  onChange={(val) => {
+                    setNoOfDrops(val);
+                    if (val && Number(val) >= 1) clearError("noOfDrops");
+                  }}
+                  error={errors.noOfDrops}
+                />
+                <CreatableSelect
+                  label="Unit"
+                  placeholder="Search or add unit"
+                  data={DEFAULT_UNIT_TYPES}
+                  value={selectedUnit}
+                  onChange={(val) => {
+                    setSelectedUnit(val);
+                    if (val) clearError("unit");
+                  }}
+                  styles={inputStyles}
+                  error={errors.unit}
+                />
+                <TextInput
+                  label="Plate#"
+                  placeholder="e.g. ABC 1234"
+                  styles={inputStyles}
+                  value={plateNo}
+                  onChange={(e) => {
+                    const val = e.currentTarget.value.toUpperCase();
+                    setPlateNo(val);
+                    if (val.trim().length >= 3) clearError("plateNo");
+                  }}
+                  error={errors.plateNo}
+                  maxLength={15}
+                />
+                <CreatableSelect
+                  label="Driver"
+                  placeholder="Search or add driver"
+                  data={DEFAULT_DRIVERS}
+                  value={selectedDriver}
+                  onChange={(val) => {
+                    setSelectedDriver(val);
+                    if (val) clearError("driver");
+                  }}
+                  styles={inputStyles}
+                  error={errors.driver}
+                />
+                <CreatableSelect
+                  label="Helper"
+                  placeholder="Search or add helper"
+                  data={DEFAULT_HELPERS}
+                  value={selectedHelper}
+                  onChange={setSelectedHelper}
+                  styles={inputStyles}
+                />
 
                 <Divider my={4} />
 
-                <Box>
-                  <Text
-                    fw={700}
-                    style={{ fontSize: "10px" }}
-                    c="blue.6"
-                    tt="uppercase"
-                    lts={0.5}
-                    mb={6}
-                  >
-                    2nd Trip
-                  </Text>
-                  <Flex gap="md" direction={{ base: "column", sm: "row" }}>
-                    <TextInput
-                      label="ODO Start - Garage"
-                      placeholder="Enter value"
-                      styles={inputStyles}
-                      style={{ flex: 1 }}
-                      value={secondTripOdoStart}
-                      onChange={(e) => setNumericField(setSecondTripOdoStart)(e.currentTarget.value)}
-                    />
-                    <TextInput
-                      label="ODO End - Garage"
-                      placeholder="Enter value"
-                      styles={inputStyles}
-                      style={{ flex: 1 }}
-                      value={secondTripOdoEnd}
-                      onChange={(e) => setNumericField(setSecondTripOdoEnd)(e.currentTarget.value)}
-                    />
-                  </Flex>
-                </Box>
+                <Button
+                  fullWidth
+                  color="blue.6"
+                  leftSection={<IconEye size={14} />}
+                  styles={{
+                    root: { height: 36 },
+                    label: { fontSize: "11px", fontWeight: 700 },
+                  }}
+                  onClick={handleOpenReview}
+                >
+                  Review & Submit
+                </Button>
               </Stack>
             </Paper>
-          </Stack>
-
-          {/* Right Column — Trip Booking Details */}
-          <Paper withBorder radius="md" p="md" style={{ flex: 3 }} w="100%">
-            <CardHeader title="Trip Booking Details" />
-            <Stack gap="sm">
-              <CreatableSelect
-                label="Kliyente"
-                placeholder="Search or add client"
-                data={DEFAULT_CLIENTS}
-                value={selectedClient}
-                onChange={setSelectedClient}
-                styles={inputStyles}
-                error={errors.client}
-              />
-              <TextInput
-                label="Ruta"
-                placeholder="Enter route"
-                styles={inputStyles}
-                value={ruta}
-                onChange={(e) => setRuta(e.currentTarget.value)}
-                error={errors.ruta}
-              />
-              <TextInput
-                label="Booking / DR#"
-                placeholder="Enter booking or DR number"
-                styles={inputStyles}
-                value={bookingDr}
-                onChange={(e) => setBookingDr(e.currentTarget.value)}
-                error={errors.bookingDr}
-              />
-              <NumberInput
-                label="No. of Drops"
-                placeholder="Enter number of drops"
-                min={1}
-                styles={inputStyles}
-                value={noOfDrops}
-                onChange={setNoOfDrops}
-                error={errors.noOfDrops}
-              />
-              <CreatableSelect
-                label="Unit"
-                placeholder="Search or add unit"
-                data={DEFAULT_UNIT_TYPES}
-                value={selectedUnit}
-                onChange={setSelectedUnit}
-                styles={inputStyles}
-                error={errors.unit}
-              />
-              <TextInput
-                label="Plate#"
-                placeholder="e.g. ABC 1234"
-                styles={inputStyles}
-                value={plateNo}
-                onChange={(e) => setPlateNo(e.currentTarget.value.toUpperCase())}
-                error={errors.plateNo}
-                maxLength={15}
-              />
-              <CreatableSelect
-                label="Driver"
-                placeholder="Search or add driver"
-                data={DEFAULT_DRIVERS}
-                value={selectedDriver}
-                onChange={setSelectedDriver}
-                styles={inputStyles}
-                error={errors.driver}
-              />
-              <CreatableSelect
-                label="Helper"
-                placeholder="Search or add helper"
-                data={DEFAULT_HELPERS}
-                value={selectedHelper}
-                onChange={setSelectedHelper}
-                styles={inputStyles}
-              />
-
-              <Divider my={4} />
-
-              <Button
-                fullWidth
-                color="blue.6"
-                leftSection={<IconSend size={14} />}
-                styles={{
-                  root: { height: 36 },
-                  label: { fontSize: "11px", fontWeight: 700 },
-                }}
-                onClick={handleSubmit}
-              >
-                Submit Dispatch
-              </Button>
-            </Stack>
-          </Paper>
-        </Flex>
-      </Stack>
-    </ScrollArea>
+          </Flex>
+        </Stack>
+      </ScrollArea>
+    </>
   );
 }
