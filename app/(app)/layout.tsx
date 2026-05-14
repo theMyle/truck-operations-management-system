@@ -25,6 +25,7 @@ import {
   IconRoute,
   IconLayoutSidebarLeftCollapse,
   IconLayoutSidebarLeftExpand,
+  IconUserPlus,
 } from "@tabler/icons-react";
 import Image from "next/image";
 import LOGO from "../assets/logo.png";
@@ -42,8 +43,6 @@ export default function DashboardLayout({
   const [mobileOpened, { toggle: toggleMobile }] = useDisclosure();
   const [desktopOpened, { toggle: toggleDesktop }] = useDisclosure(true);
 
-
-
   const pathname = usePathname();
 
   const navItems = [
@@ -51,9 +50,10 @@ export default function DashboardLayout({
     { label: "Dispatch", icon: IconSend, href: "/dispatch" },
     { label: "Trip Logs", icon: IconRoute, href: "/trip-logs" },
     { label: "Billing", icon: IconReceipt2, href: "/billing" },
+    { label: "Registration", icon: IconUserPlus, href: "/registration" },
   ];
 
- 
+
 
   return (
     <DispatchProvider>
