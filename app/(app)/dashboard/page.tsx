@@ -1,14 +1,18 @@
 "use client";
 
-import { Flex, Stack, Box } from "@mantine/core";
+import { Flex, Stack, Box, Collapse } from "@mantine/core";
 import { IncomeStats } from "@/components/dashboard/IncomeStats";
 import { FleetStatusOverview } from "@/components/dashboard/FleetStatusOverview";
 import { DailyOperationsTable } from "@/components/dashboard/DailyOperationsTable";
 import { WeeklyOperationsTable } from "@/components/dashboard/WeeklyOperationsTable";
 import { MonthlyOperationsTable } from "@/components/dashboard/MonthlyOperationsTable";
 import { LiveFleetTable } from "@/components/dashboard/LiveFleetTable";
+import { useState } from "react";
 
 export default function DashboardPage() {
+  // Use a single state variable for both the tooltip text and the collapse visibility
+  const [isFleetTableOpen, setIsFleetTableOpen] = useState(false);
+
   const incomeStats = [
     { label: "Daily Income", value: "P 100,000" },
     { label: "Weekly Income", value: "P 700,000" },
@@ -41,10 +45,18 @@ export default function DashboardPage() {
   ];
 
   const monthlyOperations = [
-    { period: "Week 1", trips: 10 },
-    { period: "Week 2", trips: 10 },
-    { period: "Week 3", trips: 10 },
-    { period: "Week 4", trips: 10 },
+    { day: "January", kts: 145, subcon: 32 },
+    { day: "February", kts: 130, subcon: 28 },
+    { day: "March", kts: 160, subcon: 35 },
+    { day: "April", kts: 155, subcon: 30 },
+    { day: "May", kts: 170, subcon: 38 },
+    { day: "June", kts: 140, subcon: 29 },
+    { day: "July", kts: 125, subcon: 25 },
+    { day: "August", kts: 180, subcon: 40 },
+    { day: "September", kts: 165, subcon: 36 },
+    { day: "October", kts: 190, subcon: 42 },
+    { day: "November", kts: 175, subcon: 39 },
+    { day: "December", kts: 110, subcon: 20 },
   ];
 
   const truckList = [
@@ -80,18 +92,32 @@ export default function DashboardPage() {
     { plate: "CABCDEF7", status: "On Trip", color: "blue" },
   ];
 
-
   return (
-    <Flex gap="md" direction={{ base: 'column', lg: 'row' }} align="flex-start">
+    <Flex gap="md" direction={{ base: "column", lg: "row" }} align="flex-start">
       <Stack style={{ flex: 7.5 }} gap="md" w="100%">
-        <Flex gap="md" align="stretch" direction={{ base: 'column', sm: 'row' }}>
+        <Flex
+          gap="md"
+          align="stretch"
+          direction={{ base: "column", sm: "row" }}
+        >
           <IncomeStats stats={incomeStats} />
-          <FleetStatusOverview statusData={fleetStatus} />
+          
+          <FleetStatusOverview
+            statusData={fleetStatus}
+            onClick={() => setIsFleetTableOpen((prev) => !prev)}
+            active={isFleetTableOpen}
+          
+            isOpen={isFleetTableOpen}
+          />
         </Flex>
 
         <DailyOperationsTable trips={dailyTrips} />
 
-        <Flex gap="md" direction={{ base: 'column', sm: 'row' }} align="stretch">
+        <Flex
+          gap="md"
+          direction={{ base: "column", sm: "row" }}
+          align="stretch"
+        >
           <Box style={{ flex: 1 }}>
             <WeeklyOperationsTable data={weeklyOperations} />
           </Box>
@@ -101,7 +127,12 @@ export default function DashboardPage() {
         </Flex>
       </Stack>
 
-      <LiveFleetTable trucks={truckList} />
+      <Collapse
+        expanded={isFleetTableOpen}
+        style={{ flex: isFleetTableOpen ? 2.5 : 0 }}
+      >
+        <LiveFleetTable trucks={truckList} />
+      </Collapse>
     </Flex>
   );
 }
