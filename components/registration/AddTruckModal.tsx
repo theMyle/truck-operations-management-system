@@ -13,7 +13,6 @@ interface Props {
 
 const STATUS_OPTIONS = [
   { value: "available", label: "Available" },
-  { value: "on trip", label: "On Trip" },
   { value: "maintenance", label: "Maintenance" },
   { value: "unavailable", label: "Unavailable" },
 ];
@@ -24,7 +23,7 @@ export function AddTruckModal({ opened, onClose }: { opened: boolean; onClose: (
       plateNumber: "",
       fleetType: "",
       unitType: "",
-      status: "available" as "available" | "on trip" | "maintenance" | "unavailable",
+      status: "available" as "available" | "maintenance" | "unavailable",
     },
     validate: {
       plateNumber: (v) => (v.trim().length < 1 ? "Plate number is required" : null),
@@ -57,19 +56,19 @@ export function AddTruckModal({ opened, onClose }: { opened: boolean; onClose: (
           <TextInput
             id="input-truck-plate"
             label="Plate Number"
-            placeholder="e.g. ABC 1234"
+            placeholder="e.g. CAL6890"
             {...form.getInputProps("plateNumber")}
           />
           <TextInput
             id="input-truck-fleet-type"
             label="Fleet Type"
-            placeholder="e.g. KTS, Subcon"
+            placeholder="e.g. 6W CV, 10W"
             {...form.getInputProps("fleetType")}
           />
           <TextInput
             id="input-truck-unit-type"
             label="Unit Type"
-            placeholder="e.g. 10-Wheeler, 6-Wheeler"
+            placeholder="e.g. Krisdomingo, Lito Diana"
             {...form.getInputProps("unitType")}
           />
           <Select

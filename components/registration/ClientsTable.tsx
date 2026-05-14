@@ -1,0 +1,166 @@
+"use client";
+
+import { useState } from "react";
+import { Box, Group, Tooltip, ActionIcon, Text } from "@mantine/core";
+import { IconUsers, IconPencil, IconTrash } from "@tabler/icons-react";
+import { DataTable } from "mantine-datatable";
+import { useDisclosure } from "@mantine/hooks";
+import { modals } from "@mantine/modals";
+import { notifications } from "@mantine/notifications";
+import type { Client } from "@/lib/db/schema/clients";
+import { deleteClient } from "@/actions/registration";
+import { TableHeader } from "./TableHeader";
+import { AddClientModal } from "./AddClientModal";
+import { EditClientModal } from "./EditClientModal";
+
+interface Props {
+  data: Client[];
+}
+
+const PAGE_SIZE = 7;
+const UNIFORM_TABLE_HEIGHT = "21rem";
+
+export function ClientsTable({ data }: Props) {
+  const [addOpened, { open: openAdd, close: closeAdd }] = useDisclosure(false);
+  const [editClient, setEditClient] = useState<Client | null>(null);
+  const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
+
+  const filtered = data.filter((c) =>
+    c.clientName.toLowerCase().includes(search.toLowerCase())
+  );
+  const paged = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
+  const openDeleteConfirm = (client: Client) => {
+    modals.openConfirmModal({
+      title: "Delete Client",
+      centered: true,
+      children: (
+        <Text size="sm">
+          Are you sure you want to delete <b>{client.clientName}</b>? This action
+          cannot be undone.
+        </Text>
+      ),
+      labels: { confirm: "Delete", cancel: "Cancel" },
+      confirmProps: { color: "red" },
+      onConfirm: async () => {
+        const result = await deleteClient({ id: client.id });
+        if (result?.validationErrors || result?.serverError) {
+          notifications.show({
+            title: "Error",
+            message: "Failed to delete client",
+            color: "red",
+          });
+        } else {
+          notifications.show({
+            title: "Success",
+            message: "Client deleted successfully",
+            color: "green",
+          });
+        }
+      },
+    });
+  };
+
+  return (
+    <>
+      <AddClientModal opened={addOpened} onClose={closeAdd} />
+      <EditClientModal
+        opened={!!editClient}
+        onClose={() => setEditClient(null)}
+        client={editClient}
+      />
+
+      <TableHeader
+        icon={IconUsers}
+        label="Clients"
+        count={filtered.length}
+        buttonId="btn-add-client"
+        onAdd={openAdd}
+        searchQuery={search}
+        onSearchChange={(val) => {
+          setSearch(val);
+          setPage(1);
+        }}
+      />
+      <Box style={{ flex: 1 }}>
+        <DataTable
+          height={UNIFORM_TABLE_HEIGHT}
+          withTableBorder={false}
+          borderRadius={0}
+          highlightOnHover
+          noRecordsText="No clients yet"
+          records={paged}
+          totalRecords={filtered.length}
+          recordsPerPage={PAGE_SIZE}
+          page={page}
+          onPageChange={setPage}
+          paginationText={() => ""}
+          styles={{
+            header: {
+              fontSize: "var(--mantine-font-size-xs)",
+              fontWeight: 700,
+              textTransform: "uppercase",
+              letterSpacing: "0.04em",
+              color: "var(--mantine-color-gray-6)",
+              background: "var(--mantine-color-gray-0)",
+            },
+            pagination: {
+              borderTop: "1px solid var(--mantine-color-gray-2)",
+              background: "var(--mantine-color-gray-0)",
+              padding: "var(--mantine-spacing-xs) var(--mantine-spacing-md)",
+            },
+          }}
+          columns={[
+            {
+              accessor: "actions",
+              title: "",
+              width: 68,
+              titleStyle: {
+                background: "var(--mantine-color-gray-0)",
+                borderRight: "1px solid var(--mantine-color-gray-2)",
+              },
+              cellsStyle: () => ({
+                background: "white",
+                borderRight: "1px solid var(--mantine-color-gray-2)",
+              }),
+              render: (row) => (
+                <Group gap={4} wrap="nowrap">
+                  <Tooltip label="Edit" withArrow fz={10}>
+                    <ActionIcon
+                      size="xs"
+                      variant="subtle"
+                      color="blue"
+                      onClick={() => setEditClient(row)}
+                    >
+                      <IconPencil size={13} />
+                    </ActionIcon>
+                  </Tooltip>
+                  <Tooltip label="Delete" withArrow fz={10}>
+                    <ActionIcon
+                      size="xs"
+                      variant="subtle"
+                      color="red"
+                      onClick={() => openDeleteConfirm(row)}
+                    >
+                      <IconTrash size={13} />
+                    </ActionIcon>
+                  </Tooltip>
+                </Group>
+              ),
+            },
+            {
+              accessor: "clientName",
+              title: "Client Name",
+              render: (row) => (
+                <Text size="sm" fw={500}>
+                  {row.clientName}
+                </Text>
+              ),
+            },
+          ]}
+        />
+      </Box>
+    </>
+  );
+}
