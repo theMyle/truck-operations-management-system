@@ -2,4 +2,5 @@
 export * from "./trucks";
 export * from "./drivers";
 export * from "./clients";
+export * from "./helpers";
 export * from "./dispatch";

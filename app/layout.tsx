@@ -20,6 +20,8 @@ export const metadata: Metadata = {
 };
 
 import { ColorSchemeScript, MantineProvider, createTheme, mantineHtmlProps } from "@mantine/core";
+import { Notifications } from "@mantine/notifications";
+import { ModalsProvider } from "@mantine/modals";
 
 const theme = createTheme({
   fontFamily: "var(--font-geist-sans), sans-serif",
@@ -42,7 +44,12 @@ export default function RootLayout({
       </head>
       <body>
         <ClerkProvider>
-          <MantineProvider theme={theme}>{children}</MantineProvider>
+          <MantineProvider theme={theme}>
+            <Notifications position="top-right" />
+            <ModalsProvider>
+              {children}
+            </ModalsProvider>
+          </MantineProvider>
         </ClerkProvider>
       </body>
     </html>
