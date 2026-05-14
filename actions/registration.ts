@@ -23,7 +23,7 @@ export const createClient = actionClient
   });
 
 export const updateClient = actionClient
-  .schema(insertClientSchema.pick({ id: true, clientName: true }))
+  .schema(insertClientSchema.pick({ id: true, clientName: true }).extend({ id: z.string() }))
   .action(async ({ parsedInput }) => {
     const [updated] = await db.update(clients)
       .set({ clientName: parsedInput.clientName, updatedAt: new Date() })
@@ -51,7 +51,7 @@ export const createTruck = actionClient
   });
 
 export const updateTruck = actionClient
-  .schema(insertTruckSchema.pick({ plateNumber: true, fleetType: true, unitType: true, status: true }))
+  .schema(insertTruckSchema.pick({ plateNumber: true, fleetType: true, unitType: true, status: true }).extend({ plateNumber: z.string() }))
   .action(async ({ parsedInput }) => {
     const [updated] = await db.update(trucks)
       .set({ ...parsedInput, updatedAt: new Date() })
@@ -77,7 +77,7 @@ export const createDriver = actionClient
   });
 
 export const updateDriver = actionClient
-  .schema(insertDriverSchema.pick({ id: true, driverName: true }))
+  .schema(insertDriverSchema.pick({ id: true, driverName: true }).extend({ id: z.string() }))
   .action(async ({ parsedInput }) => {
     const [updated] = await db.update(drivers)
       .set({ driverName: parsedInput.driverName, updatedAt: new Date() })
@@ -103,7 +103,7 @@ export const createHelper = actionClient
   });
 
 export const updateHelper = actionClient
-  .schema(insertHelperSchema.pick({ id: true, helperName: true }))
+  .schema(insertHelperSchema.pick({ id: true, helperName: true }).extend({ id: z.string() }))
   .action(async ({ parsedInput }) => {
     const [updated] = await db.update(helpers)
       .set({ helperName: parsedInput.helperName, updatedAt: new Date() })
