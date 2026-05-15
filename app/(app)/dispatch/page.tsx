@@ -20,8 +20,9 @@ import {
   Modal,
   SimpleGrid,
   Popover,
+  ActionIcon,
 } from "@mantine/core";
-import { DatePicker } from "@mantine/dates";
+import { DatePicker, type DateValue } from "@mantine/dates";
 import { notifications } from "@mantine/notifications";
 import { useRouter } from "next/navigation";
 import React, { useState, useCallback, useEffect } from "react";
@@ -32,9 +33,18 @@ import {
   IconEye,
   IconX,
   IconCalendar,
+  IconMapPin,
 } from "@tabler/icons-react";
 import "@mantine/dates/styles.css";
 import { useDispatch } from "../context/dispatch-context";
+
+interface DropOff {
+  id: number;
+  location: string;
+  contactPerson: string;
+  contactNo: string;
+}
+
 /* ── Predefined data ── */
 const DEFAULT_CLIENTS = [
   "Flash Express",
@@ -187,14 +197,6 @@ function CreatableSelect({
   );
 }
 
-interface TripRow {
-  id: number;
-  trip: string;
-  odometerNo: string;
-  pictureNo: string;
-  bahatOdoStartAtEndBaGc: string;
-}
-
 /* ── Review Modal ── */
 function ReviewModal({
   opened,
@@ -211,41 +213,13 @@ function ReviewModal({
 }) {
   const sections = [
     {
-      title: "Odometer Details",
-      rows: [
-        { label: "Odometer Start", key: "odoStart" },
-        { label: "Odometer End", key: "odoEnd" },
-        { label: "Total KM", key: "totalKm" },
-      ],
-    },
-    {
-      title: "Rental Trip",
-      rows: [
-        { label: "ODO Start – Garage", key: "rentalOdoStart" },
-        { label: "ODO End – Garage", key: "rentalOdoEnd" },
-      ],
-    },
-    {
-      title: "Multiple Trips – Last Trip",
-      rows: [
-        { label: "ODO Start – Garage", key: "lastTripOdoStart" },
-        { label: "ODO Start – Last Trip End", key: "lastTripOdoEnd" },
-        { label: "ODO End – Last Drop Off", key: "lastTripOdoEndDrop" },
-      ],
-    },
-    {
-      title: "Multiple Trips – 2nd Trip",
-      rows: [
-        { label: "ODO Start – Garage", key: "secondTripOdoStart" },
-        { label: "ODO End – Garage", key: "secondTripOdoEnd" },
-      ],
-    },
-    {
       title: "Trip Booking Details",
       rows: [
         { label: "Client (Kliyente)", key: "client" },
         { label: "Route (Ruta)", key: "ruta" },
         { label: "Booking / DR#", key: "bookingDr" },
+        { label: "Pickup Location", key: "pickupLocation" },
+        { label: "Drop-off Points", key: "dropOffs" },
         { label: "No. of Drops", key: "noOfDrops" },
         { label: "Unit", key: "unit" },
         { label: "Plate #", key: "plateNo" },
@@ -375,35 +349,52 @@ function ReviewModal({
   );
 }
 
+const CardHeader = ({
+  title,
+  subtitle,
+  icon,
+}: {
+  title: string;
+  subtitle?: React.ReactNode;
+  icon?: React.ReactNode;
+}) => (
+  <Box mb="sm">
+    <Group justify="space-between" align="center">
+      <Group gap={6}>
+        {icon}
+        <Text
+          fw={700}
+          style={{ fontSize: "10px" }}
+          c="gray.9"
+          tt="uppercase"
+          lts={1}
+        >
+          {title}
+        </Text>
+      </Group>
+      {subtitle &&
+        (typeof subtitle === "string" ? (
+          <Text style={{ fontSize: "10px" }} c="dimmed">
+            {subtitle}
+          </Text>
+        ) : (
+          subtitle
+        ))}
+    </Group>
+  </Box>
+);
 export default function DispatchPage() {
   const router = useRouter();
-
-  const [trips, setTrips] = useState<TripRow[]>([
-    {
-      id: 1,
-      trip: "",
-      odometerNo: "",
-      pictureNo: "",
-      bahatOdoStartAtEndBaGc: "",
-    },
-  ]);
 
   /* ── Combo box state ── */
   const [selectedClient, setSelectedClient] = useState<string | null>(null);
   const [selectedDriver, setSelectedDriver] = useState<string | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [selectedHelper, setSelectedHelper] = useState<string | null>(null);
   const [selectedUnit, setSelectedUnit] = useState<string | null>(null);
 
   /* ── Field value state ── */
-  const [odoStart, setOdoStart] = useState("");
-  const [odoEnd, setOdoEnd] = useState("");
-  const [rentalOdoStart, setRentalOdoStart] = useState("");
-  const [rentalOdoEnd, setRentalOdoEnd] = useState("");
-  const [lastTripOdoStart, setLastTripOdoStart] = useState("");
-  const [lastTripOdoEnd, setLastTripOdoEnd] = useState("");
-  const [lastTripOdoEndDrop, setLastTripOdoEndDrop] = useState("");
-  const [secondTripOdoStart, setSecondTripOdoStart] = useState("");
-  const [secondTripOdoEnd, setSecondTripOdoEnd] = useState("");
+
   const [ruta, setRuta] = useState("");
   const [bookingDr, setBookingDr] = useState("");
   const [noOfDrops, setNoOfDrops] = useState<string | number>("");
@@ -416,26 +407,24 @@ export default function DispatchPage() {
   const [reviewOpened, setReviewOpened] = useState(false);
 
   const { editingRecord, setEditingRecord, setRecords } = useDispatch();
-  const [pickupDate, setPickupDate] = useState<Date | null>(null);
+  const [pickupDate, setPickupDate] = useState<DateValue | null>(null);
   const [selectedHelpers, setSelectedHelpers] = useState<string[]>([]);
   const [helperKey, setHelperKey] = useState(0);
-  /* ── Helpers ── */
-  const isNumeric = (v: string) => v === "" || /^\d+(\.\d*)?$/.test(v);
 
-  const setNumericField =
-    (setter: (v: string) => void, errorKey: string) => (val: string) => {
-      if (isNumeric(val)) {
-        setter(val);
-        // Clear error as soon as user types something valid
-        if (val.trim()) {
-          setErrors((prev) => {
-            const next = { ...prev };
-            delete next[errorKey];
-            return next;
-          });
-        }
-      }
-    };
+  const [pickupLocation, setPickupLocation] = useState("");
+  const [dropOffs, setDropOffs] = useState<DropOff[]>([
+    { id: 1, location: "", contactPerson: "", contactNo: "" },
+  ]);
+
+  // Helper function — add this near the top of your component or outside it
+  const formatDate = (date: DateValue | null): string => {
+    if (!date) return "";
+    return new Date(date).toLocaleDateString("en-US", {
+      month: "long",
+      day: "numeric",
+      year: "numeric",
+    });
+  };
 
   /** Clear a single error key when the user changes the field */
   const clearError = (key: string) =>
@@ -445,15 +434,12 @@ export default function DispatchPage() {
       return next;
     });
 
-  const totalKm =
-    odoStart && odoEnd
-      ? Math.max(0, Number(odoEnd) - Number(odoStart)).toString()
-      : "";
-
   /* ── Validation ── */
   const validate = useCallback((): boolean => {
     const e: Record<string, string> = {};
 
+    if (!pickupLocation.trim())
+      e.pickupLocation = "Pickup location is required";
     if (!selectedClient) e.client = "Client is required";
     if (!ruta.trim()) e.ruta = "Route is required";
     if (!bookingDr.trim()) e.bookingDr = "Booking / DR# is required";
@@ -466,9 +452,15 @@ export default function DispatchPage() {
     if (!selectedDriver) e.driver = "Driver is required";
     if (!pickupDate) e.pickupDate = "Pickup date is required";
 
+    // Validate at least one drop-off has a location
+    const hasValidDrop = dropOffs.some((d) => d.location.trim());
+    if (!hasValidDrop)
+      e.dropOffs = "At least one drop-off location is required";
+
     setErrors(e);
     return Object.keys(e).length === 0;
   }, [
+    pickupLocation,
     selectedClient,
     ruta,
     bookingDr,
@@ -477,7 +469,27 @@ export default function DispatchPage() {
     plateNo,
     selectedDriver,
     pickupDate,
+    dropOffs,
   ]);
+
+  const addDropOff = () => {
+    setDropOffs((prev) => [
+      ...prev,
+      { id: prev.length + 1, location: "", contactPerson: "", contactNo: "" },
+    ]);
+  };
+
+  const removeDropOff = (id: number) => {
+    if (dropOffs.length > 1) {
+      setDropOffs((prev) => prev.filter((d) => d.id !== id));
+    }
+  };
+
+  const updateDropOff = (id: number, field: keyof DropOff, value: string) => {
+    setDropOffs((prev) =>
+      prev.map((d) => (d.id === id ? { ...d, [field]: value } : d)),
+    );
+  };
 
   /* ── Open review modal (validate first) ── */
   const handleOpenReview = () => {
@@ -531,29 +543,21 @@ export default function DispatchPage() {
     router.push("/dispatch");
   };
 
-  const addTrip = () => {
-    setTrips((prev) => [
-      ...prev,
-      {
-        id: prev.length + 1,
-        trip: "",
-        odometerNo: "",
-        pictureNo: "",
-        bahatOdoStartAtEndBaGc: "",
-      },
-    ]);
-  };
-
-  const removeTrip = (id: number) => {
-    if (trips.length > 1) {
-      setTrips((prev) => prev.filter((t) => t.id !== id));
-    }
-  };
-
-  const updateTrip = (id: number, field: keyof TripRow, value: string) => {
-    setTrips((prev) =>
-      prev.map((t) => (t.id === id ? { ...t, [field]: value } : t)),
-    );
+  const handleReset = () => {
+    setSelectedClient(null);
+    setSelectedDriver(null);
+    setSelectedHelper(null);
+    setSelectedUnit(null);
+    setRuta("");
+    setBookingDr("");
+    setNoOfDrops("");
+    setPlateNo("");
+    setPickupDate(null);
+    setPickupLocation("");
+    setDropOffs([{ id: 1, location: "", contactPerson: "", contactNo: "" }]);
+    setSelectedHelpers([]);
+    setHelperKey((prev) => prev + 1);
+    setErrors({});
   };
 
   useEffect(() => {
@@ -568,40 +572,6 @@ export default function DispatchPage() {
     setSelectedHelper(editingRecord.helper);
     setSelectedUnit(editingRecord.unit);
   }, [editingRecord]);
-  const CardHeader = ({
-    title,
-    subtitle,
-    icon,
-  }: {
-    title: string;
-    subtitle?: React.ReactNode;
-    icon?: React.ReactNode;
-  }) => (
-    <Box mb="sm">
-      <Group justify="space-between" align="center">
-        <Group gap={6}>
-          {icon}
-          <Text
-            fw={700}
-            style={{ fontSize: "10px" }}
-            c="gray.9"
-            tt="uppercase"
-            lts={1}
-          >
-            {title}
-          </Text>
-        </Group>
-        {subtitle &&
-          (typeof subtitle === "string" ? (
-            <Text style={{ fontSize: "10px" }} c="dimmed">
-              {subtitle}
-            </Text>
-          ) : (
-            subtitle
-          ))}
-      </Group>
-    </Box>
-  );
 
   const inputStyles = {
     label: {
@@ -620,16 +590,6 @@ export default function DispatchPage() {
 
   /* ── Data snapshot for review modal ── */
   const reviewData: Record<string, string> = {
-    odoStart,
-    odoEnd,
-    totalKm: totalKm ? `${totalKm} km` : "",
-    rentalOdoStart,
-    rentalOdoEnd,
-    lastTripOdoStart,
-    lastTripOdoEnd,
-    lastTripOdoEndDrop,
-    secondTripOdoStart,
-    secondTripOdoEnd,
     client: selectedClient || "",
     ruta,
     bookingDr,
@@ -638,13 +598,15 @@ export default function DispatchPage() {
     plateNo,
     driver: selectedDriver || "",
     helper: selectedHelpers.join(", "),
-    pickupDate: pickupDate
-      ? new Date(pickupDate).toLocaleDateString("en-US", {
-          month: "long",
-          day: "numeric",
-          year: "numeric",
-        })
-      : "",
+    pickupDate: formatDate(pickupDate),
+    pickupLocation,
+    dropOffs: dropOffs
+      .filter((d) => d.location)
+      .map(
+        (d, i) =>
+          `Drop ${i + 1}: ${d.location}${d.contactPerson ? ` (${d.contactPerson}` : ""}${d.contactNo ? ` – ${d.contactNo})` : d.contactPerson ? ")" : ""}`,
+      )
+      .join("\n"),
   };
 
   const addHelper = (val: string | null) => {
@@ -710,7 +672,7 @@ export default function DispatchPage() {
           </Group>
 
           <Flex justify="center" px="md">
-            <Paper withBorder radius="md" p="lg" w="100%" maw={780}>
+            <Paper withBorder radius="md" p="lg" w="100%">
               <CardHeader
                 title="Trip Booking Details"
                 subtitle={
@@ -721,6 +683,162 @@ export default function DispatchPage() {
               />
 
               <Divider mb="md" />
+              {/* Pickup Location */}
+              <SimpleGrid cols={{ base: 1, sm: 1 }} spacing="sm" mb="sm">
+                <TextInput
+                  label="Pickup Location"
+                  placeholder="Enter pickup address"
+                  styles={inputStyles}
+                  value={pickupLocation}
+                  onChange={(e) => {
+                    setPickupLocation(e.currentTarget.value);
+                    if (e.currentTarget.value.trim())
+                      clearError("pickupLocation");
+                  }}
+                  error={errors.pickupLocation}
+                  leftSection={
+                    <IconMapPin
+                      size={13}
+                      color="var(--mantine-color-green-6)"
+                    />
+                  }
+                />
+              </SimpleGrid>
+
+              {/* Drop-offs */}
+              <Box mb="sm">
+                <Group justify="space-between" align="center" mb={6}>
+                  <Text
+                    fw={800}
+                    style={{ fontSize: "9px" }}
+                    tt="uppercase"
+                    lts={1}
+                    c="blue.6"
+                  >
+                    Drop-off Points
+                  </Text>
+                  <Button
+                    size="xs"
+                    variant="light"
+                    color="blue"
+                    leftSection={<IconPlus size={11} />}
+                    styles={{
+                      root: { height: 24 },
+                      label: { fontSize: "10px", fontWeight: 700 },
+                    }}
+                    onClick={addDropOff}
+                  >
+                    Add Drop-off
+                  </Button>
+                </Group>
+
+                <Stack gap={6}>
+                  {dropOffs.map((drop, index) => (
+                    <Paper key={drop.id} withBorder radius="sm" p="xs">
+                      <Group justify="space-between" align="center" mb={4}>
+                        <Badge
+                          variant="light"
+                          color="orange"
+                          radius="sm"
+                          styles={{
+                            label: { fontSize: "9px" },
+                            root: { height: 18 },
+                          }}
+                        >
+                          Drop {index + 1}
+                        </Badge>
+                        {dropOffs.length > 1 && (
+                          <ActionIcon
+                            variant="subtle"
+                            color="red"
+                            size="xs"
+                            onClick={() => removeDropOff(drop.id)}
+                          >
+                            <IconX size={11} />
+                          </ActionIcon>
+                        )}
+                      </Group>
+                      <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="xs">
+                        <TextInput
+                          placeholder="Drop-off address"
+                          label="Location"
+                          size="xs"
+                          styles={{
+                            label: {
+                              fontSize: "9px",
+                              fontWeight: 700,
+                              textTransform: "uppercase",
+                            },
+                            input: { fontSize: "11px" },
+                          }}
+                          value={drop.location}
+                          onChange={(e) =>
+                            updateDropOff(
+                              drop.id,
+                              "location",
+                              e.currentTarget.value,
+                            )
+                          }
+                          leftSection={
+                            <IconMapPin
+                              size={11}
+                              color="var(--mantine-color-red-5)"
+                            />
+                          }
+                        />
+                        <TextInput
+                          placeholder="Contact person"
+                          label="Contact Person"
+                          size="xs"
+                          styles={{
+                            label: {
+                              fontSize: "9px",
+                              fontWeight: 700,
+                              textTransform: "uppercase",
+                            },
+                            input: { fontSize: "11px" },
+                          }}
+                          value={drop.contactPerson}
+                          onChange={(e) =>
+                            updateDropOff(
+                              drop.id,
+                              "contactPerson",
+                              e.currentTarget.value,
+                            )
+                          }
+                        />
+                        <TextInput
+                          placeholder="e.g. 09XX XXX XXXX"
+                          label="Contact No."
+                          size="xs"
+                          styles={{
+                            label: {
+                              fontSize: "9px",
+                              fontWeight: 700,
+                              textTransform: "uppercase",
+                            },
+                            input: { fontSize: "11px" },
+                          }}
+                          value={drop.contactNo}
+                          onChange={(e) =>
+                            updateDropOff(
+                              drop.id,
+                              "contactNo",
+                              e.currentTarget.value,
+                            )
+                          }
+                        />
+                      </SimpleGrid>
+                    </Paper>
+                  ))}
+                </Stack>
+
+                {errors.dropOffs && (
+                  <Text style={{ fontSize: "11px" }} c="red" mt={4}>
+                    {errors.dropOffs}
+                  </Text>
+                )}
+              </Box>
               <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm" mb="sm">
                 <CreatableSelect
                   label="Kliyente"
@@ -785,15 +903,7 @@ export default function DispatchPage() {
                       label="Pickup Date"
                       placeholder="Select date"
                       readOnly
-                      value={
-                        pickupDate
-                          ? new Date(pickupDate).toLocaleDateString("en-US", {
-                              month: "long",
-                              day: "numeric",
-                              year: "numeric",
-                            })
-                          : ""
-                      }
+                      value={formatDate(pickupDate)}
                       rightSection={
                         <IconCalendar
                           size={14}
@@ -870,13 +980,13 @@ export default function DispatchPage() {
                 />
                 <Stack gap={4}>
                   <CreatableSelect
-                   key={helperKey}
+                    key={helperKey}
                     label="Helper"
                     placeholder="Add helper"
                     data={DEFAULT_HELPERS}
                     value={null}
                     onChange={addHelper}
-                    styles={inputStyles}  
+                    styles={inputStyles}
                   />
 
                   <Box
@@ -926,18 +1036,31 @@ export default function DispatchPage() {
 
               <Divider my="sm" />
 
-              <Button
-                fullWidth
-                color="blue.6"
-                leftSection={<IconEye size={14} />}
-                styles={{
-                  root: { height: 36 },
-                  label: { fontSize: "11px", fontWeight: 700 },
-                }}
-                onClick={handleOpenReview}
-              >
-                Review & Submit
-              </Button>
+              <Group flex={1}>
+                <Button
+                  variant="light"
+                  color="gray"
+                  leftSection={<IconX size={14} />}
+                  styles={{
+                    root: { height: 36 },
+                    label: { fontSize: "11px", fontWeight: 700 },
+                  }}
+                  onClick={handleReset}
+                >
+                  Reset
+                </Button>
+                <Button
+                  color="blue.6"
+                  leftSection={<IconEye size={14} />}
+                  styles={{
+                    root: { height: 36 },
+                    label: { fontSize: "11px", fontWeight: 700 },
+                  }}
+                  onClick={handleOpenReview}
+                >
+                  Review & Submit
+                </Button>
+              </Group>
             </Paper>
           </Flex>
         </Stack>

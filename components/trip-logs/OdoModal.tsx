@@ -1,0 +1,831 @@
+"use client";
+
+import {
+  Modal,
+  Tabs,
+  Stack,
+  SimpleGrid,
+  TextInput,
+  Text,
+  Group,
+  Paper,
+  Divider,
+  Button,
+  SegmentedControl,
+  Table,
+  ActionIcon,
+  Checkbox,
+  Badge,
+  ScrollArea,
+} from "@mantine/core";
+import {
+  IconClipboardList,
+  IconPlus,
+  IconTrash,
+  IconGauge,
+  IconRoute,
+  IconWallet,
+} from "@tabler/icons-react";
+import React, { useState } from "react";
+import { DispatchRecord } from "@/app/(app)/constant";
+
+/* ── Types ── */
+interface TripRow {
+  id: number;
+  trip: string;
+  odometerNo: string;
+  pictureNo: string;
+  bahatOdoStartAtEnd: string;
+}
+
+export interface OdoFormData {
+  odoStart: string;
+  odoEnd: string;
+  tripType: "single" | "multiple";
+  singleOdoStart: string;
+  singleOdoEnd: string;
+  lastTripOdoStartGarage: string;
+  lastTripOdoEndLastTrip: string;
+  lastTripOdoEndLastDrop: string;
+  secondTripOdoStart: string;
+  secondTripOdoEnd: string;
+  trips: TripRow[];
+  budget: string;
+  budgetFrom: string;
+  rfidLoad: string;
+  rfidPayment: "card" | "cash" | "";
+  fuelAmount: string;
+  fuelPayment: "shell_card" | "cash" | "";
+  collectionFromCustomer: string;
+  naibalikNaSukli: string;
+  kanino: string;
+  autoCA: "yes" | "no" | "";
+}
+
+const defaultForm = (): OdoFormData => ({
+  odoStart: "",
+  odoEnd: "",
+  tripType: "single",
+  singleOdoStart: "",
+  singleOdoEnd: "",
+  lastTripOdoStartGarage: "",
+  lastTripOdoEndLastTrip: "",
+  lastTripOdoEndLastDrop: "",
+  secondTripOdoStart: "",
+  secondTripOdoEnd: "",
+  trips: [
+    { id: 1, trip: "", odometerNo: "", pictureNo: "", bahatOdoStartAtEnd: "" },
+  ],
+  budget: "",
+  budgetFrom: "",
+  rfidLoad: "",
+  rfidPayment: "",
+  fuelAmount: "",
+  fuelPayment: "",
+  collectionFromCustomer: "",
+  naibalikNaSukli: "",
+  kanino: "",
+  autoCA: "",
+});
+
+const inputStyles = {
+  label: {
+    fontSize: "10px",
+    fontWeight: 700,
+    color: "var(--mantine-color-gray-7)",
+    textTransform: "uppercase" as const,
+    letterSpacing: "0.5px",
+    marginBottom: "4px",
+  },
+  input: { fontSize: "11px", fontWeight: 600 },
+};
+
+/* ── OdoModal ── */
+export function OdoModal({
+  opened,
+  onClose,
+  record,
+  initialData,
+  onSave,
+}: {
+  opened: boolean;
+  onClose: () => void;
+  record: DispatchRecord | null;
+  initialData?: OdoFormData;
+  onSave: (data: OdoFormData) => void;
+}) {
+  const [form, setForm] = useState<OdoFormData>(initialData || defaultForm());
+  const [activeTab, setActiveTab] = useState<string | null>("odometer");
+
+  const set = (key: keyof OdoFormData, value: unknown) =>
+    setForm((prev) => ({ ...prev, [key]: value }));
+
+  const totalKm =
+    form.odoStart && form.odoEnd
+      ? Math.max(0, Number(form.odoEnd) - Number(form.odoStart))
+      : null;
+
+  /* ── Trip rows ── */
+  const addTripRow = () =>
+    set("trips", [
+      ...form.trips,
+      {
+        id: form.trips.length + 1,
+        trip: "",
+        odometerNo: "",
+        pictureNo: "",
+        bahatOdoStartAtEnd: "",
+      },
+    ]);
+
+  const removeTripRow = (id: number) =>
+    set(
+      "trips",
+      form.trips.filter((t) => t.id !== id),
+    );
+
+  const updateTripRow = (id: number, field: keyof TripRow, value: string) =>
+    set(
+      "trips",
+      form.trips.map((t) => (t.id === id ? { ...t, [field]: value } : t)),
+    );
+
+  if (!record) return null;
+
+  return (
+    <Modal
+      opened={opened}
+      onClose={onClose}
+      title={
+        <Group gap={8}>
+          <IconClipboardList size={16} color="var(--mantine-color-blue-6)" />
+          <Text fw={700} style={{ fontSize: "13px" }} tt="uppercase" lts={0.5}>
+            Trip Details — #{record.id}
+          </Text>
+          <Badge
+            variant="light"
+            color="blue"
+            radius="sm"
+            styles={{ label: { fontSize: "9px" }, root: { height: 18 } }}
+          >
+            {record.client}
+          </Badge>
+        </Group>
+      }
+      size="lg"
+      radius="md"
+      centered
+      scrollAreaComponent={ScrollArea.Autosize}
+    >
+      <Text style={{ fontSize: "11px" }} c="dimmed" mb="sm">
+        {record.driver} · {record.ruta} · {record.date}
+      </Text>
+
+      <Tabs value={activeTab} onChange={setActiveTab}>
+        <Tabs.List mb="md">
+          <Tabs.Tab value="odometer" leftSection={<IconGauge size={13} />}>
+            <Text style={{ fontSize: "11px" }} fw={600}>
+              Odometer
+            </Text>
+          </Tabs.Tab>
+          <Tabs.Tab value="trips" leftSection={<IconRoute size={13} />}>
+            <Text style={{ fontSize: "11px" }} fw={600}>
+              Trips
+            </Text>
+          </Tabs.Tab>
+          <Tabs.Tab value="budget" leftSection={<IconWallet size={13} />}>
+            <Text style={{ fontSize: "11px" }} fw={600}>
+              Budget
+            </Text>
+          </Tabs.Tab>
+        </Tabs.List>
+
+        {/* ── ODOMETER TAB ── */}
+        <Tabs.Panel value="odometer">
+          <Stack gap="sm">
+            <SimpleGrid cols={2} spacing="sm">
+              <TextInput
+                label="ODO Start"
+                placeholder="e.g. 12000"
+                styles={inputStyles}
+                value={form.odoStart}
+                onChange={(e) => set("odoStart", e.currentTarget.value)}
+              />
+              <TextInput
+                label="ODO End"
+                placeholder="e.g. 12500"
+                styles={inputStyles}
+                value={form.odoEnd}
+                onChange={(e) => set("odoEnd", e.currentTarget.value)}
+              />
+            </SimpleGrid>
+
+            {totalKm !== null && (
+              <Paper withBorder radius="sm" p="xs" bg="blue.0">
+                <Group justify="space-between">
+                  <Text
+                    style={{ fontSize: "10px" }}
+                    fw={700}
+                    tt="uppercase"
+                    c="gray.6"
+                    lts={0.5}
+                  >
+                    Total KM
+                  </Text>
+                  <Text style={{ fontSize: "13px" }} fw={900} c="blue.7">
+                    {totalKm} km
+                  </Text>
+                </Group>
+              </Paper>
+            )}
+
+            <Divider
+              label={
+                <Text
+                  style={{ fontSize: "9px" }}
+                  tt="uppercase"
+                  lts={1}
+                  c="dimmed"
+                >
+                  Trip Type
+                </Text>
+              }
+              labelPosition="left"
+            />
+
+            <SegmentedControl
+              value={form.tripType}
+              onChange={(val) => set("tripType", val)}
+              data={[
+                { label: "Single Trip", value: "single" },
+                { label: "Multiple Trips", value: "multiple" },
+              ]}
+              styles={{ label: { fontSize: "11px", fontWeight: 600 } }}
+              fullWidth
+            />
+
+            {form.tripType === "single" && (
+              <SimpleGrid cols={2} spacing="sm">
+                <TextInput
+                  label="ODO Start — Garage"
+                  placeholder="e.g. 12000"
+                  styles={inputStyles}
+                  value={form.singleOdoStart}
+                  onChange={(e) => set("singleOdoStart", e.currentTarget.value)}
+                />
+                <TextInput
+                  label="ODO End — Garage"
+                  placeholder="e.g. 12500"
+                  styles={inputStyles}
+                  value={form.singleOdoEnd}
+                  onChange={(e) => set("singleOdoEnd", e.currentTarget.value)}
+                />
+              </SimpleGrid>
+            )}
+
+            {form.tripType === "multiple" && (
+              <Stack gap="xs">
+                <Divider
+                  label={
+                    <Text
+                      style={{ fontSize: "9px" }}
+                      tt="uppercase"
+                      lts={1}
+                      c="blue.6"
+                      fw={700}
+                    >
+                      Last Trip
+                    </Text>
+                  }
+                  labelPosition="left"
+                />
+                <SimpleGrid cols={2} spacing="sm">
+                  <TextInput
+                    label="ODO Start — Garage"
+                    styles={inputStyles}
+                    value={form.lastTripOdoStartGarage}
+                    onChange={(e) =>
+                      set("lastTripOdoStartGarage", e.currentTarget.value)
+                    }
+                  />
+                  <TextInput
+                    label="ODO Start — Last Trip End"
+                    styles={inputStyles}
+                    value={form.lastTripOdoEndLastTrip}
+                    onChange={(e) =>
+                      set("lastTripOdoEndLastTrip", e.currentTarget.value)
+                    }
+                  />
+                </SimpleGrid>
+                <TextInput
+                  label="ODO End — Last Drop Off"
+                  styles={inputStyles}
+                  value={form.lastTripOdoEndLastDrop}
+                  onChange={(e) =>
+                    set("lastTripOdoEndLastDrop", e.currentTarget.value)
+                  }
+                />
+
+                <Divider
+                  mt="xs"
+                  label={
+                    <Text
+                      style={{ fontSize: "9px" }}
+                      tt="uppercase"
+                      lts={1}
+                      c="blue.6"
+                      fw={700}
+                    >
+                      2nd Trip
+                    </Text>
+                  }
+                  labelPosition="left"
+                />
+                <SimpleGrid cols={2} spacing="sm">
+                  <TextInput
+                    label="ODO Start — Garage"
+                    styles={inputStyles}
+                    value={form.secondTripOdoStart}
+                    onChange={(e) =>
+                      set("secondTripOdoStart", e.currentTarget.value)
+                    }
+                  />
+                  <TextInput
+                    label="ODO End — Garage"
+                    styles={inputStyles}
+                    value={form.secondTripOdoEnd}
+                    onChange={(e) =>
+                      set("secondTripOdoEnd", e.currentTarget.value)
+                    }
+                  />
+                </SimpleGrid>
+              </Stack>
+            )}
+
+            <Group justify="flex-end" mt="xs">
+              <Button
+                size="xs"
+                variant="light"
+                color="blue"
+                styles={{
+                  root: { height: 30 },
+                  label: { fontSize: "10px", fontWeight: 700 },
+                }}
+                onClick={() => setActiveTab("trips")}
+              >
+                Next: Trips →
+              </Button>
+            </Group>
+          </Stack>
+        </Tabs.Panel>
+
+        {/* ── TRIPS TAB ── */}
+        <Tabs.Panel value="trips">
+          <Stack gap="sm">
+            <Text
+              style={{ fontSize: "10px" }}
+              tt="uppercase"
+              fw={700}
+              c="dimmed"
+              lts={0.5}
+            >
+              Isend ang picture ng bawat odometer start at end sa GC
+            </Text>
+
+            <Paper withBorder radius="sm" p={0} style={{ overflow: "hidden" }}>
+              <Table
+                style={{ tableLayout: "fixed" }}
+                horizontalSpacing="xs"
+                verticalSpacing={4}
+              >
+                <Table.Thead>
+                  <Table.Tr>
+                    <Table.Th
+                      style={{
+                        fontSize: "9px",
+                        color: "var(--mantine-color-gray-6)",
+                        fontWeight: 800,
+                        textTransform: "uppercase",
+                        backgroundColor: "var(--mantine-color-gray-0)",
+                        width: "5%",
+                      }}
+                    >
+                      #
+                    </Table.Th>
+                    <Table.Th
+                      style={{
+                        fontSize: "9px",
+                        color: "var(--mantine-color-gray-6)",
+                        fontWeight: 800,
+                        textTransform: "uppercase",
+                        backgroundColor: "var(--mantine-color-gray-0)",
+                        width: "22%",
+                      }}
+                    >
+                      Trip
+                    </Table.Th>
+                    <Table.Th
+                      style={{
+                        fontSize: "9px",
+                        color: "var(--mantine-color-gray-6)",
+                        fontWeight: 800,
+                        textTransform: "uppercase",
+                        backgroundColor: "var(--mantine-color-gray-0)",
+                        width: "22%",
+                      }}
+                    >
+                      Odometer No
+                    </Table.Th>
+                    <Table.Th
+                      style={{
+                        fontSize: "9px",
+                        color: "var(--mantine-color-gray-6)",
+                        fontWeight: 800,
+                        textTransform: "uppercase",
+                        backgroundColor: "var(--mantine-color-gray-0)",
+                        width: "22%",
+                      }}
+                    >
+                      Picture No
+                    </Table.Th>
+                    <Table.Th
+                      style={{
+                        fontSize: "9px",
+                        color: "var(--mantine-color-gray-6)",
+                        fontWeight: 800,
+                        textTransform: "uppercase",
+                        backgroundColor: "var(--mantine-color-gray-0)",
+                        width: "24%",
+                      }}
+                    >
+                      Bahat ODO Start at End ba GC
+                    </Table.Th>
+                    <Table.Th
+                      style={{
+                        backgroundColor: "var(--mantine-color-gray-0)",
+                        width: "5%",
+                      }}
+                    />
+                  </Table.Tr>
+                </Table.Thead>
+                <Table.Tbody>
+                  {form.trips.map((row, idx) => (
+                    <Table.Tr key={row.id}>
+                      <Table.Td>
+                        <Text style={{ fontSize: "10px" }} c="dimmed" fw={600}>
+                          {idx + 1}
+                        </Text>
+                      </Table.Td>
+                      <Table.Td>
+                        <TextInput
+                          size="xs"
+                          placeholder="Trip"
+                          styles={{ input: { fontSize: "11px" } }}
+                          value={row.trip}
+                          onChange={(e) =>
+                            updateTripRow(row.id, "trip", e.currentTarget.value)
+                          }
+                        />
+                      </Table.Td>
+                      <Table.Td>
+                        <TextInput
+                          size="xs"
+                          placeholder="ODO No"
+                          styles={{ input: { fontSize: "11px" } }}
+                          value={row.odometerNo}
+                          onChange={(e) =>
+                            updateTripRow(
+                              row.id,
+                              "odometerNo",
+                              e.currentTarget.value,
+                            )
+                          }
+                        />
+                      </Table.Td>
+                      <Table.Td>
+                        <TextInput
+                          size="xs"
+                          placeholder="Pic No"
+                          styles={{ input: { fontSize: "11px" } }}
+                          value={row.pictureNo}
+                          onChange={(e) =>
+                            updateTripRow(
+                              row.id,
+                              "pictureNo",
+                              e.currentTarget.value,
+                            )
+                          }
+                        />
+                      </Table.Td>
+                      <Table.Td>
+                        <TextInput
+                          size="xs"
+                          placeholder="Yes / No"
+                          styles={{ input: { fontSize: "11px" } }}
+                          value={row.bahatOdoStartAtEnd}
+                          onChange={(e) =>
+                            updateTripRow(
+                              row.id,
+                              "bahatOdoStartAtEnd",
+                              e.currentTarget.value,
+                            )
+                          }
+                        />
+                      </Table.Td>
+                      <Table.Td>
+                        {form.trips.length > 1 && (
+                          <ActionIcon
+                            size="xs"
+                            color="red"
+                            variant="subtle"
+                            onClick={() => removeTripRow(row.id)}
+                          >
+                            <IconTrash size={11} />
+                          </ActionIcon>
+                        )}
+                      </Table.Td>
+                    </Table.Tr>
+                  ))}
+                </Table.Tbody>
+              </Table>
+            </Paper>
+
+            <Button
+              size="xs"
+              variant="light"
+              color="blue"
+              leftSection={<IconPlus size={11} />}
+              styles={{
+                root: { height: 28 },
+                label: { fontSize: "10px", fontWeight: 700 },
+              }}
+              onClick={addTripRow}
+            >
+              Add Row
+            </Button>
+
+            <Group justify="space-between" mt="xs">
+              <Button
+                size="xs"
+                variant="subtle"
+                color="gray"
+                styles={{
+                  root: { height: 30 },
+                  label: { fontSize: "10px", fontWeight: 700 },
+                }}
+                onClick={() => setActiveTab("odometer")}
+              >
+                ← Back
+              </Button>
+              <Button
+                size="xs"
+                variant="light"
+                color="blue"
+                styles={{
+                  root: { height: 30 },
+                  label: { fontSize: "10px", fontWeight: 700 },
+                }}
+                onClick={() => setActiveTab("budget")}
+              >
+                Next: Budget →
+              </Button>
+            </Group>
+          </Stack>
+        </Tabs.Panel>
+
+        {/* ── BUDGET TAB ── */}
+        <Tabs.Panel value="budget">
+          <Stack gap="sm">
+            {/* Budget */}
+            <SimpleGrid cols={2} spacing="sm">
+              <TextInput
+                label="Binigay na Budget (₱)"
+                placeholder="e.g. 5000"
+                styles={inputStyles}
+                value={form.budget}
+                onChange={(e) => set("budget", e.currentTarget.value)}
+              />
+              <TextInput
+                label="From"
+                placeholder="e.g. Manager"
+                styles={inputStyles}
+                value={form.budgetFrom}
+                onChange={(e) => set("budgetFrom", e.currentTarget.value)}
+              />
+            </SimpleGrid>
+
+            <Divider />
+
+            {/* RFID */}
+            <Group align="flex-end" gap="sm">
+              <TextInput
+                label="RFID Load"
+                placeholder="Amount"
+                styles={inputStyles}
+                style={{ flex: 1 }}
+                value={form.rfidLoad}
+                onChange={(e) => set("rfidLoad", e.currentTarget.value)}
+              />
+              <Stack gap={4} mb={2}>
+                <Text
+                  style={{ fontSize: "10px" }}
+                  fw={700}
+                  c="gray.7"
+                  tt="uppercase"
+                  lts={0.5}
+                >
+                  Payment
+                </Text>
+                <Group gap="sm">
+                  <Checkbox
+                    label={
+                      <Text style={{ fontSize: "11px" }} fw={600}>
+                        Card
+                      </Text>
+                    }
+                    checked={form.rfidPayment === "card"}
+                    onChange={() =>
+                      set(
+                        "rfidPayment",
+                        form.rfidPayment === "card" ? "" : "card",
+                      )
+                    }
+                    size="xs"
+                  />
+                  <Checkbox
+                    label={
+                      <Text style={{ fontSize: "11px" }} fw={600}>
+                        Cash
+                      </Text>
+                    }
+                    checked={form.rfidPayment === "cash"}
+                    onChange={() =>
+                      set(
+                        "rfidPayment",
+                        form.rfidPayment === "cash" ? "" : "cash",
+                      )
+                    }
+                    size="xs"
+                  />
+                </Group>
+              </Stack>
+            </Group>
+
+            {/* Fuel */}
+            <Group align="flex-end" gap="sm">
+              <TextInput
+                label="Amount of Fuel"
+                placeholder="Amount"
+                styles={inputStyles}
+                style={{ flex: 1 }}
+                value={form.fuelAmount}
+                onChange={(e) => set("fuelAmount", e.currentTarget.value)}
+              />
+              <Stack gap={4} mb={2}>
+                <Text
+                  style={{ fontSize: "10px" }}
+                  fw={700}
+                  c="gray.7"
+                  tt="uppercase"
+                  lts={0.5}
+                >
+                  Payment
+                </Text>
+                <Group gap="sm">
+                  <Checkbox
+                    label={
+                      <Text style={{ fontSize: "11px" }} fw={600}>
+                        Shell Card
+                      </Text>
+                    }
+                    checked={form.fuelPayment === "shell_card"}
+                    onChange={() =>
+                      set(
+                        "fuelPayment",
+                        form.fuelPayment === "shell_card" ? "" : "shell_card",
+                      )
+                    }
+                    size="xs"
+                  />
+                  <Checkbox
+                    label={
+                      <Text style={{ fontSize: "11px" }} fw={600}>
+                        Cash
+                      </Text>
+                    }
+                    checked={form.fuelPayment === "cash"}
+                    onChange={() =>
+                      set(
+                        "fuelPayment",
+                        form.fuelPayment === "cash" ? "" : "cash",
+                      )
+                    }
+                    size="xs"
+                  />
+                </Group>
+              </Stack>
+            </Group>
+
+            <Divider />
+
+            {/* Collection */}
+            <TextInput
+              label="Collection sa Customer (₱)"
+              placeholder="e.g. 3500"
+              styles={inputStyles}
+              value={form.collectionFromCustomer}
+              onChange={(e) =>
+                set("collectionFromCustomer", e.currentTarget.value)
+              }
+            />
+
+            {/* Sukli */}
+            <SimpleGrid cols={2} spacing="sm">
+              <TextInput
+                label="Naibalik na Sukli (₱)"
+                placeholder="e.g. 500"
+                styles={inputStyles}
+                value={form.naibalikNaSukli}
+                onChange={(e) => set("naibalikNaSukli", e.currentTarget.value)}
+              />
+              <TextInput
+                label="Kanino Naibalik"
+                placeholder="e.g. Dispatcher"
+                styles={inputStyles}
+                value={form.kanino}
+                onChange={(e) => set("kanino", e.currentTarget.value)}
+              />
+            </SimpleGrid>
+
+            {/* Auto CA */}
+            <Stack gap={4}>
+              <Text
+                style={{ fontSize: "10px" }}
+                fw={700}
+                c="gray.7"
+                tt="uppercase"
+                lts={0.5}
+              >
+                Auto CA?
+              </Text>
+              <Group gap="md">
+                <Checkbox
+                  label={
+                    <Text style={{ fontSize: "11px" }} fw={600}>
+                      Yes
+                    </Text>
+                  }
+                  checked={form.autoCA === "yes"}
+                  onChange={() =>
+                    set("autoCA", form.autoCA === "yes" ? "" : "yes")
+                  }
+                  size="xs"
+                />
+                <Checkbox
+                  label={
+                    <Text style={{ fontSize: "11px" }} fw={600}>
+                      No
+                    </Text>
+                  }
+                  checked={form.autoCA === "no"}
+                  onChange={() =>
+                    set("autoCA", form.autoCA === "no" ? "" : "no")
+                  }
+                  size="xs"
+                />
+              </Group>
+            </Stack>
+
+            <Divider />
+
+            <Group justify="space-between">
+              <Button
+                size="xs"
+                variant="subtle"
+                color="gray"
+                styles={{
+                  root: { height: 30 },
+                  label: { fontSize: "10px", fontWeight: 700 },
+                }}
+                onClick={() => setActiveTab("trips")}
+              >
+                ← Back
+              </Button>
+              <Button
+                color="blue.6"
+                leftSection={<IconClipboardList size={14} />}
+                styles={{
+                  root: { height: 34 },
+                  label: { fontSize: "11px", fontWeight: 700 },
+                }}
+                onClick={() => onSave(form)}
+              >
+                Save Details
+              </Button>
+            </Group>
+          </Stack>
+        </Tabs.Panel>
+      </Tabs>
+    </Modal>
+  );
+}

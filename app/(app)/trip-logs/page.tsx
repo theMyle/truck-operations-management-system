@@ -15,11 +15,11 @@ import {
   ScrollArea,
   Modal,
   Tooltip,
-  Select,
+  Pagination,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { useRouter } from "next/navigation";
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import {
   IconPlus,
   IconTrash,
@@ -272,6 +272,8 @@ const COLUMNS = [
   { key: "bookedBy", label: "Booked By" },
 ];
 
+const PAGE_SIZE = 10;
+
 export default function DispatchRecordsPage() {
   const router = useRouter();
   const [records, setRecords] = useState<DispatchRecord[]>(MOCK_RECORDS);
@@ -282,13 +284,13 @@ export default function DispatchRecordsPage() {
 
   const [deleteRecord, setDeleteRecord] = useState<DispatchRecord | null>(null);
   const [deleteOpened, setDeleteOpened] = useState(false);
-  const [statusFilter, setStatusFilter] = useState<string | null>("Completed");
 
   const [expandedRow, setExpandedRow] = useState<number | null>(null);
 
   const [odoRecord, setOdoRecord] = useState<DispatchRecord | null>(null);
   const [odoOpened, setOdoOpened] = useState(false);
   const [odoData, setOdoData] = useState<Record<number, OdoFormData>>({});
+  const [page, setPage] = useState(1);
   const { setEditingRecord } = useDispatch();
 
   /* ── Search filter (searches across all string fields) ── */
@@ -297,14 +299,9 @@ export default function DispatchRecordsPage() {
     return records.filter((r) => {
       const matchesSearch =
         !q || Object.values(r).some((v) => String(v).toLowerCase().includes(q));
-      const matchesStatus = !statusFilter || r.status === statusFilter;
-      return matchesSearch && matchesStatus;
+      return matchesSearch && r.status === "Completed";
     });
-  }, [search, statusFilter, records]);
-
-  const handleRowClick = (id: number) => {
-    setExpandedRow((prev) => (prev === id ? null : id));
-  };
+  }, [search, records]);
 
   const handleView = (record: DispatchRecord) => {
     setViewRecord(record);
@@ -334,6 +331,10 @@ export default function DispatchRecordsPage() {
     });
   };
 
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setPage(1);
+  }, [search]);
   const cellStyle: React.CSSProperties = {
     fontSize: "11px",
     fontWeight: 600,
@@ -460,7 +461,7 @@ export default function DispatchRecordsPage() {
 
           {/* Table */}
           <Paper withBorder radius="md" p={0} style={{ overflow: "hidden" }}>
-            <ScrollArea scrollbars="x" type="always">
+            <ScrollArea scrollbars="x" type="always" scrollbarSize={4}>
               <Table
                 striped
                 highlightOnHover
@@ -536,6 +537,7 @@ export default function DispatchRecordsPage() {
                               backgroundColor: "var(--mantine-color-body)",
                               boxShadow: "2px 0 4px rgba(0,0,0,0.06)",
                             }}
+                            onClick={(e) => e.stopPropagation()}
                           >
                             <Group gap={4} wrap="nowrap">
                               <Tooltip
@@ -549,7 +551,10 @@ export default function DispatchRecordsPage() {
                                   color="blue"
                                   size="sm"
                                   radius="sm"
-                                  onClick={() => handleView(record)}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleView(record);
+                                  }}
                                 >
                                   <IconEye size={13} />
                                 </ActionIcon>
@@ -565,7 +570,10 @@ export default function DispatchRecordsPage() {
                                   color="orange"
                                   size="sm"
                                   radius="sm"
-                                  onClick={() => handleEdit(record)}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleEdit(record);
+                                  }}
                                 >
                                   <IconEdit size={13} />
                                 </ActionIcon>
@@ -581,7 +589,10 @@ export default function DispatchRecordsPage() {
                                   color="red"
                                   size="sm"
                                   radius="sm"
-                                  onClick={() => handleDeleteClick(record)}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDeleteClick(record);
+                                  }}
                                 >
                                   <IconTrash size={13} />
                                 </ActionIcon>
@@ -729,6 +740,7 @@ export default function DispatchRecordsPage() {
             </ScrollArea>
 
             {/* Footer count */}
+            {/* Footer */}
             <Box
               px="md"
               py={8}
@@ -737,11 +749,25 @@ export default function DispatchRecordsPage() {
                 backgroundColor: "var(--mantine-color-gray-0)",
               }}
             >
-              <Text style={{ fontSize: "10px" }} c="dimmed" fw={600}>
-                Showing {filtered.length} record
-                {filtered.length !== 1 ? "s" : ""}
-                {search ? ` matching "${search}"` : ""}
-              </Text>
+              <Group justify="space-between" align="center">
+                <Text style={{ fontSize: "10px" }} c="dimmed" fw={600}>
+                  Showing{" "}
+                  {Math.min((page - 1) * PAGE_SIZE + 1, filtered.length)} of{" "}
+                  {filtered.length} record
+                  {filtered.length !== 1 ? "s" : ""}
+                  {search ? ` matching "${search}"` : ""}
+                </Text>
+                <Pagination
+                  total={Math.ceil(filtered.length / PAGE_SIZE)}
+                  value={page}
+                  onChange={setPage}
+                  size="xs"
+                  radius="md"
+                  styles={{
+                    control: { fontSize: "10px", height: 24, minWidth: 24 },
+                  }}
+                />
+              </Group>
             </Box>
           </Paper>
         </Stack>

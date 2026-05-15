@@ -32,7 +32,7 @@ import Image from "next/image";
 import LOGO from "../assets/logo.png";
 import { useClerk } from "@clerk/nextjs";
 import { usePathname } from "next/navigation";
-import { DispatchProvider, useDispatch } from "./context/dispatch-context";
+import { DispatchProvider } from "./context/dispatch-context";
 
 export default function DashboardLayout({
   children,
