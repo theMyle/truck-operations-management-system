@@ -29,267 +29,9 @@ import {
   IconClipboardList,
   IconEdit,
 } from "@tabler/icons-react";
-
 import { useDispatch } from "../context/dispatch-context";
-
-/* ── Types ── */
-export interface DispatchRecord {
-  id: number;
-  date: string;
-  client: string;
-  driver: string;
-  helper: string;
-  unit: string;
-  plateNo: string;
-  ruta: string;
-  bookingDr: string;
-  noOfDrops: number;
-  odoStart: string;
-  odoEnd: string;
-  totalKm: string;
-  rentalOdoStart: string;
-  rentalOdoEnd: string;
-  lastTripOdoStart: string;
-  lastTripOdoEnd: string;
-  lastTripOdoEndDrop: string;
-  secondTripOdoStart: string;
-  secondTripOdoEnd: string;
-  status: "Completed" | "In Transit" | "Pending";
-}
-
-/* ── Mock Data (referencing dispatch combobox defaults) ── */
-export const MOCK_RECORDS: DispatchRecord[] = [
-  {
-    id: 1,
-    date: "2025-05-01",
-    client: "Flash Express",
-    driver: "Alvin Paluga",
-    helper: "Chester Evasco",
-    unit: "Alawa Trucking",
-    plateNo: "ABC 1234",
-    ruta: "Manila – Laguna",
-    bookingDr: "FE-2025-0001",
-    noOfDrops: 4,
-    odoStart: "12000",
-    odoEnd: "12180",
-    totalKm: "180",
-    rentalOdoStart: "",
-    rentalOdoEnd: "",
-    lastTripOdoStart: "",
-    lastTripOdoEnd: "",
-    lastTripOdoEndDrop: "",
-    secondTripOdoStart: "",
-    secondTripOdoEnd: "",
-    status: "Completed",
-  },
-  {
-    id: 2,
-    date: "2025-05-02",
-    client: "IPI",
-    driver: "Noel Asumbrado",
-    helper: "Ramil Diana",
-    unit: "Gerald Roco",
-    plateNo: "XYZ 5678",
-    ruta: "Quezon City – Cavite",
-    bookingDr: "IPI-2025-0042",
-    noOfDrops: 6,
-    odoStart: "34500",
-    odoEnd: "34720",
-    totalKm: "220",
-    rentalOdoStart: "34480",
-    rentalOdoEnd: "34740",
-    lastTripOdoStart: "",
-    lastTripOdoEnd: "",
-    lastTripOdoEndDrop: "",
-    secondTripOdoStart: "",
-    secondTripOdoEnd: "",
-    status: "Completed",
-  },
-  {
-    id: 3,
-    date: "2025-05-03",
-    client: "Inteluck Corp",
-    driver: "Ricky Pantua",
-    helper: "No Helper",
-    unit: "Kris Domingo",
-    plateNo: "LMN 9012",
-    ruta: "Pasig – Batangas",
-    bookingDr: "IC-2025-0087",
-    noOfDrops: 3,
-    odoStart: "67000",
-    odoEnd: "67310",
-    totalKm: "310",
-    rentalOdoStart: "",
-    rentalOdoEnd: "",
-    lastTripOdoStart: "66950",
-    lastTripOdoEnd: "67000",
-    lastTripOdoEndDrop: "67050",
-    secondTripOdoStart: "67050",
-    secondTripOdoEnd: "67310",
-    status: "In Transit",
-  },
-  {
-    id: 4,
-    date: "2025-05-04",
-    client: "KTS Rentals",
-    driver: "Gerald Roco",
-    helper: "Jeric Juanico",
-    unit: "Lito Diana",
-    plateNo: "PQR 3456",
-    ruta: "Makati – Pampanga",
-    bookingDr: "KTS-2025-0015",
-    noOfDrops: 2,
-    odoStart: "89100",
-    odoEnd: "89440",
-    totalKm: "340",
-    rentalOdoStart: "89080",
-    rentalOdoEnd: "89460",
-    lastTripOdoStart: "",
-    lastTripOdoEnd: "",
-    lastTripOdoEndDrop: "",
-    secondTripOdoStart: "",
-    secondTripOdoEnd: "",
-    status: "Completed",
-  },
-  {
-    id: 5,
-    date: "2025-05-05",
-    client: "Transportify",
-    driver: "Romano Ancheta",
-    helper: "Richard Roda",
-    unit: "Rochele Flores",
-    plateNo: "DEF 7890",
-    ruta: "Taguig – Bulacan",
-    bookingDr: "TF-2025-0203",
-    noOfDrops: 8,
-    odoStart: "15200",
-    odoEnd: "15490",
-    totalKm: "290",
-    rentalOdoStart: "",
-    rentalOdoEnd: "",
-    lastTripOdoStart: "",
-    lastTripOdoEnd: "",
-    lastTripOdoEndDrop: "",
-    secondTripOdoStart: "",
-    secondTripOdoEnd: "",
-    status: "Pending",
-  },
-  {
-    id: 6,
-    date: "2025-05-06",
-    client: "XMD Logistics",
-    driver: "Rommel Lumacang",
-    helper: "Felipe Guban",
-    unit: "Alawa Trucking",
-    plateNo: "GHI 2345",
-    ruta: "Valenzuela – Rizal",
-    bookingDr: "XMD-2025-0098",
-    noOfDrops: 5,
-    odoStart: "54000",
-    odoEnd: "54200",
-    totalKm: "200",
-    rentalOdoStart: "53980",
-    rentalOdoEnd: "54220",
-    lastTripOdoStart: "",
-    lastTripOdoEnd: "",
-    lastTripOdoEndDrop: "",
-    secondTripOdoStart: "",
-    secondTripOdoEnd: "",
-    status: "Completed",
-  },
-  {
-    id: 7,
-    date: "2025-05-07",
-    client: "Urenholt",
-    driver: "Jomarie Divina",
-    helper: "Rizalito Domingo",
-    unit: "Gerald Roco",
-    plateNo: "JKL 6789",
-    ruta: "Manila – Cebu (Sea)",
-    bookingDr: "UR-2025-0011",
-    noOfDrops: 1,
-    odoStart: "22300",
-    odoEnd: "22410",
-    totalKm: "110",
-    rentalOdoStart: "",
-    rentalOdoEnd: "",
-    lastTripOdoStart: "",
-    lastTripOdoEnd: "",
-    lastTripOdoEndDrop: "",
-    secondTripOdoStart: "",
-    secondTripOdoEnd: "",
-    status: "In Transit",
-  },
-  {
-    id: 8,
-    date: "2025-05-08",
-    client: "Flash Express",
-    driver: "Lim Ubal",
-    helper: "Vince Marzonia",
-    unit: "Kris Domingo",
-    plateNo: "MNO 1357",
-    ruta: "Caloocan – Laguna",
-    bookingDr: "FE-2025-0009",
-    noOfDrops: 7,
-    odoStart: "78900",
-    odoEnd: "79150",
-    totalKm: "250",
-    rentalOdoStart: "",
-    rentalOdoEnd: "",
-    lastTripOdoStart: "78850",
-    lastTripOdoEnd: "78900",
-    lastTripOdoEndDrop: "78920",
-    secondTripOdoStart: "78920",
-    secondTripOdoEnd: "79150",
-    status: "Completed",
-  },
-  {
-    id: 9,
-    date: "2025-05-09",
-    client: "IPI",
-    driver: "Ever Bacvano",
-    helper: "James Eric Manabo",
-    unit: "Lito Diana",
-    plateNo: "STU 2468",
-    ruta: "Parañaque – Bataan",
-    bookingDr: "IPI-2025-0055",
-    noOfDrops: 4,
-    odoStart: "41000",
-    odoEnd: "41390",
-    totalKm: "390",
-    rentalOdoStart: "40990",
-    rentalOdoEnd: "41400",
-    lastTripOdoStart: "",
-    lastTripOdoEnd: "",
-    lastTripOdoEndDrop: "",
-    secondTripOdoStart: "",
-    secondTripOdoEnd: "",
-    status: "Pending",
-  },
-  {
-    id: 10,
-    date: "2025-05-10",
-    client: "Transportify",
-    driver: "Edcel Ralo",
-    helper: "No Helper",
-    unit: "Rochele Flores",
-    plateNo: "VWX 9753",
-    ruta: "Mandaluyong – Nueva Ecija",
-    bookingDr: "TF-2025-0214",
-    noOfDrops: 3,
-    odoStart: "62500",
-    odoEnd: "62810",
-    totalKm: "310",
-    rentalOdoStart: "",
-    rentalOdoEnd: "",
-    lastTripOdoStart: "",
-    lastTripOdoEnd: "",
-    lastTripOdoEndDrop: "",
-    secondTripOdoStart: "",
-    secondTripOdoEnd: "",
-    status: "Completed",
-  },
-];
+import { OdoModal, OdoFormData } from "@/components/trip-logs/OdoModal";
+import { MOCK_RECORDS, DispatchRecord } from "@/app/(app)/constant";
 
 /* ── Status badge helper ── */
 const statusColor: Record<DispatchRecord["status"], string> = {
@@ -298,7 +40,7 @@ const statusColor: Record<DispatchRecord["status"], string> = {
   Pending: "orange",
 };
 
-/* ── View Modal (reused from dispatch review) ── */
+/* ── View Modal ── */
 function ViewModal({
   opened,
   onClose,
@@ -314,51 +56,24 @@ function ViewModal({
 
   const sections = [
     {
-      title: "Odometer Details",
-      rows: [
-        { label: "Odometer Start", value: record.odoStart },
-        { label: "Odometer End", value: record.odoEnd },
-        {
-          label: "Total KM",
-          value: record.totalKm ? `${record.totalKm} km` : "",
-        },
-      ],
-    },
-    {
-      title: "Rental Trip",
-      rows: [
-        { label: "ODO Start – Garage", value: record.rentalOdoStart },
-        { label: "ODO End – Garage", value: record.rentalOdoEnd },
-      ],
-    },
-    {
-      title: "Multiple Trips – Last Trip",
-      rows: [
-        { label: "ODO Start – Garage", value: record.lastTripOdoStart },
-        { label: "ODO Start – Last Trip End", value: record.lastTripOdoEnd },
-        { label: "ODO End – Last Drop Off", value: record.lastTripOdoEndDrop },
-      ],
-    },
-    {
-      title: "Multiple Trips – 2nd Trip",
-      rows: [
-        { label: "ODO Start – Garage", value: record.secondTripOdoStart },
-        { label: "ODO End – Garage", value: record.secondTripOdoEnd },
-      ],
-    },
-    {
       title: "Trip Booking Details",
       rows: [
         { label: "Client (Kliyente)", value: record.client },
         { label: "Route (Ruta)", value: record.ruta },
         { label: "Booking / DR#", value: record.bookingDr },
         { label: "No. of Drops", value: String(record.noOfDrops) },
+        { label: "Booked By", value: record.bookedBy },
+        { label: "Date", value: record.date },
+      ],
+    },
+    {
+      title: "Vehicle & Crew",
+      rows: [
         { label: "Unit", value: record.unit },
         { label: "Plate #", value: record.plateNo },
         { label: "Driver", value: record.driver },
         { label: "Helper", value: record.helper },
         { label: "Status", value: record.status },
-        { label: "Date", value: record.date },
       ],
     },
   ];
@@ -544,6 +259,7 @@ function DeleteModal({
 const COLUMNS = [
   { key: "actions", label: "Actions", sticky: true },
   { key: "id", label: "#" },
+  { key: "tripRate", label: "Trip Rate" },
   { key: "date", label: "Date" },
   { key: "status", label: "Status" },
   { key: "client", label: "Client" },
@@ -553,17 +269,7 @@ const COLUMNS = [
   { key: "plateNo", label: "Plate #" },
   { key: "ruta", label: "Route" },
   { key: "bookingDr", label: "Booking / DR#" },
-  { key: "noOfDrops", label: "Drops" },
-  { key: "odoStart", label: "ODO Start" },
-  { key: "odoEnd", label: "ODO End" },
-  { key: "totalKm", label: "Total KM" },
-  { key: "rentalOdoStart", label: "Rental ODO Start" },
-  { key: "rentalOdoEnd", label: "Rental ODO End" },
-  { key: "lastTripOdoStart", label: "Last Trip ODO Start" },
-  { key: "lastTripOdoEnd", label: "Last Trip ODO End" },
-  { key: "lastTripOdoEndDrop", label: "Last Drop ODO End" },
-  { key: "secondTripOdoStart", label: "2nd Trip ODO Start" },
-  { key: "secondTripOdoEnd", label: "2nd Trip ODO End" },
+  { key: "bookedBy", label: "Booked By" },
 ];
 
 export default function DispatchRecordsPage() {
@@ -576,8 +282,13 @@ export default function DispatchRecordsPage() {
 
   const [deleteRecord, setDeleteRecord] = useState<DispatchRecord | null>(null);
   const [deleteOpened, setDeleteOpened] = useState(false);
-  const [statusFilter, setStatusFilter] = useState<string | null>(null);
+  const [statusFilter, setStatusFilter] = useState<string | null>("Completed");
 
+  const [expandedRow, setExpandedRow] = useState<number | null>(null);
+
+  const [odoRecord, setOdoRecord] = useState<DispatchRecord | null>(null);
+  const [odoOpened, setOdoOpened] = useState(false);
+  const [odoData, setOdoData] = useState<Record<number, OdoFormData>>({});
   const { setEditingRecord } = useDispatch();
 
   /* ── Search filter (searches across all string fields) ── */
@@ -590,6 +301,10 @@ export default function DispatchRecordsPage() {
       return matchesSearch && matchesStatus;
     });
   }, [search, statusFilter, records]);
+
+  const handleRowClick = (id: number) => {
+    setExpandedRow((prev) => (prev === id ? null : id));
+  };
 
   const handleView = (record: DispatchRecord) => {
     setViewRecord(record);
@@ -650,6 +365,22 @@ export default function DispatchRecordsPage() {
         onClose={() => setDeleteOpened(false)}
         onConfirm={handleDeleteConfirm}
         record={deleteRecord}
+      />
+
+      <OdoModal
+        opened={odoOpened}
+        onClose={() => setOdoOpened(false)}
+        record={odoRecord}
+        initialData={odoRecord ? odoData[odoRecord.id] : undefined}
+        onSave={(data) => {
+          setOdoData((prev) => ({ ...prev, [odoRecord!.id]: data }));
+          setOdoOpened(false);
+          notifications.show({
+            title: "Saved",
+            message: `Details for #${odoRecord!.id} saved.`,
+            color: "blue",
+          });
+        }}
       />
 
       <ScrollArea h="calc(100vh - 72px)" scrollbars="y">
@@ -725,20 +456,6 @@ export default function DispatchRecordsPage() {
               radius="md"
               w={400}
             />
-            <Select
-              placeholder="All Statuses"
-              data={[
-                { value: "Completed", label: "Completed" },
-                { value: "In Transit", label: "In Transit" },
-                { value: "Pending", label: "Pending" },
-              ]}
-              value={statusFilter}
-              onChange={setStatusFilter}
-              clearable
-              styles={{ input: { fontSize: "11px", fontWeight: 500 } }}
-              radius="md"
-              style={{ width: 160 }}
-            />
           </Group>
 
           {/* Table */}
@@ -800,126 +517,211 @@ export default function DispatchRecordsPage() {
                     </Table.Tr>
                   ) : (
                     filtered.map((record) => (
-                      <Table.Tr key={record.id}>
-                        {/* Sticky actions column */}
-                        <Table.Td
-                          style={{
-                            ...cellStyle,
-                            position: "sticky",
-                            left: 0,
-                            zIndex: 1,
-                            backgroundColor: "var(--mantine-color-body)",
-                            boxShadow: "2px 0 4px rgba(0,0,0,0.06)",
+                      <React.Fragment key={record.id}>
+                        <Table.Tr
+                          key={record.id}
+                          onClick={() => {
+                            setOdoRecord(record);
+                            setOdoOpened(true);
                           }}
+                          style={{ cursor: "pointer" }}
                         >
-                          <Group gap={4} wrap="nowrap">
-                            <Tooltip
-                              label="View"
-                              withArrow
-                              position="top"
-                              fz={10}
-                            >
-                              <ActionIcon
-                                variant="light"
-                                color="blue"
-                                size="sm"
-                                radius="sm"
-                                onClick={() => handleView(record)}
-                              >
-                                <IconEye size={13} />
-                              </ActionIcon>
-                            </Tooltip>
-                            <Tooltip
-                              label="Delete"
-                              withArrow
-                              position="top"
-                              fz={10}
-                            >
-                              <ActionIcon
-                                variant="light"
-                                color="red"
-                                size="sm"
-                                radius="sm"
-                                onClick={() => handleDeleteClick(record)}
-                              >
-                                <IconTrash size={13} />
-                              </ActionIcon>
-                            </Tooltip>
-                          </Group>
-                        </Table.Td>
-
-                        <Table.Td style={cellStyle}>{record.id}</Table.Td>
-                        <Table.Td style={cellStyle}>{record.date}</Table.Td>
-                        <Table.Td style={cellStyle}>
-                          <Badge
-                            variant="light"
-                            color={statusColor[record.status]}
-                            radius="md"
-                            styles={{
-                              root: { height: 18 },
-                              label: { fontSize: "9px", fontWeight: 700 },
+                          {/* Sticky actions column */}
+                          <Table.Td
+                            style={{
+                              ...cellStyle,
+                              position: "sticky",
+                              left: 0,
+                              zIndex: 1,
+                              backgroundColor: "var(--mantine-color-body)",
+                              boxShadow: "2px 0 4px rgba(0,0,0,0.06)",
                             }}
                           >
-                            {record.status}
-                          </Badge>
-                        </Table.Td>
-                        <Table.Td style={cellStyle}>{record.client}</Table.Td>
-                        <Table.Td style={cellStyle}>{record.driver}</Table.Td>
-                        <Table.Td style={cellStyle}>{record.helper}</Table.Td>
-                        <Table.Td style={cellStyle}>{record.unit}</Table.Td>
-                        <Table.Td style={cellStyle}>{record.plateNo}</Table.Td>
-                        <Table.Td
-                          style={{
-                            ...cellStyle,
-                            maxWidth: 160,
-                            overflow: "hidden",
-                            textOverflow: "ellipsis",
-                          }}
-                        >
-                          {record.ruta}
-                        </Table.Td>
-                        <Table.Td style={cellStyle}>
-                          {record.bookingDr}
-                        </Table.Td>
-                        <Table.Td style={{ ...cellStyle, textAlign: "center" }}>
-                          {record.noOfDrops}
-                        </Table.Td>
-                        <Table.Td style={cellStyle}>
-                          {record.odoStart || "—"}
-                        </Table.Td>
-                        <Table.Td style={cellStyle}>
-                          {record.odoEnd || "—"}
-                        </Table.Td>
-                        <Table.Td
-                          style={{
-                            ...cellStyle,
-                            color: "var(--mantine-color-blue-7)",
-                          }}
-                        >
-                          {record.totalKm ? `${record.totalKm} km` : "—"}
-                        </Table.Td>
-                        <Table.Td style={cellStyle}>
-                          {record.rentalOdoStart || "—"}
-                        </Table.Td>
-                        <Table.Td style={cellStyle}>
-                          {record.rentalOdoEnd || "—"}
-                        </Table.Td>
-                        <Table.Td style={cellStyle}>
-                          {record.lastTripOdoStart || "—"}
-                        </Table.Td>
-                        <Table.Td style={cellStyle}>
-                          {record.lastTripOdoEnd || "—"}
-                        </Table.Td>
-                        <Table.Td style={cellStyle}>
-                          {record.lastTripOdoEndDrop || "—"}
-                        </Table.Td>
-                        <Table.Td style={cellStyle}>
-                          {record.secondTripOdoStart || "—"}
-                        </Table.Td>
-                        <Table.Td style={cellStyle}>
-                          {record.secondTripOdoEnd || "—"}
-                        </Table.Td>
-                      </Table.Tr>
+                            <Group gap={4} wrap="nowrap">
+                              <Tooltip
+                                label="View"
+                                withArrow
+                                position="top"
+                                fz={10}
+                              >
+                                <ActionIcon
+                                  variant="light"
+                                  color="blue"
+                                  size="sm"
+                                  radius="sm"
+                                  onClick={() => handleView(record)}
+                                >
+                                  <IconEye size={13} />
+                                </ActionIcon>
+                              </Tooltip>
+                              <Tooltip
+                                label="Edit"
+                                withArrow
+                                position="top"
+                                fz={10}
+                              >
+                                <ActionIcon
+                                  variant="light"
+                                  color="orange"
+                                  size="sm"
+                                  radius="sm"
+                                  onClick={() => handleEdit(record)}
+                                >
+                                  <IconEdit size={13} />
+                                </ActionIcon>
+                              </Tooltip>
+                              <Tooltip
+                                label="Delete"
+                                withArrow
+                                position="top"
+                                fz={10}
+                              >
+                                <ActionIcon
+                                  variant="light"
+                                  color="red"
+                                  size="sm"
+                                  radius="sm"
+                                  onClick={() => handleDeleteClick(record)}
+                                >
+                                  <IconTrash size={13} />
+                                </ActionIcon>
+                              </Tooltip>
+                            </Group>
+                          </Table.Td>
+
+                          <Table.Td style={cellStyle}>{record.id}</Table.Td>
+                          <Table.Td style={cellStyle}>
+                            {record.tripRate || "—"}
+                          </Table.Td>
+                          <Table.Td style={cellStyle}>{record.date}</Table.Td>
+                          <Table.Td style={cellStyle}>
+                            <Badge
+                              variant="light"
+                              color={statusColor[record.status]}
+                              radius="md"
+                              styles={{
+                                root: { height: 18 },
+                                label: { fontSize: "9px", fontWeight: 700 },
+                              }}
+                            >
+                              {record.status}
+                            </Badge>
+                          </Table.Td>
+                          <Table.Td style={cellStyle}>{record.client}</Table.Td>
+                          <Table.Td style={cellStyle}>{record.driver}</Table.Td>
+                          <Table.Td style={cellStyle}>{record.helper}</Table.Td>
+                          <Table.Td style={cellStyle}>{record.unit}</Table.Td>
+                          <Table.Td style={cellStyle}>
+                            {record.plateNo}
+                          </Table.Td>
+                          <Table.Td
+                            style={{
+                              ...cellStyle,
+                              maxWidth: 160,
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                            }}
+                          >
+                            {record.ruta}
+                          </Table.Td>
+                          <Table.Td style={cellStyle}>
+                            {record.bookingDr}
+                          </Table.Td>
+                          <Table.Td style={cellStyle}>
+                            {record.bookedBy}
+                          </Table.Td>
+                        </Table.Tr>
+                        {expandedRow === record.id && (
+                          <Table.Tr>
+                            <Table.Td
+                              colSpan={COLUMNS.length}
+                              style={{
+                                backgroundColor: "var(--mantine-color-blue-0)",
+                                padding: "12px 16px",
+                              }}
+                            >
+                              <Group gap="sm" align="flex-end">
+                                <TextInput
+                                  label="ODO Start"
+                                  placeholder="e.g. 12000"
+                                  size="xs"
+                                  w={140}
+                                  value={odoData[record.id]?.odoStart || ""}
+                                  onChange={(e) =>
+                                    setOdoData((prev) => ({
+                                      ...prev,
+                                      [record.id]: {
+                                        ...prev[record.id],
+                                        odoStart: e.currentTarget.value,
+                                      },
+                                    }))
+                                  }
+                                  styles={{
+                                    label: {
+                                      fontSize: "9px",
+                                      fontWeight: 700,
+                                      textTransform: "uppercase",
+                                    },
+                                  }}
+                                />
+                                <TextInput
+                                  label="ODO End"
+                                  placeholder="e.g. 12500"
+                                  size="xs"
+                                  w={140}
+                                  value={odoData[record.id]?.odoEnd || ""}
+                                  onChange={(e) =>
+                                    setOdoData((prev) => ({
+                                      ...prev,
+                                      [record.id]: {
+                                        ...prev[record.id],
+                                        odoEnd: e.currentTarget.value,
+                                      },
+                                    }))
+                                  }
+                                  styles={{
+                                    label: {
+                                      fontSize: "9px",
+                                      fontWeight: 700,
+                                      textTransform: "uppercase",
+                                    },
+                                  }}
+                                />
+                                {odoData[record.id]?.odoStart &&
+                                  odoData[record.id]?.odoEnd && (
+                                    <Text
+                                      style={{ fontSize: "11px" }}
+                                      fw={700}
+                                      c="blue.7"
+                                    >
+                                      Total:{" "}
+                                      {Math.max(
+                                        0,
+                                        Number(odoData[record.id].odoEnd) -
+                                          Number(odoData[record.id].odoStart),
+                                      )}{" "}
+                                      km
+                                    </Text>
+                                  )}
+                                <Button
+                                  size="xs"
+                                  color="blue.6"
+                                  styles={{
+                                    root: { height: 30 },
+                                    label: { fontSize: "10px" },
+                                  }}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setExpandedRow(null);
+                                  }}
+                                >
+                                  Save
+                                </Button>
+                              </Group>
+                            </Table.Td>
+                          </Table.Tr>
+                        )}
+                      </React.Fragment>
                     ))
                   )}
                 </Table.Tbody>

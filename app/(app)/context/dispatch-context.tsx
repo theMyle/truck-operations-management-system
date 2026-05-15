@@ -1,8 +1,8 @@
 "use client";
 
 import { createContext, useContext, useState } from "react";
-import { DispatchRecord } from "../trip-logs/page";
-import { MOCK_RECORDS } from "../trip-logs/page";
+import { DispatchRecord } from "@/app/(app)/constant"; 
+import { MOCK_RECORDS } from "@/app/(app)/constant";
 
 interface DispatchContextType {
   records: DispatchRecord[];

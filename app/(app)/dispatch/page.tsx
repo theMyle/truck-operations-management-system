@@ -18,18 +18,22 @@ import {
   InputBase,
   useCombobox,
   Modal,
+  SimpleGrid,
+  Popover,
 } from "@mantine/core";
+import { DatePicker } from "@mantine/dates";
 import { notifications } from "@mantine/notifications";
 import { useRouter } from "next/navigation";
 import React, { useState, useCallback, useEffect } from "react";
 import {
   IconPlus,
-  IconSpeedboat,
-  IconTruckDelivery,
   IconCheck,
   IconEdit,
   IconEye,
+  IconX,
+  IconCalendar,
 } from "@tabler/icons-react";
+import "@mantine/dates/styles.css";
 import { useDispatch } from "../context/dispatch-context";
 /* ── Predefined data ── */
 const DEFAULT_CLIENTS = [
@@ -58,7 +62,6 @@ const DEFAULT_DRIVERS = [
 ];
 
 const DEFAULT_HELPERS = [
-  "No Helper",
   "Chester Evasco",
   "Felipe Guban",
   "James Eric Manabo",
@@ -248,6 +251,7 @@ function ReviewModal({
         { label: "Plate #", key: "plateNo" },
         { label: "Driver", key: "driver" },
         { label: "Helper", key: "helper" },
+        { label: "Pickup Date", key: "pickupDate" },
       ],
     },
   ];
@@ -322,9 +326,10 @@ function ReviewModal({
                         <Table.Td
                           style={{
                             fontWeight: 700,
-                            color: data[row.key]
-                              ? "var(--mantine-color-gray-9)"
-                              : "var(--mantine-color-gray-4)",
+                            color:
+                              data[row.key] && data[row.key]
+                                ? "var(--mantine-color-gray-9)"
+                                : "var(--mantine-color-gray-4)",
                           }}
                         >
                           {data[row.key] || "—"}
@@ -411,7 +416,9 @@ export default function DispatchPage() {
   const [reviewOpened, setReviewOpened] = useState(false);
 
   const { editingRecord, setEditingRecord, setRecords } = useDispatch();
-
+  const [pickupDate, setPickupDate] = useState<Date | null>(null);
+  const [selectedHelpers, setSelectedHelpers] = useState<string[]>([]);
+  const [helperKey, setHelperKey] = useState(0);
   /* ── Helpers ── */
   const isNumeric = (v: string) => v === "" || /^\d+(\.\d*)?$/.test(v);
 
@@ -447,24 +454,6 @@ export default function DispatchPage() {
   const validate = useCallback((): boolean => {
     const e: Record<string, string> = {};
 
-    if (!odoStart.trim()) e.odoStart = "Odometer start is required";
-    else if (!/^\d+(\.\d+)?$/.test(odoStart)) e.odoStart = "Must be a number";
-    if (!odoEnd.trim()) e.odoEnd = "Odometer end is required";
-    else if (!/^\d+(\.\d+)?$/.test(odoEnd)) e.odoEnd = "Must be a number";
-    if (odoStart && odoEnd && Number(odoEnd) <= Number(odoStart))
-      e.odoEnd = "Must be greater than start";
-
-    if (rentalOdoStart && !/^\d+(\.\d+)?$/.test(rentalOdoStart))
-      e.rentalOdoStart = "Must be a number";
-    if (rentalOdoEnd && !/^\d+(\.\d+)?$/.test(rentalOdoEnd))
-      e.rentalOdoEnd = "Must be a number";
-    if (
-      rentalOdoStart &&
-      rentalOdoEnd &&
-      Number(rentalOdoEnd) <= Number(rentalOdoStart)
-    )
-      e.rentalOdoEnd = "Must be greater than start";
-
     if (!selectedClient) e.client = "Client is required";
     if (!ruta.trim()) e.ruta = "Route is required";
     if (!bookingDr.trim()) e.bookingDr = "Booking / DR# is required";
@@ -475,14 +464,11 @@ export default function DispatchPage() {
     else if (!/^[A-Za-z0-9 -]{3,}$/.test(plateNo.trim()))
       e.plateNo = "Invalid plate format (min 3 characters)";
     if (!selectedDriver) e.driver = "Driver is required";
+    if (!pickupDate) e.pickupDate = "Pickup date is required";
 
     setErrors(e);
     return Object.keys(e).length === 0;
   }, [
-    odoStart,
-    odoEnd,
-    rentalOdoStart,
-    rentalOdoEnd,
     selectedClient,
     ruta,
     bookingDr,
@@ -490,6 +476,7 @@ export default function DispatchPage() {
     selectedUnit,
     plateNo,
     selectedDriver,
+    pickupDate,
   ]);
 
   /* ── Open review modal (validate first) ── */
@@ -508,16 +495,6 @@ export default function DispatchPage() {
           r.id === editingRecord.id
             ? {
                 ...r,
-                odoStart,
-                odoEnd,
-                totalKm: String(Math.max(0, Number(odoEnd) - Number(odoStart))),
-                rentalOdoStart,
-                rentalOdoEnd,
-                lastTripOdoStart,
-                lastTripOdoEnd,
-                lastTripOdoEndDrop,
-                secondTripOdoStart,
-                secondTripOdoEnd,
                 client: selectedClient || "",
                 ruta,
                 bookingDr,
@@ -525,7 +502,7 @@ export default function DispatchPage() {
                 unit: selectedUnit || "",
                 plateNo,
                 driver: selectedDriver || "",
-                helper: selectedHelper || "",
+                helper: selectedHelpers.join(", "),
               }
             : r,
         ),
@@ -582,15 +559,6 @@ export default function DispatchPage() {
   useEffect(() => {
     if (!editingRecord) return;
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setOdoStart(editingRecord.odoStart);
-    setOdoEnd(editingRecord.odoEnd);
-    setRentalOdoStart(editingRecord.rentalOdoStart);
-    setRentalOdoEnd(editingRecord.rentalOdoEnd);
-    setLastTripOdoStart(editingRecord.lastTripOdoStart);
-    setLastTripOdoEnd(editingRecord.lastTripOdoEnd);
-    setLastTripOdoEndDrop(editingRecord.lastTripOdoEndDrop);
-    setSecondTripOdoStart(editingRecord.secondTripOdoStart);
-    setSecondTripOdoEnd(editingRecord.secondTripOdoEnd);
     setRuta(editingRecord.ruta);
     setBookingDr(editingRecord.bookingDr);
     setNoOfDrops(editingRecord.noOfDrops);
@@ -669,7 +637,25 @@ export default function DispatchPage() {
     unit: selectedUnit || "",
     plateNo,
     driver: selectedDriver || "",
-    helper: selectedHelper || "",
+    helper: selectedHelpers.join(", "),
+    pickupDate: pickupDate
+      ? new Date(pickupDate).toLocaleDateString("en-US", {
+          month: "long",
+          day: "numeric",
+          year: "numeric",
+        })
+      : "",
+  };
+
+  const addHelper = (val: string | null) => {
+    if (val && !selectedHelpers.includes(val)) {
+      setSelectedHelpers((prev) => [...prev, val]);
+      setHelperKey((prev) => prev + 1);
+    }
+  };
+
+  const removeHelper = (val: string) => {
+    setSelectedHelpers((prev) => prev.filter((h) => h !== val));
   };
 
   return (
@@ -700,7 +686,7 @@ export default function DispatchPage() {
                   },
                 }}
               >
-                {editingRecord ? "Edit Dispatch" : "Dispatch Form"} 
+                {editingRecord ? "Edit Booking" : "Booking Form"}
               </Badge>
               <Text style={{ fontSize: "10px" }} c="dimmed" fw={500}>
                 Create and manage trip dispatches
@@ -723,215 +709,19 @@ export default function DispatchPage() {
             </Badge>
           </Group>
 
-          <Flex
-            gap="md"
-            direction={{ base: "column", lg: "row" }}
-            align="flex-start"
-          >
-            {/* Left Column */}
-            <Stack style={{ flex: 7 }} gap="md" w="100%">
-              {/* Odometer Details */}
-              <Paper withBorder radius="md" p="md">
-                <CardHeader
-                  title="Odometer Details"
-                  icon={
-                    <IconSpeedboat
-                      size={12}
-                      color="var(--mantine-color-blue-6)"
-                    />
-                  }
-                />
-                <Flex gap="md" direction={{ base: "column", sm: "row" }}>
-                  <TextInput
-                    label="Odometer Start"
-                    placeholder="Enter start reading"
-                    styles={inputStyles}
-                    style={{ flex: 1 }}
-                    value={odoStart}
-                    onChange={(e) => {
-                      setNumericField(
-                        setOdoStart,
-                        "odoStart",
-                      )(e.currentTarget.value);
-                    }}
-                    error={errors.odoStart}
-                  />
-                  <TextInput
-                    label="Total Kilometer"
-                    placeholder="Auto-calculated"
-                    styles={inputStyles}
-                    style={{ flex: 1 }}
-                    value={totalKm}
-                    readOnly
-                  />
-                  <TextInput
-                    label="Odometer End"
-                    placeholder="Enter end reading"
-                    styles={inputStyles}
-                    style={{ flex: 1 }}
-                    value={odoEnd}
-                    onChange={(e) => {
-                      setNumericField(
-                        setOdoEnd,
-                        "odoEnd",
-                      )(e.currentTarget.value);
-                    }}
-                    error={errors.odoEnd}
-                  />
-                </Flex>
-              </Paper>
+          <Flex justify="center" px="md">
+            <Paper withBorder radius="md" p="lg" w="100%" maw={780}>
+              <CardHeader
+                title="Trip Booking Details"
+                subtitle={
+                  <Text style={{ fontSize: "10px" }} c="dimmed">
+                    Fill in all required fields
+                  </Text>
+                }
+              />
 
-              {/* Rental Trip */}
-              <Paper withBorder radius="md" p="md">
-                <CardHeader
-                  title="For Rental Trip"
-                  icon={
-                    <IconTruckDelivery
-                      size={12}
-                      color="var(--mantine-color-blue-6)"
-                    />
-                  }
-                />
-                <Flex gap="md" direction={{ base: "column", sm: "row" }}>
-                  <TextInput
-                    label="ODO Start - Garage"
-                    placeholder="Enter value"
-                    styles={inputStyles}
-                    style={{ flex: 1 }}
-                    value={rentalOdoStart}
-                    onChange={(e) =>
-                      setNumericField(
-                        setRentalOdoStart,
-                        "rentalOdoStart",
-                      )(e.currentTarget.value)
-                    }
-                    error={errors.rentalOdoStart}
-                  />
-                  <TextInput
-                    label="ODO End - Garage"
-                    placeholder="Enter value"
-                    styles={inputStyles}
-                    style={{ flex: 1 }}
-                    value={rentalOdoEnd}
-                    onChange={(e) =>
-                      setNumericField(
-                        setRentalOdoEnd,
-                        "rentalOdoEnd",
-                      )(e.currentTarget.value)
-                    }
-                    error={errors.rentalOdoEnd}
-                  />
-                </Flex>
-              </Paper>
-
-              {/* Multiple Trips */}
-              <Paper withBorder radius="md" p="md">
-                <CardHeader title="For Multiple Trips" />
-                <Stack gap="sm">
-                  <Box>
-                    <Text
-                      fw={700}
-                      style={{ fontSize: "10px" }}
-                      c="blue.6"
-                      tt="uppercase"
-                      lts={0.5}
-                      mb={6}
-                    >
-                      Last Trip
-                    </Text>
-                    <Flex gap="md" direction={{ base: "column", sm: "row" }}>
-                      <TextInput
-                        label="ODO Start - Garage"
-                        placeholder="Enter value"
-                        styles={inputStyles}
-                        style={{ flex: 1 }}
-                        value={lastTripOdoStart}
-                        onChange={(e) =>
-                          setNumericField(
-                            setLastTripOdoStart,
-                            "lastTripOdoStart",
-                          )(e.currentTarget.value)
-                        }
-                      />
-                      <TextInput
-                        label="ODO Start - ODO End ng Last Trip"
-                        placeholder="Enter value"
-                        styles={inputStyles}
-                        style={{ flex: 1 }}
-                        value={lastTripOdoEnd}
-                        onChange={(e) =>
-                          setNumericField(
-                            setLastTripOdoEnd,
-                            "lastTripOdoEnd",
-                          )(e.currentTarget.value)
-                        }
-                      />
-                      <TextInput
-                        label="ODO End - Last Drop Off"
-                        placeholder="Enter value"
-                        styles={inputStyles}
-                        style={{ flex: 1 }}
-                        value={lastTripOdoEndDrop}
-                        onChange={(e) =>
-                          setNumericField(
-                            setLastTripOdoEndDrop,
-                            "lastTripOdoEndDrop",
-                          )(e.currentTarget.value)
-                        }
-                      />
-                    </Flex>
-                  </Box>
-
-                  <Divider my={4} />
-
-                  <Box>
-                    <Text
-                      fw={700}
-                      style={{ fontSize: "10px" }}
-                      c="blue.6"
-                      tt="uppercase"
-                      lts={0.5}
-                      mb={6}
-                    >
-                      2nd Trip
-                    </Text>
-                    <Flex gap="md" direction={{ base: "column", sm: "row" }}>
-                      <TextInput
-                        label="ODO Start - Garage"
-                        placeholder="Enter value"
-                        styles={inputStyles}
-                        style={{ flex: 1 }}
-                        value={secondTripOdoStart}
-                        onChange={(e) =>
-                          setNumericField(
-                            setSecondTripOdoStart,
-                            "secondTripOdoStart",
-                          )(e.currentTarget.value)
-                        }
-                      />
-                      <TextInput
-                        label="ODO End - Garage"
-                        placeholder="Enter value"
-                        styles={inputStyles}
-                        style={{ flex: 1 }}
-                        value={secondTripOdoEnd}
-                        onChange={(e) =>
-                          setNumericField(
-                            setSecondTripOdoEnd,
-                            "secondTripOdoEnd",
-                          )(e.currentTarget.value)
-                        }
-                      />
-                    </Flex>
-                  </Box>
-                </Stack>
-              </Paper>
-            </Stack>
-
-            {/* Right Column — Trip Booking Details */}
-            <Paper withBorder radius="md" p="md" style={{ flex: 3 }} w="100%">
-              <CardHeader title="Trip Booking Details" />
-              <Stack gap="sm">
+              <Divider mb="md" />
+              <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm" mb="sm">
                 <CreatableSelect
                   label="Kliyente"
                   placeholder="Search or add client"
@@ -955,6 +745,9 @@ export default function DispatchPage() {
                   }}
                   error={errors.ruta}
                 />
+              </SimpleGrid>
+
+              <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="sm" mb="sm">
                 <TextInput
                   label="Booking / DR#"
                   placeholder="Enter booking or DR number"
@@ -964,8 +757,10 @@ export default function DispatchPage() {
                     setBookingDr(e.currentTarget.value);
                     if (e.currentTarget.value.trim()) clearError("bookingDr");
                   }}
+                  tt="capitalize"
                   error={errors.bookingDr}
                 />
+
                 <NumberInput
                   label="No. of Drops"
                   placeholder="Enter number of drops"
@@ -978,6 +773,46 @@ export default function DispatchPage() {
                   }}
                   error={errors.noOfDrops}
                 />
+
+                <Popover
+                  position="bottom-start"
+                  shadow="md"
+                  radius="md"
+                  withinPortal
+                >
+                  <Popover.Target>
+                    <TextInput
+                      label="Pickup Date"
+                      placeholder="Select date"
+                      readOnly
+                      value={
+                        pickupDate
+                          ? new Date(pickupDate).toLocaleDateString("en-US", {
+                              month: "long",
+                              day: "numeric",
+                              year: "numeric",
+                            })
+                          : ""
+                      }
+                      rightSection={
+                        <IconCalendar
+                          size={14}
+                          color="var(--mantine-color-gray-5)"
+                        />
+                      }
+                      styles={inputStyles}
+                      error={errors.pickupDate}
+                      style={{ cursor: "pointer" }}
+                    />
+                  </Popover.Target>
+
+                  <Popover.Dropdown p="sm">
+                    <DatePicker value={pickupDate} onChange={setPickupDate} />
+                  </Popover.Dropdown>
+                </Popover>
+              </SimpleGrid>
+
+              <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm" mb="sm">
                 <CreatableSelect
                   label="Unit"
                   placeholder="Search or add unit"
@@ -1003,6 +838,24 @@ export default function DispatchPage() {
                   error={errors.plateNo}
                   maxLength={15}
                 />
+              </SimpleGrid>
+
+              <Divider
+                my="sm"
+                label={
+                  <Text
+                    style={{ fontSize: "9px" }}
+                    c="dimmed"
+                    tt="uppercase"
+                    lts={1}
+                  >
+                    Personnel
+                  </Text>
+                }
+                labelPosition="left"
+              />
+
+              <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm" mb="md">
                 <CreatableSelect
                   label="Driver"
                   placeholder="Search or add driver"
@@ -1015,30 +868,76 @@ export default function DispatchPage() {
                   styles={inputStyles}
                   error={errors.driver}
                 />
-                <CreatableSelect
-                  label="Helper"
-                  placeholder="Search or add helper"
-                  data={DEFAULT_HELPERS}
-                  value={selectedHelper}
-                  onChange={setSelectedHelper}
-                  styles={inputStyles}
-                />
+                <Stack gap={4}>
+                  <CreatableSelect
+                   key={helperKey}
+                    label="Helper"
+                    placeholder="Add helper"
+                    data={DEFAULT_HELPERS}
+                    value={null}
+                    onChange={addHelper}
+                    styles={inputStyles}  
+                  />
 
-                <Divider my={4} />
+                  <Box
+                    p="xs"
+                    style={{
+                      border: "1px dashed var(--mantine-color-gray-3)",
+                      borderRadius: "var(--mantine-radius-sm)",
+                      minHeight: 36,
+                    }}
+                  >
+                    {selectedHelpers.length === 0 ? (
+                      <Text style={{ fontSize: "10px" }} c="dimmed" ta="center">
+                        No helpers added
+                      </Text>
+                    ) : (
+                      <Group gap="xs">
+                        {selectedHelpers.map((h) => (
+                          <Badge
+                            key={h}
+                            variant="light"
+                            color="blue"
+                            radius="sm"
+                            rightSection={
+                              <IconX
+                                size={10}
+                                style={{ cursor: "pointer" }}
+                                onClick={() => removeHelper(h)}
+                              />
+                            }
+                            styles={{ label: { fontSize: "10px" } }}
+                          >
+                            {h}
+                          </Badge>
+                        ))}
+                      </Group>
+                    )}
+                  </Box>
 
-                <Button
-                  fullWidth
-                  color="blue.6"
-                  leftSection={<IconEye size={14} />}
-                  styles={{
-                    root: { height: 36 },
-                    label: { fontSize: "11px", fontWeight: 700 },
-                  }}
-                  onClick={handleOpenReview}
-                >
-                  Review & Submit
-                </Button>
-              </Stack>
+                  {selectedHelpers.length > 0 && (
+                    <Text style={{ fontSize: "9px" }} c="dimmed" ta="right">
+                      {selectedHelpers.length} helper
+                      {selectedHelpers.length > 1 ? "s" : ""} added
+                    </Text>
+                  )}
+                </Stack>
+              </SimpleGrid>
+
+              <Divider my="sm" />
+
+              <Button
+                fullWidth
+                color="blue.6"
+                leftSection={<IconEye size={14} />}
+                styles={{
+                  root: { height: 36 },
+                  label: { fontSize: "11px", fontWeight: 700 },
+                }}
+                onClick={handleOpenReview}
+              >
+                Review & Submit
+              </Button>
             </Paper>
           </Flex>
         </Stack>
