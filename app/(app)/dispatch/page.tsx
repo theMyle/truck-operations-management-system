@@ -18,19 +18,33 @@ import {
   InputBase,
   useCombobox,
   Modal,
+  SimpleGrid,
+  Popover,
+  ActionIcon,
 } from "@mantine/core";
+import { DatePicker, type DateValue } from "@mantine/dates";
 import { notifications } from "@mantine/notifications";
 import { useRouter } from "next/navigation";
 import React, { useState, useCallback, useEffect } from "react";
 import {
   IconPlus,
-  IconSpeedboat,
-  IconTruckDelivery,
   IconCheck,
   IconEdit,
   IconEye,
+  IconX,
+  IconCalendar,
+  IconMapPin,
 } from "@tabler/icons-react";
+import "@mantine/dates/styles.css";
 import { useDispatch } from "../context/dispatch-context";
+
+interface DropOff {
+  id: number;
+  location: string;
+  contactPerson: string;
+  contactNo: string;
+}
+
 /* ── Predefined data ── */
 const DEFAULT_CLIENTS = [
   "Flash Express",
@@ -58,7 +72,6 @@ const DEFAULT_DRIVERS = [
 ];
 
 const DEFAULT_HELPERS = [
-  "No Helper",
   "Chester Evasco",
   "Felipe Guban",
   "James Eric Manabo",
@@ -184,14 +197,6 @@ function CreatableSelect({
   );
 }
 
-interface TripRow {
-  id: number;
-  trip: string;
-  odometerNo: string;
-  pictureNo: string;
-  bahatOdoStartAtEndBaGc: string;
-}
-
 /* ── Review Modal ── */
 function ReviewModal({
   opened,
@@ -208,46 +213,19 @@ function ReviewModal({
 }) {
   const sections = [
     {
-      title: "Odometer Details",
-      rows: [
-        { label: "Odometer Start", key: "odoStart" },
-        { label: "Odometer End", key: "odoEnd" },
-        { label: "Total KM", key: "totalKm" },
-      ],
-    },
-    {
-      title: "Rental Trip",
-      rows: [
-        { label: "ODO Start – Garage", key: "rentalOdoStart" },
-        { label: "ODO End – Garage", key: "rentalOdoEnd" },
-      ],
-    },
-    {
-      title: "Multiple Trips – Last Trip",
-      rows: [
-        { label: "ODO Start – Garage", key: "lastTripOdoStart" },
-        { label: "ODO Start – Last Trip End", key: "lastTripOdoEnd" },
-        { label: "ODO End – Last Drop Off", key: "lastTripOdoEndDrop" },
-      ],
-    },
-    {
-      title: "Multiple Trips – 2nd Trip",
-      rows: [
-        { label: "ODO Start – Garage", key: "secondTripOdoStart" },
-        { label: "ODO End – Garage", key: "secondTripOdoEnd" },
-      ],
-    },
-    {
       title: "Trip Booking Details",
       rows: [
         { label: "Client (Kliyente)", key: "client" },
         { label: "Route (Ruta)", key: "ruta" },
         { label: "Booking / DR#", key: "bookingDr" },
+        { label: "Pickup Location", key: "pickupLocation" },
+        { label: "Drop-off Points", key: "dropOffs" },
         { label: "No. of Drops", key: "noOfDrops" },
         { label: "Unit", key: "unit" },
         { label: "Plate #", key: "plateNo" },
         { label: "Driver", key: "driver" },
         { label: "Helper", key: "helper" },
+        { label: "Pickup Date", key: "pickupDate" },
       ],
     },
   ];
@@ -322,9 +300,10 @@ function ReviewModal({
                         <Table.Td
                           style={{
                             fontWeight: 700,
-                            color: data[row.key]
-                              ? "var(--mantine-color-gray-9)"
-                              : "var(--mantine-color-gray-4)",
+                            color:
+                              data[row.key] && data[row.key]
+                                ? "var(--mantine-color-gray-9)"
+                                : "var(--mantine-color-gray-4)",
                           }}
                         >
                           {data[row.key] || "—"}
@@ -370,35 +349,52 @@ function ReviewModal({
   );
 }
 
+const CardHeader = ({
+  title,
+  subtitle,
+  icon,
+}: {
+  title: string;
+  subtitle?: React.ReactNode;
+  icon?: React.ReactNode;
+}) => (
+  <Box mb="sm">
+    <Group justify="space-between" align="center">
+      <Group gap={6}>
+        {icon}
+        <Text
+          fw={700}
+          style={{ fontSize: "10px" }}
+          c="gray.9"
+          tt="uppercase"
+          lts={1}
+        >
+          {title}
+        </Text>
+      </Group>
+      {subtitle &&
+        (typeof subtitle === "string" ? (
+          <Text style={{ fontSize: "10px" }} c="dimmed">
+            {subtitle}
+          </Text>
+        ) : (
+          subtitle
+        ))}
+    </Group>
+  </Box>
+);
 export default function DispatchPage() {
   const router = useRouter();
-
-  const [trips, setTrips] = useState<TripRow[]>([
-    {
-      id: 1,
-      trip: "",
-      odometerNo: "",
-      pictureNo: "",
-      bahatOdoStartAtEndBaGc: "",
-    },
-  ]);
 
   /* ── Combo box state ── */
   const [selectedClient, setSelectedClient] = useState<string | null>(null);
   const [selectedDriver, setSelectedDriver] = useState<string | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [selectedHelper, setSelectedHelper] = useState<string | null>(null);
   const [selectedUnit, setSelectedUnit] = useState<string | null>(null);
 
   /* ── Field value state ── */
-  const [odoStart, setOdoStart] = useState("");
-  const [odoEnd, setOdoEnd] = useState("");
-  const [rentalOdoStart, setRentalOdoStart] = useState("");
-  const [rentalOdoEnd, setRentalOdoEnd] = useState("");
-  const [lastTripOdoStart, setLastTripOdoStart] = useState("");
-  const [lastTripOdoEnd, setLastTripOdoEnd] = useState("");
-  const [lastTripOdoEndDrop, setLastTripOdoEndDrop] = useState("");
-  const [secondTripOdoStart, setSecondTripOdoStart] = useState("");
-  const [secondTripOdoEnd, setSecondTripOdoEnd] = useState("");
+
   const [ruta, setRuta] = useState("");
   const [bookingDr, setBookingDr] = useState("");
   const [noOfDrops, setNoOfDrops] = useState<string | number>("");
@@ -411,24 +407,24 @@ export default function DispatchPage() {
   const [reviewOpened, setReviewOpened] = useState(false);
 
   const { editingRecord, setEditingRecord, setRecords } = useDispatch();
+  const [pickupDate, setPickupDate] = useState<DateValue | null>(null);
+  const [selectedHelpers, setSelectedHelpers] = useState<string[]>([]);
+  const [helperKey, setHelperKey] = useState(0);
 
-  /* ── Helpers ── */
-  const isNumeric = (v: string) => v === "" || /^\d+(\.\d*)?$/.test(v);
+  const [pickupLocation, setPickupLocation] = useState("");
+  const [dropOffs, setDropOffs] = useState<DropOff[]>([
+    { id: 1, location: "", contactPerson: "", contactNo: "" },
+  ]);
 
-  const setNumericField =
-    (setter: (v: string) => void, errorKey: string) => (val: string) => {
-      if (isNumeric(val)) {
-        setter(val);
-        // Clear error as soon as user types something valid
-        if (val.trim()) {
-          setErrors((prev) => {
-            const next = { ...prev };
-            delete next[errorKey];
-            return next;
-          });
-        }
-      }
-    };
+  // Helper function — add this near the top of your component or outside it
+  const formatDate = (date: DateValue | null): string => {
+    if (!date) return "";
+    return new Date(date).toLocaleDateString("en-US", {
+      month: "long",
+      day: "numeric",
+      year: "numeric",
+    });
+  };
 
   /** Clear a single error key when the user changes the field */
   const clearError = (key: string) =>
@@ -438,33 +434,12 @@ export default function DispatchPage() {
       return next;
     });
 
-  const totalKm =
-    odoStart && odoEnd
-      ? Math.max(0, Number(odoEnd) - Number(odoStart)).toString()
-      : "";
-
   /* ── Validation ── */
   const validate = useCallback((): boolean => {
     const e: Record<string, string> = {};
 
-    if (!odoStart.trim()) e.odoStart = "Odometer start is required";
-    else if (!/^\d+(\.\d+)?$/.test(odoStart)) e.odoStart = "Must be a number";
-    if (!odoEnd.trim()) e.odoEnd = "Odometer end is required";
-    else if (!/^\d+(\.\d+)?$/.test(odoEnd)) e.odoEnd = "Must be a number";
-    if (odoStart && odoEnd && Number(odoEnd) <= Number(odoStart))
-      e.odoEnd = "Must be greater than start";
-
-    if (rentalOdoStart && !/^\d+(\.\d+)?$/.test(rentalOdoStart))
-      e.rentalOdoStart = "Must be a number";
-    if (rentalOdoEnd && !/^\d+(\.\d+)?$/.test(rentalOdoEnd))
-      e.rentalOdoEnd = "Must be a number";
-    if (
-      rentalOdoStart &&
-      rentalOdoEnd &&
-      Number(rentalOdoEnd) <= Number(rentalOdoStart)
-    )
-      e.rentalOdoEnd = "Must be greater than start";
-
+    if (!pickupLocation.trim())
+      e.pickupLocation = "Pickup location is required";
     if (!selectedClient) e.client = "Client is required";
     if (!ruta.trim()) e.ruta = "Route is required";
     if (!bookingDr.trim()) e.bookingDr = "Booking / DR# is required";
@@ -475,14 +450,17 @@ export default function DispatchPage() {
     else if (!/^[A-Za-z0-9 -]{3,}$/.test(plateNo.trim()))
       e.plateNo = "Invalid plate format (min 3 characters)";
     if (!selectedDriver) e.driver = "Driver is required";
+    if (!pickupDate) e.pickupDate = "Pickup date is required";
+
+    // Validate at least one drop-off has a location
+    const hasValidDrop = dropOffs.some((d) => d.location.trim());
+    if (!hasValidDrop)
+      e.dropOffs = "At least one drop-off location is required";
 
     setErrors(e);
     return Object.keys(e).length === 0;
   }, [
-    odoStart,
-    odoEnd,
-    rentalOdoStart,
-    rentalOdoEnd,
+    pickupLocation,
     selectedClient,
     ruta,
     bookingDr,
@@ -490,7 +468,28 @@ export default function DispatchPage() {
     selectedUnit,
     plateNo,
     selectedDriver,
+    pickupDate,
+    dropOffs,
   ]);
+
+  const addDropOff = () => {
+    setDropOffs((prev) => [
+      ...prev,
+      { id: prev.length + 1, location: "", contactPerson: "", contactNo: "" },
+    ]);
+  };
+
+  const removeDropOff = (id: number) => {
+    if (dropOffs.length > 1) {
+      setDropOffs((prev) => prev.filter((d) => d.id !== id));
+    }
+  };
+
+  const updateDropOff = (id: number, field: keyof DropOff, value: string) => {
+    setDropOffs((prev) =>
+      prev.map((d) => (d.id === id ? { ...d, [field]: value } : d)),
+    );
+  };
 
   /* ── Open review modal (validate first) ── */
   const handleOpenReview = () => {
@@ -508,16 +507,6 @@ export default function DispatchPage() {
           r.id === editingRecord.id
             ? {
                 ...r,
-                odoStart,
-                odoEnd,
-                totalKm: String(Math.max(0, Number(odoEnd) - Number(odoStart))),
-                rentalOdoStart,
-                rentalOdoEnd,
-                lastTripOdoStart,
-                lastTripOdoEnd,
-                lastTripOdoEndDrop,
-                secondTripOdoStart,
-                secondTripOdoEnd,
                 client: selectedClient || "",
                 ruta,
                 bookingDr,
@@ -525,7 +514,7 @@ export default function DispatchPage() {
                 unit: selectedUnit || "",
                 plateNo,
                 driver: selectedDriver || "",
-                helper: selectedHelper || "",
+                helper: selectedHelpers.join(", "),
               }
             : r,
         ),
@@ -554,43 +543,26 @@ export default function DispatchPage() {
     router.push("/dispatch");
   };
 
-  const addTrip = () => {
-    setTrips((prev) => [
-      ...prev,
-      {
-        id: prev.length + 1,
-        trip: "",
-        odometerNo: "",
-        pictureNo: "",
-        bahatOdoStartAtEndBaGc: "",
-      },
-    ]);
-  };
-
-  const removeTrip = (id: number) => {
-    if (trips.length > 1) {
-      setTrips((prev) => prev.filter((t) => t.id !== id));
-    }
-  };
-
-  const updateTrip = (id: number, field: keyof TripRow, value: string) => {
-    setTrips((prev) =>
-      prev.map((t) => (t.id === id ? { ...t, [field]: value } : t)),
-    );
+  const handleReset = () => {
+    setSelectedClient(null);
+    setSelectedDriver(null);
+    setSelectedHelper(null);
+    setSelectedUnit(null);
+    setRuta("");
+    setBookingDr("");
+    setNoOfDrops("");
+    setPlateNo("");
+    setPickupDate(null);
+    setPickupLocation("");
+    setDropOffs([{ id: 1, location: "", contactPerson: "", contactNo: "" }]);
+    setSelectedHelpers([]);
+    setHelperKey((prev) => prev + 1);
+    setErrors({});
   };
 
   useEffect(() => {
     if (!editingRecord) return;
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setOdoStart(editingRecord.odoStart);
-    setOdoEnd(editingRecord.odoEnd);
-    setRentalOdoStart(editingRecord.rentalOdoStart);
-    setRentalOdoEnd(editingRecord.rentalOdoEnd);
-    setLastTripOdoStart(editingRecord.lastTripOdoStart);
-    setLastTripOdoEnd(editingRecord.lastTripOdoEnd);
-    setLastTripOdoEndDrop(editingRecord.lastTripOdoEndDrop);
-    setSecondTripOdoStart(editingRecord.secondTripOdoStart);
-    setSecondTripOdoEnd(editingRecord.secondTripOdoEnd);
     setRuta(editingRecord.ruta);
     setBookingDr(editingRecord.bookingDr);
     setNoOfDrops(editingRecord.noOfDrops);
@@ -600,40 +572,6 @@ export default function DispatchPage() {
     setSelectedHelper(editingRecord.helper);
     setSelectedUnit(editingRecord.unit);
   }, [editingRecord]);
-  const CardHeader = ({
-    title,
-    subtitle,
-    icon,
-  }: {
-    title: string;
-    subtitle?: React.ReactNode;
-    icon?: React.ReactNode;
-  }) => (
-    <Box mb="sm">
-      <Group justify="space-between" align="center">
-        <Group gap={6}>
-          {icon}
-          <Text
-            fw={700}
-            style={{ fontSize: "10px" }}
-            c="gray.9"
-            tt="uppercase"
-            lts={1}
-          >
-            {title}
-          </Text>
-        </Group>
-        {subtitle &&
-          (typeof subtitle === "string" ? (
-            <Text style={{ fontSize: "10px" }} c="dimmed">
-              {subtitle}
-            </Text>
-          ) : (
-            subtitle
-          ))}
-      </Group>
-    </Box>
-  );
 
   const inputStyles = {
     label: {
@@ -652,16 +590,6 @@ export default function DispatchPage() {
 
   /* ── Data snapshot for review modal ── */
   const reviewData: Record<string, string> = {
-    odoStart,
-    odoEnd,
-    totalKm: totalKm ? `${totalKm} km` : "",
-    rentalOdoStart,
-    rentalOdoEnd,
-    lastTripOdoStart,
-    lastTripOdoEnd,
-    lastTripOdoEndDrop,
-    secondTripOdoStart,
-    secondTripOdoEnd,
     client: selectedClient || "",
     ruta,
     bookingDr,
@@ -669,7 +597,27 @@ export default function DispatchPage() {
     unit: selectedUnit || "",
     plateNo,
     driver: selectedDriver || "",
-    helper: selectedHelper || "",
+    helper: selectedHelpers.join(", "),
+    pickupDate: formatDate(pickupDate),
+    pickupLocation,
+    dropOffs: dropOffs
+      .filter((d) => d.location)
+      .map(
+        (d, i) =>
+          `Drop ${i + 1}: ${d.location}${d.contactPerson ? ` (${d.contactPerson}` : ""}${d.contactNo ? ` – ${d.contactNo})` : d.contactPerson ? ")" : ""}`,
+      )
+      .join("\n"),
+  };
+
+  const addHelper = (val: string | null) => {
+    if (val && !selectedHelpers.includes(val)) {
+      setSelectedHelpers((prev) => [...prev, val]);
+      setHelperKey((prev) => prev + 1);
+    }
+  };
+
+  const removeHelper = (val: string) => {
+    setSelectedHelpers((prev) => prev.filter((h) => h !== val));
   };
 
   return (
@@ -700,7 +648,7 @@ export default function DispatchPage() {
                   },
                 }}
               >
-                {editingRecord ? "Edit Dispatch" : "Dispatch Form"} 
+                {editingRecord ? "Edit Booking" : "Booking Form"}
               </Badge>
               <Text style={{ fontSize: "10px" }} c="dimmed" fw={500}>
                 Create and manage trip dispatches
@@ -723,215 +671,175 @@ export default function DispatchPage() {
             </Badge>
           </Group>
 
-          <Flex
-            gap="md"
-            direction={{ base: "column", lg: "row" }}
-            align="flex-start"
-          >
-            {/* Left Column */}
-            <Stack style={{ flex: 7 }} gap="md" w="100%">
-              {/* Odometer Details */}
-              <Paper withBorder radius="md" p="md">
-                <CardHeader
-                  title="Odometer Details"
-                  icon={
-                    <IconSpeedboat
-                      size={12}
-                      color="var(--mantine-color-blue-6)"
+          <Flex justify="center" px="md">
+            <Paper withBorder radius="md" p="lg" w="100%">
+              <CardHeader
+                title="Trip Booking Details"
+                subtitle={
+                  <Text style={{ fontSize: "10px" }} c="dimmed">
+                    Fill in all required fields
+                  </Text>
+                }
+              />
+
+              <Divider mb="md" />
+              {/* Pickup Location */}
+              <SimpleGrid cols={{ base: 1, sm: 1 }} spacing="sm" mb="sm">
+                <TextInput
+                  label="Pickup Location"
+                  placeholder="Enter pickup address"
+                  styles={inputStyles}
+                  value={pickupLocation}
+                  onChange={(e) => {
+                    setPickupLocation(e.currentTarget.value);
+                    if (e.currentTarget.value.trim())
+                      clearError("pickupLocation");
+                  }}
+                  error={errors.pickupLocation}
+                  leftSection={
+                    <IconMapPin
+                      size={13}
+                      color="var(--mantine-color-green-6)"
                     />
                   }
                 />
-                <Flex gap="md" direction={{ base: "column", sm: "row" }}>
-                  <TextInput
-                    label="Odometer Start"
-                    placeholder="Enter start reading"
-                    styles={inputStyles}
-                    style={{ flex: 1 }}
-                    value={odoStart}
-                    onChange={(e) => {
-                      setNumericField(
-                        setOdoStart,
-                        "odoStart",
-                      )(e.currentTarget.value);
+              </SimpleGrid>
+
+              {/* Drop-offs */}
+              <Box mb="sm">
+                <Group justify="space-between" align="center" mb={6}>
+                  <Text
+                    fw={800}
+                    style={{ fontSize: "9px" }}
+                    tt="uppercase"
+                    lts={1}
+                    c="blue.6"
+                  >
+                    Drop-off Points
+                  </Text>
+                  <Button
+                    size="xs"
+                    variant="light"
+                    color="blue"
+                    leftSection={<IconPlus size={11} />}
+                    styles={{
+                      root: { height: 24 },
+                      label: { fontSize: "10px", fontWeight: 700 },
                     }}
-                    error={errors.odoStart}
-                  />
-                  <TextInput
-                    label="Total Kilometer"
-                    placeholder="Auto-calculated"
-                    styles={inputStyles}
-                    style={{ flex: 1 }}
-                    value={totalKm}
-                    readOnly
-                  />
-                  <TextInput
-                    label="Odometer End"
-                    placeholder="Enter end reading"
-                    styles={inputStyles}
-                    style={{ flex: 1 }}
-                    value={odoEnd}
-                    onChange={(e) => {
-                      setNumericField(
-                        setOdoEnd,
-                        "odoEnd",
-                      )(e.currentTarget.value);
-                    }}
-                    error={errors.odoEnd}
-                  />
-                </Flex>
-              </Paper>
+                    onClick={addDropOff}
+                  >
+                    Add Drop-off
+                  </Button>
+                </Group>
 
-              {/* Rental Trip */}
-              <Paper withBorder radius="md" p="md">
-                <CardHeader
-                  title="For Rental Trip"
-                  icon={
-                    <IconTruckDelivery
-                      size={12}
-                      color="var(--mantine-color-blue-6)"
-                    />
-                  }
-                />
-                <Flex gap="md" direction={{ base: "column", sm: "row" }}>
-                  <TextInput
-                    label="ODO Start - Garage"
-                    placeholder="Enter value"
-                    styles={inputStyles}
-                    style={{ flex: 1 }}
-                    value={rentalOdoStart}
-                    onChange={(e) =>
-                      setNumericField(
-                        setRentalOdoStart,
-                        "rentalOdoStart",
-                      )(e.currentTarget.value)
-                    }
-                    error={errors.rentalOdoStart}
-                  />
-                  <TextInput
-                    label="ODO End - Garage"
-                    placeholder="Enter value"
-                    styles={inputStyles}
-                    style={{ flex: 1 }}
-                    value={rentalOdoEnd}
-                    onChange={(e) =>
-                      setNumericField(
-                        setRentalOdoEnd,
-                        "rentalOdoEnd",
-                      )(e.currentTarget.value)
-                    }
-                    error={errors.rentalOdoEnd}
-                  />
-                </Flex>
-              </Paper>
-
-              {/* Multiple Trips */}
-              <Paper withBorder radius="md" p="md">
-                <CardHeader title="For Multiple Trips" />
-                <Stack gap="sm">
-                  <Box>
-                    <Text
-                      fw={700}
-                      style={{ fontSize: "10px" }}
-                      c="blue.6"
-                      tt="uppercase"
-                      lts={0.5}
-                      mb={6}
-                    >
-                      Last Trip
-                    </Text>
-                    <Flex gap="md" direction={{ base: "column", sm: "row" }}>
-                      <TextInput
-                        label="ODO Start - Garage"
-                        placeholder="Enter value"
-                        styles={inputStyles}
-                        style={{ flex: 1 }}
-                        value={lastTripOdoStart}
-                        onChange={(e) =>
-                          setNumericField(
-                            setLastTripOdoStart,
-                            "lastTripOdoStart",
-                          )(e.currentTarget.value)
-                        }
-                      />
-                      <TextInput
-                        label="ODO Start - ODO End ng Last Trip"
-                        placeholder="Enter value"
-                        styles={inputStyles}
-                        style={{ flex: 1 }}
-                        value={lastTripOdoEnd}
-                        onChange={(e) =>
-                          setNumericField(
-                            setLastTripOdoEnd,
-                            "lastTripOdoEnd",
-                          )(e.currentTarget.value)
-                        }
-                      />
-                      <TextInput
-                        label="ODO End - Last Drop Off"
-                        placeholder="Enter value"
-                        styles={inputStyles}
-                        style={{ flex: 1 }}
-                        value={lastTripOdoEndDrop}
-                        onChange={(e) =>
-                          setNumericField(
-                            setLastTripOdoEndDrop,
-                            "lastTripOdoEndDrop",
-                          )(e.currentTarget.value)
-                        }
-                      />
-                    </Flex>
-                  </Box>
-
-                  <Divider my={4} />
-
-                  <Box>
-                    <Text
-                      fw={700}
-                      style={{ fontSize: "10px" }}
-                      c="blue.6"
-                      tt="uppercase"
-                      lts={0.5}
-                      mb={6}
-                    >
-                      2nd Trip
-                    </Text>
-                    <Flex gap="md" direction={{ base: "column", sm: "row" }}>
-                      <TextInput
-                        label="ODO Start - Garage"
-                        placeholder="Enter value"
-                        styles={inputStyles}
-                        style={{ flex: 1 }}
-                        value={secondTripOdoStart}
-                        onChange={(e) =>
-                          setNumericField(
-                            setSecondTripOdoStart,
-                            "secondTripOdoStart",
-                          )(e.currentTarget.value)
-                        }
-                      />
-                      <TextInput
-                        label="ODO End - Garage"
-                        placeholder="Enter value"
-                        styles={inputStyles}
-                        style={{ flex: 1 }}
-                        value={secondTripOdoEnd}
-                        onChange={(e) =>
-                          setNumericField(
-                            setSecondTripOdoEnd,
-                            "secondTripOdoEnd",
-                          )(e.currentTarget.value)
-                        }
-                      />
-                    </Flex>
-                  </Box>
+                <Stack gap={6}>
+                  {dropOffs.map((drop, index) => (
+                    <Paper key={drop.id} withBorder radius="sm" p="xs">
+                      <Group justify="space-between" align="center" mb={4}>
+                        <Badge
+                          variant="light"
+                          color="orange"
+                          radius="sm"
+                          styles={{
+                            label: { fontSize: "9px" },
+                            root: { height: 18 },
+                          }}
+                        >
+                          Drop {index + 1}
+                        </Badge>
+                        {dropOffs.length > 1 && (
+                          <ActionIcon
+                            variant="subtle"
+                            color="red"
+                            size="xs"
+                            onClick={() => removeDropOff(drop.id)}
+                          >
+                            <IconX size={11} />
+                          </ActionIcon>
+                        )}
+                      </Group>
+                      <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="xs">
+                        <TextInput
+                          placeholder="Drop-off address"
+                          label="Location"
+                          size="xs"
+                          styles={{
+                            label: {
+                              fontSize: "9px",
+                              fontWeight: 700,
+                              textTransform: "uppercase",
+                            },
+                            input: { fontSize: "11px" },
+                          }}
+                          value={drop.location}
+                          onChange={(e) =>
+                            updateDropOff(
+                              drop.id,
+                              "location",
+                              e.currentTarget.value,
+                            )
+                          }
+                          leftSection={
+                            <IconMapPin
+                              size={11}
+                              color="var(--mantine-color-red-5)"
+                            />
+                          }
+                        />
+                        <TextInput
+                          placeholder="Contact person"
+                          label="Contact Person"
+                          size="xs"
+                          styles={{
+                            label: {
+                              fontSize: "9px",
+                              fontWeight: 700,
+                              textTransform: "uppercase",
+                            },
+                            input: { fontSize: "11px" },
+                          }}
+                          value={drop.contactPerson}
+                          onChange={(e) =>
+                            updateDropOff(
+                              drop.id,
+                              "contactPerson",
+                              e.currentTarget.value,
+                            )
+                          }
+                        />
+                        <TextInput
+                          placeholder="e.g. 09XX XXX XXXX"
+                          label="Contact No."
+                          size="xs"
+                          styles={{
+                            label: {
+                              fontSize: "9px",
+                              fontWeight: 700,
+                              textTransform: "uppercase",
+                            },
+                            input: { fontSize: "11px" },
+                          }}
+                          value={drop.contactNo}
+                          onChange={(e) =>
+                            updateDropOff(
+                              drop.id,
+                              "contactNo",
+                              e.currentTarget.value,
+                            )
+                          }
+                        />
+                      </SimpleGrid>
+                    </Paper>
+                  ))}
                 </Stack>
-              </Paper>
-            </Stack>
 
-            {/* Right Column — Trip Booking Details */}
-            <Paper withBorder radius="md" p="md" style={{ flex: 3 }} w="100%">
-              <CardHeader title="Trip Booking Details" />
-              <Stack gap="sm">
+                {errors.dropOffs && (
+                  <Text style={{ fontSize: "11px" }} c="red" mt={4}>
+                    {errors.dropOffs}
+                  </Text>
+                )}
+              </Box>
+              <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm" mb="sm">
                 <CreatableSelect
                   label="Kliyente"
                   placeholder="Search or add client"
@@ -955,6 +863,9 @@ export default function DispatchPage() {
                   }}
                   error={errors.ruta}
                 />
+              </SimpleGrid>
+
+              <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="sm" mb="sm">
                 <TextInput
                   label="Booking / DR#"
                   placeholder="Enter booking or DR number"
@@ -964,8 +875,10 @@ export default function DispatchPage() {
                     setBookingDr(e.currentTarget.value);
                     if (e.currentTarget.value.trim()) clearError("bookingDr");
                   }}
+                  tt="capitalize"
                   error={errors.bookingDr}
                 />
+
                 <NumberInput
                   label="No. of Drops"
                   placeholder="Enter number of drops"
@@ -978,6 +891,38 @@ export default function DispatchPage() {
                   }}
                   error={errors.noOfDrops}
                 />
+
+                <Popover
+                  position="bottom-start"
+                  shadow="md"
+                  radius="md"
+                  withinPortal
+                >
+                  <Popover.Target>
+                    <TextInput
+                      label="Pickup Date"
+                      placeholder="Select date"
+                      readOnly
+                      value={formatDate(pickupDate)}
+                      rightSection={
+                        <IconCalendar
+                          size={14}
+                          color="var(--mantine-color-gray-5)"
+                        />
+                      }
+                      styles={inputStyles}
+                      error={errors.pickupDate}
+                      style={{ cursor: "pointer" }}
+                    />
+                  </Popover.Target>
+
+                  <Popover.Dropdown p="sm">
+                    <DatePicker value={pickupDate} onChange={setPickupDate} />
+                  </Popover.Dropdown>
+                </Popover>
+              </SimpleGrid>
+
+              <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm" mb="sm">
                 <CreatableSelect
                   label="Unit"
                   placeholder="Search or add unit"
@@ -1003,6 +948,24 @@ export default function DispatchPage() {
                   error={errors.plateNo}
                   maxLength={15}
                 />
+              </SimpleGrid>
+
+              <Divider
+                my="sm"
+                label={
+                  <Text
+                    style={{ fontSize: "9px" }}
+                    c="dimmed"
+                    tt="uppercase"
+                    lts={1}
+                  >
+                    Personnel
+                  </Text>
+                }
+                labelPosition="left"
+              />
+
+              <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm" mb="md">
                 <CreatableSelect
                   label="Driver"
                   placeholder="Search or add driver"
@@ -1015,19 +978,78 @@ export default function DispatchPage() {
                   styles={inputStyles}
                   error={errors.driver}
                 />
-                <CreatableSelect
-                  label="Helper"
-                  placeholder="Search or add helper"
-                  data={DEFAULT_HELPERS}
-                  value={selectedHelper}
-                  onChange={setSelectedHelper}
-                  styles={inputStyles}
-                />
+                <Stack gap={4}>
+                  <CreatableSelect
+                    key={helperKey}
+                    label="Helper"
+                    placeholder="Add helper"
+                    data={DEFAULT_HELPERS}
+                    value={null}
+                    onChange={addHelper}
+                    styles={inputStyles}
+                  />
 
-                <Divider my={4} />
+                  <Box
+                    p="xs"
+                    style={{
+                      border: "1px dashed var(--mantine-color-gray-3)",
+                      borderRadius: "var(--mantine-radius-sm)",
+                      minHeight: 36,
+                    }}
+                  >
+                    {selectedHelpers.length === 0 ? (
+                      <Text style={{ fontSize: "10px" }} c="dimmed" ta="center">
+                        No helpers added
+                      </Text>
+                    ) : (
+                      <Group gap="xs">
+                        {selectedHelpers.map((h) => (
+                          <Badge
+                            key={h}
+                            variant="light"
+                            color="blue"
+                            radius="sm"
+                            rightSection={
+                              <IconX
+                                size={10}
+                                style={{ cursor: "pointer" }}
+                                onClick={() => removeHelper(h)}
+                              />
+                            }
+                            styles={{ label: { fontSize: "10px" } }}
+                          >
+                            {h}
+                          </Badge>
+                        ))}
+                      </Group>
+                    )}
+                  </Box>
 
+                  {selectedHelpers.length > 0 && (
+                    <Text style={{ fontSize: "9px" }} c="dimmed" ta="right">
+                      {selectedHelpers.length} helper
+                      {selectedHelpers.length > 1 ? "s" : ""} added
+                    </Text>
+                  )}
+                </Stack>
+              </SimpleGrid>
+
+              <Divider my="sm" />
+
+              <Group flex={1}>
                 <Button
-                  fullWidth
+                  variant="light"
+                  color="gray"
+                  leftSection={<IconX size={14} />}
+                  styles={{
+                    root: { height: 36 },
+                    label: { fontSize: "11px", fontWeight: 700 },
+                  }}
+                  onClick={handleReset}
+                >
+                  Reset
+                </Button>
+                <Button
                   color="blue.6"
                   leftSection={<IconEye size={14} />}
                   styles={{
@@ -1038,7 +1060,7 @@ export default function DispatchPage() {
                 >
                   Review & Submit
                 </Button>
-              </Stack>
+              </Group>
             </Paper>
           </Flex>
         </Stack>
