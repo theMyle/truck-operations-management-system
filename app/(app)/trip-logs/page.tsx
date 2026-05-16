@@ -21,7 +21,6 @@ import { notifications } from "@mantine/notifications";
 import { useRouter } from "next/navigation";
 import React, { useState, useMemo, useEffect } from "react";
 import {
-  IconPlus,
   IconTrash,
   IconEye,
   IconSearch,
@@ -407,35 +406,6 @@ export default function DispatchRecordsPage() {
               <Text style={{ fontSize: "10px" }} c="dimmed" fw={500}>
                 {filtered.length} of {records.length} records
               </Text>
-            </Group>
-            <Group gap={8}>
-              <Badge
-                variant="light"
-                color="blue"
-                radius="sm"
-                styles={{
-                  label: { fontSize: "9px" },
-                  root: { height: 18 },
-                }}
-              >
-                {new Date().toLocaleDateString("en-US", {
-                  month: "long",
-                  day: "numeric",
-                  year: "numeric",
-                })}
-              </Badge>
-              <Button
-                size="xs"
-                color="blue.6"
-                leftSection={<IconPlus size={12} />}
-                styles={{
-                  root: { height: 28 },
-                  label: { fontSize: "10px", fontWeight: 700 },
-                }}
-                onClick={() => router.push("/dispatch")}
-              >
-                Create New
-              </Button>
             </Group>
           </Group>
 
