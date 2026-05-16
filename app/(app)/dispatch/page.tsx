@@ -21,6 +21,7 @@ import {
   SimpleGrid,
   Popover,
   ActionIcon,
+  Loader,
 } from "@mantine/core";
 import { DatePicker, type DateValue } from "@mantine/dates";
 import { notifications } from "@mantine/notifications";
@@ -383,6 +384,136 @@ const CardHeader = ({
     </Group>
   </Box>
 );
+
+function LocationSearch({
+  label,
+  placeholder,
+  value,
+  onChange,
+  error,
+  leftSection,
+  rightAction,
+}: {
+  label: string;
+  placeholder: string;
+  value: string;
+  onChange: (val: string) => void;
+  error?: string;
+  leftSection?: React.ReactNode;
+  rightAction?: React.ReactNode;
+}) {
+  const [query, setQuery] = useState(value);
+  const [suggestions, setSuggestions] = useState<{ display_name: string }[]>(
+    [],
+  );
+  const [loading, setLoading] = useState(false);
+  const debounceRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const search = (q: string) => {
+    setQuery(q);
+    onChange(q); // keep parent in sync as user types
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    if (q.trim().length < 3) {
+      setSuggestions([]);
+      return;
+    }
+
+    debounceRef.current = setTimeout(async () => {
+      setLoading(true);
+      try {
+        const res = await fetch(
+          `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&addressdetails=1&limit=5&countrycodes=ph`,
+          { headers: { "Accept-Language": "en" } },
+        );
+        const data = await res.json();
+        setSuggestions(data);
+      } catch {
+        setSuggestions([]);
+      } finally {
+        setLoading(false);
+      }
+    }, 400);
+  };
+
+  const select = (display_name: string) => {
+    setQuery(display_name);
+    onChange(display_name);
+    setSuggestions([]);
+  };
+
+  return (
+    <Box style={{ position: "relative" }}>
+      {/* Label row with optional right action */}
+      <Group justify="space-between" align="center" mb={4}>
+        <Text
+          style={{
+            fontSize: "10px",
+            fontWeight: 700,
+            color: "var(--mantine-color-gray-7)",
+            textTransform: "uppercase",
+            letterSpacing: "0.5px",
+          }}
+        >
+          {label}
+        </Text>
+        {rightAction}
+      </Group>
+      <TextInput
+        placeholder={placeholder}
+        value={query}
+        onChange={(e) => search(e.currentTarget.value)}
+        error={error}
+        leftSection={leftSection}
+        rightSection={loading ? <Loader size={12} /> : null}
+        styles={{
+          input: { fontSize: "11px", fontWeight: 600 },
+        }}
+      />
+      {/* suggestions dropdown unchanged */}
+      {suggestions.length > 0 && (
+        <Paper
+          withBorder
+          shadow="md"
+          radius="sm"
+          style={{
+            position: "absolute",
+            top: "100%",
+            left: 0,
+            right: 0,
+            zIndex: 300,
+            maxHeight: 200,
+            overflowY: "auto",
+          }}
+        >
+          {suggestions.map((s, i) => (
+            <Box
+              key={i}
+              px="sm"
+              py={6}
+              style={{
+                cursor: "pointer",
+                fontSize: "11px",
+                fontWeight: 500,
+                borderBottom:
+                  i < suggestions.length - 1
+                    ? "1px solid var(--mantine-color-gray-2)"
+                    : "none",
+              }}
+              onMouseDown={() => select(s.display_name)}
+              onMouseEnter={(e) =>
+                (e.currentTarget.style.backgroundColor =
+                  "var(--mantine-color-gray-0)")
+              }
+              onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "")}
+            >
+              {s.display_name}
+            </Box>
+          ))}
+        </Paper>
+      )}
+    </Box>
+  );
+}
 export default function DispatchPage() {
   const router = useRouter();
 
@@ -683,162 +814,7 @@ export default function DispatchPage() {
               />
 
               <Divider mb="md" />
-              {/* Pickup Location */}
-              <SimpleGrid cols={{ base: 1, sm: 1 }} spacing="sm" mb="sm">
-                <TextInput
-                  label="Pickup Location"
-                  placeholder="Enter pickup address"
-                  styles={inputStyles}
-                  value={pickupLocation}
-                  onChange={(e) => {
-                    setPickupLocation(e.currentTarget.value);
-                    if (e.currentTarget.value.trim())
-                      clearError("pickupLocation");
-                  }}
-                  error={errors.pickupLocation}
-                  leftSection={
-                    <IconMapPin
-                      size={13}
-                      color="var(--mantine-color-green-6)"
-                    />
-                  }
-                />
-              </SimpleGrid>
 
-              {/* Drop-offs */}
-              <Box mb="sm">
-                <Group justify="space-between" align="center" mb={6}>
-                  <Text
-                    fw={800}
-                    style={{ fontSize: "9px" }}
-                    tt="uppercase"
-                    lts={1}
-                    c="blue.6"
-                  >
-                    Drop-off Points
-                  </Text>
-                  <Button
-                    size="xs"
-                    variant="light"
-                    color="blue"
-                    leftSection={<IconPlus size={11} />}
-                    styles={{
-                      root: { height: 24 },
-                      label: { fontSize: "10px", fontWeight: 700 },
-                    }}
-                    onClick={addDropOff}
-                  >
-                    Add Drop-off
-                  </Button>
-                </Group>
-
-                <Stack gap={6}>
-                  {dropOffs.map((drop, index) => (
-                    <Paper key={drop.id} withBorder radius="sm" p="xs">
-                      <Group justify="space-between" align="center" mb={4}>
-                        <Badge
-                          variant="light"
-                          color="orange"
-                          radius="sm"
-                          styles={{
-                            label: { fontSize: "9px" },
-                            root: { height: 18 },
-                          }}
-                        >
-                          Drop {index + 1}
-                        </Badge>
-                        {dropOffs.length > 1 && (
-                          <ActionIcon
-                            variant="subtle"
-                            color="red"
-                            size="xs"
-                            onClick={() => removeDropOff(drop.id)}
-                          >
-                            <IconX size={11} />
-                          </ActionIcon>
-                        )}
-                      </Group>
-                      <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="xs">
-                        <TextInput
-                          placeholder="Drop-off address"
-                          label="Location"
-                          size="xs"
-                          styles={{
-                            label: {
-                              fontSize: "9px",
-                              fontWeight: 700,
-                              textTransform: "uppercase",
-                            },
-                            input: { fontSize: "11px" },
-                          }}
-                          value={drop.location}
-                          onChange={(e) =>
-                            updateDropOff(
-                              drop.id,
-                              "location",
-                              e.currentTarget.value,
-                            )
-                          }
-                          leftSection={
-                            <IconMapPin
-                              size={11}
-                              color="var(--mantine-color-red-5)"
-                            />
-                          }
-                        />
-                        <TextInput
-                          placeholder="Contact person"
-                          label="Contact Person"
-                          size="xs"
-                          styles={{
-                            label: {
-                              fontSize: "9px",
-                              fontWeight: 700,
-                              textTransform: "uppercase",
-                            },
-                            input: { fontSize: "11px" },
-                          }}
-                          value={drop.contactPerson}
-                          onChange={(e) =>
-                            updateDropOff(
-                              drop.id,
-                              "contactPerson",
-                              e.currentTarget.value,
-                            )
-                          }
-                        />
-                        <TextInput
-                          placeholder="e.g. 09XX XXX XXXX"
-                          label="Contact No."
-                          size="xs"
-                          styles={{
-                            label: {
-                              fontSize: "9px",
-                              fontWeight: 700,
-                              textTransform: "uppercase",
-                            },
-                            input: { fontSize: "11px" },
-                          }}
-                          value={drop.contactNo}
-                          onChange={(e) =>
-                            updateDropOff(
-                              drop.id,
-                              "contactNo",
-                              e.currentTarget.value,
-                            )
-                          }
-                        />
-                      </SimpleGrid>
-                    </Paper>
-                  ))}
-                </Stack>
-
-                {errors.dropOffs && (
-                  <Text style={{ fontSize: "11px" }} c="red" mt={4}>
-                    {errors.dropOffs}
-                  </Text>
-                )}
-              </Box>
               <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm" mb="sm">
                 <CreatableSelect
                   label="Kliyente"
@@ -865,6 +841,86 @@ export default function DispatchPage() {
                 />
               </SimpleGrid>
 
+              <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm" mb="sm">
+                {/* Left: Pickup Location */}
+                <LocationSearch
+                  label="Pickup Location"
+                  placeholder="Search pickup address..."
+                  value={pickupLocation}
+                  onChange={(val) => {
+                    setPickupLocation(val);
+                    if (val.trim()) clearError("pickupLocation");
+                  }}
+                  error={errors.pickupLocation}
+                  leftSection={
+                    <IconMapPin
+                      size={13}
+                      color="var(--mantine-color-green-6)"
+                    />
+                  }
+                />
+
+                {/* Right: Drop-off Points */}
+                <Box>
+                  <Stack gap={6}>
+                    {dropOffs.map((drop, index) => (
+                      <Paper key={drop.id} withBorder radius="sm" p="xs">
+                        <LocationSearch
+                          label={`Drop ${index + 1}`}
+                          placeholder="Search drop-off address..."
+                          value={drop.location}
+                          onChange={(val) => {
+                            updateDropOff(drop.id, "location", val);
+                            if (val.trim()) clearError("dropOffs");
+                          }}
+                          leftSection={
+                            <IconMapPin
+                              size={11}
+                              color="var(--mantine-color-red-5)"
+                            />
+                          }
+                          rightAction={
+                            <Group gap={4}>
+                              {index === 0 && (
+                                <Button
+                                  size="sm"
+                                  variant="light"
+                                  color="blue"
+                                  leftSection={<IconPlus size={12} />}
+                                  styles={{
+                                    root: { height: 18, padding: "0 6px" },
+                                    label: { fontSize: "10px", fontWeight: 700 },
+                                  }}
+                                  onClick={addDropOff}
+                                >
+                                  Add Drop-off Points
+                                </Button>
+                              )}
+                              {dropOffs.length > 1 && (
+                                <ActionIcon
+                                  variant="subtle"
+                                  color="red"
+                                  size="xs"
+                                  onClick={() => removeDropOff(drop.id)}
+                                >
+                                  <IconX size={11} />
+                                </ActionIcon>
+                              )}
+                            </Group>
+                          }
+                        />
+                      </Paper>
+                    ))}
+                  </Stack>
+
+
+                  {errors.dropOffs && (
+                    <Text style={{ fontSize: "11px" }} c="red" mt={4}>
+                      {errors.dropOffs}
+                    </Text>
+                  )}
+                </Box>
+              </SimpleGrid>
               <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="sm" mb="sm">
                 <TextInput
                   label="Booking / DR#"
