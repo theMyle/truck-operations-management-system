@@ -16,6 +16,7 @@ import {
   Modal,
   Tooltip,
   Pagination,
+  Select,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { useRouter } from "next/navigation";
@@ -27,6 +28,11 @@ import {
   IconAlertTriangle,
   IconClipboardList,
   IconEdit,
+  IconDownload,
+  IconFileTypeDoc,
+  IconFileTypeJpg,
+  IconFileTypePdf,
+  IconFileTypeXls,
 } from "@tabler/icons-react";
 import { useDispatch } from "../context/dispatch-context";
 import { OdoModal, OdoFormData } from "@/components/trip-logs/OdoModal";
@@ -275,7 +281,6 @@ const PAGE_SIZE = 10;
 
 export default function DispatchRecordsPage() {
   const router = useRouter();
-  const [records, setRecords] = useState<DispatchRecord[]>(MOCK_RECORDS);
   const [search, setSearch] = useState("");
 
   const [viewRecord, setViewRecord] = useState<DispatchRecord | null>(null);
@@ -290,17 +295,17 @@ export default function DispatchRecordsPage() {
   const [odoOpened, setOdoOpened] = useState(false);
   const [odoData, setOdoData] = useState<Record<number, OdoFormData>>({});
   const [page, setPage] = useState(1);
-  const { setEditingRecord } = useDispatch();
+  const { setEditingRecord, travelLogs, deleteTravelLog, updateTravelLog } = useDispatch();
+
 
   /* ── Search filter (searches across all string fields) ── */
   const filtered = useMemo(() => {
     const q = search.toLowerCase().trim();
-    return records.filter((r) => {
-      const matchesSearch =
-        !q || Object.values(r).some((v) => String(v).toLowerCase().includes(q));
-      return matchesSearch && r.status === "Completed";
-    });
-  }, [search, records]);
+    return travelLogs.filter(
+      (r) =>
+        !q || Object.values(r).some((v) => String(v).toLowerCase().includes(q)),
+    );
+  }, [search, travelLogs]);
 
   const handleView = (record: DispatchRecord) => {
     setViewRecord(record);
@@ -319,7 +324,7 @@ export default function DispatchRecordsPage() {
 
   const handleDeleteConfirm = () => {
     if (!deleteRecord) return;
-    setRecords((prev) => prev.filter((r) => r.id !== deleteRecord.id));
+    deleteTravelLog(deleteRecord.id);
     setDeleteOpened(false);
     setDeleteRecord(null);
     notifications.show({
@@ -404,8 +409,85 @@ export default function DispatchRecordsPage() {
                 Dispatch Records
               </Badge>
               <Text style={{ fontSize: "10px" }} c="dimmed" fw={500}>
-                {filtered.length} of {records.length} records
+                {filtered.length} of {travelLogs.length} records
               </Text>
+            </Group>
+
+            <Group gap={8}>
+              <Select
+                placeholder="Download"
+                leftSection={
+                  <IconDownload size={12} color="var(--mantine-color-blue-6)" />
+                }
+                data={[
+                  { value: "pdf", label: "PDF" },
+                  { value: "xlsx", label: "Excel (XLSX)" },
+                  { value: "docx", label: "Word (DOCX)" },
+                  { value: "jpg", label: "Image (JPG)" },
+                ]}
+                renderOption={({ option }) => {
+                  const icons: Record<string, React.ReactNode> = {
+                    pdf: (
+                      <IconFileTypePdf
+                        size={14}
+                        color="var(--mantine-color-red-6)"
+                      />
+                    ),
+                    xlsx: (
+                      <IconFileTypeXls
+                        size={14}
+                        color="var(--mantine-color-green-6)"
+                      />
+                    ),
+                    docx: (
+                      <IconFileTypeDoc
+                        size={14}
+                        color="var(--mantine-color-blue-6)"
+                      />
+                    ),
+                    jpg: (
+                      <IconFileTypeJpg
+                        size={14}
+                        color="var(--mantine-color-orange-6)"
+                      />
+                    ),
+                  };
+                  return (
+                    <Group gap={8} wrap="nowrap">
+                      {icons[option.value]}
+                      <Text style={{ fontSize: "10px" }} fw={600}>
+                        {option.label}
+                      </Text>
+                    </Group>
+                  );
+                }}
+                onChange={(val) => {
+                  if (!val) return;
+                  notifications.show({
+                    title: "Download started",
+                    message: `Exporting as ${val.toUpperCase()}`,
+                    color: "blue",
+                  });
+                }}
+                styles={{
+                  input: {
+                    fontSize: "10px",
+                    fontWeight: 700,
+                    height: 28,
+                    minHeight: 28,
+                    color: "black",
+                    border: "1px solid var(--mantine-color-gray-3)",
+                    cursor: "pointer",
+                  },
+                  section: {
+                    color: "var(--mantine-color-blue-6)",
+                  },
+                }}
+                radius="md"
+                style={{ width: 120 }}
+                clearable={false}
+                allowDeselect={false}
+              />
             </Group>
           </Group>
 

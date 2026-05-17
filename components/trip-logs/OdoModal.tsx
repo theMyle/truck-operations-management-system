@@ -12,7 +12,6 @@ import {
   Divider,
   Button,
   SegmentedControl,
-  Table,
   ActionIcon,
   Checkbox,
   Badge,
@@ -23,33 +22,26 @@ import {
   IconPlus,
   IconTrash,
   IconGauge,
-  IconRoute,
   IconWallet,
 } from "@tabler/icons-react";
-import React, { useState } from "react";
+import { useState } from "react";
 import { DispatchRecord } from "@/app/(app)/constant";
 
-/* ── Types ── */
-interface TripRow {
-  id: number;
-  trip: string;
-  odometerNo: string;
-  pictureNo: string;
-  bahatOdoStartAtEnd: string;
-}
 
+
+interface MultipleTripRow {
+  id: number;
+  odoStart: string;
+  odoEnd: string;
+  odoEndLastDrop?: string; // only used on the last card
+}
 export interface OdoFormData {
   odoStart: string;
   odoEnd: string;
   tripType: "single" | "multiple";
   singleOdoStart: string;
   singleOdoEnd: string;
-  lastTripOdoStartGarage: string;
-  lastTripOdoEndLastTrip: string;
-  lastTripOdoEndLastDrop: string;
-  secondTripOdoStart: string;
-  secondTripOdoEnd: string;
-  trips: TripRow[];
+  multipleTrips: MultipleTripRow[];
   budget: string;
   budgetFrom: string;
   rfidLoad: string;
@@ -68,14 +60,7 @@ const defaultForm = (): OdoFormData => ({
   tripType: "single",
   singleOdoStart: "",
   singleOdoEnd: "",
-  lastTripOdoStartGarage: "",
-  lastTripOdoEndLastTrip: "",
-  lastTripOdoEndLastDrop: "",
-  secondTripOdoStart: "",
-  secondTripOdoEnd: "",
-  trips: [
-    { id: 1, trip: "", odometerNo: "", pictureNo: "", bahatOdoStartAtEnd: "" },
-  ],
+  multipleTrips: [{ id: 1, odoStart: "", odoEnd: "", odoEndLastDrop: "" }],
   budget: "",
   budgetFrom: "",
   rfidLoad: "",
@@ -125,30 +110,6 @@ export function OdoModal({
       ? Math.max(0, Number(form.odoEnd) - Number(form.odoStart))
       : null;
 
-  /* ── Trip rows ── */
-  const addTripRow = () =>
-    set("trips", [
-      ...form.trips,
-      {
-        id: form.trips.length + 1,
-        trip: "",
-        odometerNo: "",
-        pictureNo: "",
-        bahatOdoStartAtEnd: "",
-      },
-    ]);
-
-  const removeTripRow = (id: number) =>
-    set(
-      "trips",
-      form.trips.filter((t) => t.id !== id),
-    );
-
-  const updateTripRow = (id: number, field: keyof TripRow, value: string) =>
-    set(
-      "trips",
-      form.trips.map((t) => (t.id === id ? { ...t, [field]: value } : t)),
-    );
 
   if (!record) return null;
 
@@ -186,11 +147,6 @@ export function OdoModal({
           <Tabs.Tab value="odometer" leftSection={<IconGauge size={13} />}>
             <Text style={{ fontSize: "11px" }} fw={600}>
               Odometer
-            </Text>
-          </Tabs.Tab>
-          <Tabs.Tab value="trips" leftSection={<IconRoute size={13} />}>
-            <Text style={{ fontSize: "11px" }} fw={600}>
-              Trips
             </Text>
           </Tabs.Tab>
           <Tabs.Tab value="budget" leftSection={<IconWallet size={13} />}>
@@ -257,7 +213,7 @@ export function OdoModal({
               value={form.tripType}
               onChange={(val) => set("tripType", val)}
               data={[
-                { label: "Single Trip", value: "single" },
+                { label: "One Drop / Single Trip", value: "single" },
                 { label: "Multiple Trips", value: "multiple" },
               ]}
               styles={{ label: { fontSize: "11px", fontWeight: 600 } }}
@@ -285,298 +241,120 @@ export function OdoModal({
 
             {form.tripType === "multiple" && (
               <Stack gap="xs">
-                <Divider
-                  label={
-                    <Text
-                      style={{ fontSize: "9px" }}
-                      tt="uppercase"
-                      lts={1}
-                      c="blue.6"
-                      fw={700}
-                    >
-                      Last Trip
-                    </Text>
-                  }
-                  labelPosition="left"
-                />
-                <SimpleGrid cols={2} spacing="sm">
-                  <TextInput
-                    label="ODO Start — Garage"
-                    styles={inputStyles}
-                    value={form.lastTripOdoStartGarage}
-                    onChange={(e) =>
-                      set("lastTripOdoStartGarage", e.currentTarget.value)
-                    }
-                  />
-                  <TextInput
-                    label="ODO Start — Last Trip End"
-                    styles={inputStyles}
-                    value={form.lastTripOdoEndLastTrip}
-                    onChange={(e) =>
-                      set("lastTripOdoEndLastTrip", e.currentTarget.value)
-                    }
-                  />
-                </SimpleGrid>
-                <TextInput
-                  label="ODO End — Last Drop Off"
-                  styles={inputStyles}
-                  value={form.lastTripOdoEndLastDrop}
-                  onChange={(e) =>
-                    set("lastTripOdoEndLastDrop", e.currentTarget.value)
-                  }
-                />
+                {form.multipleTrips.map((trip, idx) => (
+                  <Paper key={trip.id} withBorder radius="sm" p="sm">
+                    <Group justify="space-between" mb="xs">
+                      <Text
+                        style={{ fontSize: "9px" }}
+                        fw={800}
+                        tt="uppercase"
+                        lts={1}
+                        c="blue.6"
+                      >
+                        Trip {idx + 1}
+                      </Text>
+                      {form.multipleTrips.length > 1 && (
+                        <ActionIcon
+                          size="xs"
+                          color="red"
+                          variant="subtle"
+                          onClick={() =>
+                            set(
+                              "multipleTrips",
+                              form.multipleTrips.filter(
+                                (t) => t.id !== trip.id,
+                              ),
+                            )
+                          }
+                        >
+                          <IconTrash size={11} />
+                        </ActionIcon>
+                      )}
+                    </Group>
+                    <SimpleGrid cols={2} spacing="sm">
+                      <TextInput
+                        label="ODO Start — Garage"
+                        styles={inputStyles}
+                        value={trip.odoStart}
+                        onChange={(e) =>
+                          set(
+                            "multipleTrips",
+                            form.multipleTrips.map((t) =>
+                              t.id === trip.id
+                                ? { ...t, odoStart: e.currentTarget.value }
+                                : t,
+                            ),
+                          )
+                        }
+                      />
+                      <TextInput
+                        label="ODO End — Garage"
+                        styles={inputStyles}
+                        value={trip.odoEnd}
+                        onChange={(e) =>
+                          set(
+                            "multipleTrips",
+                            form.multipleTrips.map((t) =>
+                              t.id === trip.id
+                                ? { ...t, odoEnd: e.currentTarget.value }
+                                : t,
+                            ),
+                          )
+                        }
+                      />
+                    </SimpleGrid>
+                    {/* Last drop only shown on the last trip card */}
+                    {idx === form.multipleTrips.length - 1 && (
+                      <TextInput
+                        label="ODO End — Last Drop Off"
+                        styles={inputStyles}
+                        mt="xs"
+                        value={trip.odoEndLastDrop ?? ""}
+                        onChange={(e) =>
+                          set(
+                            "multipleTrips",
+                            form.multipleTrips.map((t) =>
+                              t.id === trip.id
+                                ? {
+                                    ...t,
+                                    odoEndLastDrop: e.currentTarget.value,
+                                  }
+                                : t,
+                            ),
+                          )
+                        }
+                      />
+                    )}
+                  </Paper>
+                ))}
 
-                <Divider
-                  mt="xs"
-                  label={
-                    <Text
-                      style={{ fontSize: "9px" }}
-                      tt="uppercase"
-                      lts={1}
-                      c="blue.6"
-                      fw={700}
-                    >
-                      2nd Trip
-                    </Text>
+                <Button
+                  size="xs"
+                  variant="light"
+                  color="blue"
+                  leftSection={<IconPlus size={11} />}
+                  styles={{
+                    root: { height: 28 },
+                    label: { fontSize: "10px", fontWeight: 700 },
+                  }}
+                  onClick={() =>
+                    set("multipleTrips", [
+                      ...form.multipleTrips,
+                      {
+                        id: Date.now(),
+                        odoStart: "",
+                        odoEnd: "",
+                        odoEndLastDrop: "",
+                      },
+                    ])
                   }
-                  labelPosition="left"
-                />
-                <SimpleGrid cols={2} spacing="sm">
-                  <TextInput
-                    label="ODO Start — Garage"
-                    styles={inputStyles}
-                    value={form.secondTripOdoStart}
-                    onChange={(e) =>
-                      set("secondTripOdoStart", e.currentTarget.value)
-                    }
-                  />
-                  <TextInput
-                    label="ODO End — Garage"
-                    styles={inputStyles}
-                    value={form.secondTripOdoEnd}
-                    onChange={(e) =>
-                      set("secondTripOdoEnd", e.currentTarget.value)
-                    }
-                  />
-                </SimpleGrid>
+                >
+                  Add Trip
+                </Button>
               </Stack>
             )}
 
             <Group justify="flex-end" mt="xs">
-              <Button
-                size="xs"
-                variant="light"
-                color="blue"
-                styles={{
-                  root: { height: 30 },
-                  label: { fontSize: "10px", fontWeight: 700 },
-                }}
-                onClick={() => setActiveTab("trips")}
-              >
-                Next: Trips →
-              </Button>
-            </Group>
-          </Stack>
-        </Tabs.Panel>
-
-        {/* ── TRIPS TAB ── */}
-        <Tabs.Panel value="trips">
-          <Stack gap="sm">
-            <Text
-              style={{ fontSize: "10px" }}
-              tt="uppercase"
-              fw={700}
-              c="dimmed"
-              lts={0.5}
-            >
-              Isend ang picture ng bawat odometer start at end sa GC
-            </Text>
-
-            <Paper withBorder radius="sm" p={0} style={{ overflow: "hidden" }}>
-              <Table
-                style={{ tableLayout: "fixed" }}
-                horizontalSpacing="xs"
-                verticalSpacing={4}
-              >
-                <Table.Thead>
-                  <Table.Tr>
-                    <Table.Th
-                      style={{
-                        fontSize: "9px",
-                        color: "var(--mantine-color-gray-6)",
-                        fontWeight: 800,
-                        textTransform: "uppercase",
-                        backgroundColor: "var(--mantine-color-gray-0)",
-                        width: "5%",
-                      }}
-                    >
-                      #
-                    </Table.Th>
-                    <Table.Th
-                      style={{
-                        fontSize: "9px",
-                        color: "var(--mantine-color-gray-6)",
-                        fontWeight: 800,
-                        textTransform: "uppercase",
-                        backgroundColor: "var(--mantine-color-gray-0)",
-                        width: "22%",
-                      }}
-                    >
-                      Trip
-                    </Table.Th>
-                    <Table.Th
-                      style={{
-                        fontSize: "9px",
-                        color: "var(--mantine-color-gray-6)",
-                        fontWeight: 800,
-                        textTransform: "uppercase",
-                        backgroundColor: "var(--mantine-color-gray-0)",
-                        width: "22%",
-                      }}
-                    >
-                      Odometer No
-                    </Table.Th>
-                    <Table.Th
-                      style={{
-                        fontSize: "9px",
-                        color: "var(--mantine-color-gray-6)",
-                        fontWeight: 800,
-                        textTransform: "uppercase",
-                        backgroundColor: "var(--mantine-color-gray-0)",
-                        width: "22%",
-                      }}
-                    >
-                      Picture No
-                    </Table.Th>
-                    <Table.Th
-                      style={{
-                        fontSize: "9px",
-                        color: "var(--mantine-color-gray-6)",
-                        fontWeight: 800,
-                        textTransform: "uppercase",
-                        backgroundColor: "var(--mantine-color-gray-0)",
-                        width: "24%",
-                      }}
-                    >
-                      Bahat ODO Start at End ba GC
-                    </Table.Th>
-                    <Table.Th
-                      style={{
-                        backgroundColor: "var(--mantine-color-gray-0)",
-                        width: "5%",
-                      }}
-                    />
-                  </Table.Tr>
-                </Table.Thead>
-                <Table.Tbody>
-                  {form.trips.map((row, idx) => (
-                    <Table.Tr key={row.id}>
-                      <Table.Td>
-                        <Text style={{ fontSize: "10px" }} c="dimmed" fw={600}>
-                          {idx + 1}
-                        </Text>
-                      </Table.Td>
-                      <Table.Td>
-                        <TextInput
-                          size="xs"
-                          placeholder="Trip"
-                          styles={{ input: { fontSize: "11px" } }}
-                          value={row.trip}
-                          onChange={(e) =>
-                            updateTripRow(row.id, "trip", e.currentTarget.value)
-                          }
-                        />
-                      </Table.Td>
-                      <Table.Td>
-                        <TextInput
-                          size="xs"
-                          placeholder="ODO No"
-                          styles={{ input: { fontSize: "11px" } }}
-                          value={row.odometerNo}
-                          onChange={(e) =>
-                            updateTripRow(
-                              row.id,
-                              "odometerNo",
-                              e.currentTarget.value,
-                            )
-                          }
-                        />
-                      </Table.Td>
-                      <Table.Td>
-                        <TextInput
-                          size="xs"
-                          placeholder="Pic No"
-                          styles={{ input: { fontSize: "11px" } }}
-                          value={row.pictureNo}
-                          onChange={(e) =>
-                            updateTripRow(
-                              row.id,
-                              "pictureNo",
-                              e.currentTarget.value,
-                            )
-                          }
-                        />
-                      </Table.Td>
-                      <Table.Td>
-                        <TextInput
-                          size="xs"
-                          placeholder="Yes / No"
-                          styles={{ input: { fontSize: "11px" } }}
-                          value={row.bahatOdoStartAtEnd}
-                          onChange={(e) =>
-                            updateTripRow(
-                              row.id,
-                              "bahatOdoStartAtEnd",
-                              e.currentTarget.value,
-                            )
-                          }
-                        />
-                      </Table.Td>
-                      <Table.Td>
-                        {form.trips.length > 1 && (
-                          <ActionIcon
-                            size="xs"
-                            color="red"
-                            variant="subtle"
-                            onClick={() => removeTripRow(row.id)}
-                          >
-                            <IconTrash size={11} />
-                          </ActionIcon>
-                        )}
-                      </Table.Td>
-                    </Table.Tr>
-                  ))}
-                </Table.Tbody>
-              </Table>
-            </Paper>
-
-            <Button
-              size="xs"
-              variant="light"
-              color="blue"
-              leftSection={<IconPlus size={11} />}
-              styles={{
-                root: { height: 28 },
-                label: { fontSize: "10px", fontWeight: 700 },
-              }}
-              onClick={addTripRow}
-            >
-              Add Row
-            </Button>
-
-            <Group justify="space-between" mt="xs">
-              <Button
-                size="xs"
-                variant="subtle"
-                color="gray"
-                styles={{
-                  root: { height: 30 },
-                  label: { fontSize: "10px", fontWeight: 700 },
-                }}
-                onClick={() => setActiveTab("odometer")}
-              >
-                ← Back
-              </Button>
               <Button
                 size="xs"
                 variant="light"
@@ -807,9 +585,9 @@ export function OdoModal({
                   root: { height: 30 },
                   label: { fontSize: "10px", fontWeight: 700 },
                 }}
-                onClick={() => setActiveTab("trips")}
+                onClick={() => setActiveTab("odometer")}
               >
-                ← Back
+                ← Back 
               </Button>
               <Button
                 color="blue.6"

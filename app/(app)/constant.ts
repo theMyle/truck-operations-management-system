@@ -1,25 +1,39 @@
 export interface DispatchRecord {
   id: number;
-  tripRate: string;
   date: string;
+  pickUpTime?: string;
   client: string;
+  trucker?: string;
   driver: string;
   helper: string;
   unit: string;
   plateNo: string;
+  totalKM?: number;
   ruta: string;
   bookingDr: string;
+  pickLocation?: string;
+  dropOffLocation?: string;
   noOfDrops: number;
+  tripRate?: string;
+  bookedBy?: string;
   status: "Completed" | "In Transit" | "Pending";
-  bookedBy: string;
+  arrivalPickup?: string;
+  loadingStart?: string;
+  loadingEnd?: string;
+  departurePickup?: string;
+  finishDelivery?: string;
+  deliveryStatus?: string;
+  tripRemarks?: string;
 }
 
 export const MOCK_RECORDS: DispatchRecord[] = [
   {
     id: 1,
     date: "2025-05-01",
+    pickUpTime: "08:00 AM",
     client: "Flash Express",
     driver: "Alvin Paluga",
+    totalKM: 120,
     helper: "Chester Evasco",
     unit: "Alawa Trucking",
     plateNo: "ABC 1234",
@@ -35,6 +49,7 @@ export const MOCK_RECORDS: DispatchRecord[] = [
     date: "2025-05-02",
     client: "IPI",
     driver: "Noel Asumbrado",
+    totalKM: 85,
     helper: "Ramil Diana",
     unit: "Gerald Roco",
     plateNo: "XYZ 5678",
@@ -50,8 +65,9 @@ export const MOCK_RECORDS: DispatchRecord[] = [
     date: "2025-05-03",
     client: "Inteluck Corp",
     driver: "Ricky Pantua",
+    totalKM: 150,
     helper: "No Helper",
-    unit: "Kris Domingo",
+    unit: "Allawa Trucking",
     plateNo: "LMN 9012",
     ruta: "Pasig – Batangas",
     bookingDr: "IC-2025-0087",
@@ -65,6 +81,7 @@ export const MOCK_RECORDS: DispatchRecord[] = [
     date: "2025-05-04",
     client: "KTS Rentals",
     driver: "Gerald Roco",
+    totalKM: 200,
     helper: "Jeric Juanico",
     unit: "Lito Diana",
     plateNo: "PQR 3456",
@@ -80,6 +97,7 @@ export const MOCK_RECORDS: DispatchRecord[] = [
     date: "2025-05-05",
     client: "Transportify",
     driver: "Romano Ancheta",
+    totalKM: 180,
     helper: "Richard Roda",
     unit: "Rochele Flores",
     plateNo: "DEF 7890",
@@ -95,6 +113,7 @@ export const MOCK_RECORDS: DispatchRecord[] = [
     date: "2025-05-06",
     client: "XMD Logistics",
     driver: "Rommel Lumacang",
+    totalKM: 95,
     helper: "Felipe Guban",
     unit: "Alawa Trucking",
     plateNo: "GHI 2345",
@@ -109,7 +128,8 @@ export const MOCK_RECORDS: DispatchRecord[] = [
     id: 7,
     date: "2025-05-07",
     client: "Urenholt",
-    driver: "Jomarie Divina",
+    driver: "Jomarie Divina", 
+    totalKM: 300,
     helper: "Rizalito Domingo",
     unit: "Gerald Roco",
     plateNo: "JKL 6789",
@@ -125,6 +145,7 @@ export const MOCK_RECORDS: DispatchRecord[] = [
     date: "2025-05-08",
     client: "Flash Express",
     driver: "Lim Ubal",
+    totalKM: 110,
     helper: "Vince Marzonia",
     unit: "Kris Domingo",
     plateNo: "MNO 1357",
@@ -164,5 +185,168 @@ export const MOCK_RECORDS: DispatchRecord[] = [
     status: "Completed",
     bookedBy: "Admin User",
     tripRate: "₱28,000",
+  },
+];
+
+export const MOCK_RECORDS_BOOKING: DispatchRecord[] = [
+  {
+    id: 1,
+    date: "2025-05-01",
+    client: "Flash Express",
+    driver: "Alvin Paluga",
+    totalKM: 120,
+    helper: "Chester Evasco",
+    unit: "Alawa Trucking",
+    plateNo: "ABC 1234",
+    ruta: "Manila – Laguna",
+    bookingDr: "FE-2025-0001",
+    noOfDrops: 4,
+    status: "Completed",
+    deliveryStatus: "Completed",
+    tripRate: "3,500",
+    bookedBy: "Admin",
+  },
+  {
+    id: 2,
+    date: "2025-05-02",
+    client: "IPI",
+    driver: "Noel Asumbrado",
+    totalKM: 85,
+    helper: "Ramil Diana",
+    unit: "Gerald Roco",
+    plateNo: "XYZ 5678",
+    ruta: "Quezon City – Cavite",
+    bookingDr: "IPI-2025-0042",
+    noOfDrops: 6,
+    status: "Completed",
+    deliveryStatus: "Completed",
+    tripRate: "4,200",
+    bookedBy: "Dispatcher",
+  },
+  {
+    id: 3,
+    date: "2025-05-03",
+    client: "Inteluck Corp",
+    driver: "Ricky Pantua",
+    totalKM: 150,
+    helper: "No Helper",
+    unit: "Kris Domingo",
+    plateNo: "LMN 9012",
+    ruta: "Pasig – Batangas",
+    bookingDr: "IC-2025-0087",
+    noOfDrops: 3,
+    status: "In Transit",
+    tripRate: "2,900",
+    bookedBy: "Dispatcher",
+  },
+  {
+    id: 4,
+    date: "2025-05-04",
+    client: "KTS Rentals",
+    driver: "Gerald Roco",
+    helper: "Jeric Juanico",
+    unit: "Lito Diana",
+    plateNo: "PQR 3456",
+    ruta: "Makati – Pampanga",
+    bookingDr: "KTS-2025-0015",
+    noOfDrops: 2,
+    status: "Completed",
+    deliveryStatus: "Completed",
+    tripRate: "5,800",
+    bookedBy: "Admin",
+  },
+  {
+    id: 5,
+    date: "2025-05-05",
+    client: "Transportify",
+    driver: "Romano Ancheta",
+    totalKM: 180,
+    helper: "Richard Roda",
+    unit: "Rochele Flores",
+    plateNo: "DEF 7890",
+    ruta: "Taguig – Bulacan",
+    bookingDr: "TF-2025-0203",
+    noOfDrops: 8,
+    status: "Pending",
+    tripRate: "4,500",
+    bookedBy: "Admin",
+  },
+  {
+    id: 6,
+    date: "2025-05-06",
+    client: "XMD Logistics",
+    driver: "Rommel Lumacang",
+    helper: "Felipe Guban",
+    unit: "Alawa Trucking",
+    plateNo: "GHI 2345",
+    ruta: "Valenzuela – Rizal",
+    bookingDr: "XMD-2025-0098",
+    noOfDrops: 5,
+    status: "Completed",
+    deliveryStatus: "Completed",
+    tripRate: "3,100",
+    bookedBy: "Dispatcher",
+  },
+  {
+    id: 7,
+    date: "2025-05-07",
+    client: "Urenholt",
+    driver: "Jomarie Divina",
+    helper: "Rizalito Domingo",
+    unit: "Gerald Roco",
+    plateNo: "JKL 6789",
+    ruta: "Manila – Cebu (Sea)",
+    bookingDr: "UR-2025-0011",
+    noOfDrops: 1,
+    status: "In Transit",
+    tripRate: "7,200",
+    bookedBy: "Admin",
+  },
+  {
+    id: 8,
+    date: "2025-05-08",
+    client: "Flash Express",
+    driver: "Lim Ubal",
+    helper: "Vince Marzonia",
+    unit: "Kris Domingo",
+    plateNo: "MNO 1357",
+    ruta: "Caloocan – Laguna",
+    bookingDr: "FE-2025-0009",
+    noOfDrops: 7,
+    status: "Completed",
+    deliveryStatus: "Completed",
+    tripRate: "2,750",
+    bookedBy: "Admin",
+  },
+  {
+    id: 9,
+    date: "2025-05-09",
+    client: "IPI",
+    driver: "Ever Bacvano",
+    helper: "James Eric Manabo",
+    unit: "Lito Diana",
+    plateNo: "STU 2468",
+    ruta: "Parañaque – Bataan",
+    bookingDr: "IPI-2025-0055",
+    noOfDrops: 4,
+    status: "Pending",
+    tripRate: "3,800",
+    bookedBy: "Dispatcher",
+  },
+  {
+    id: 10,
+    date: "2025-05-10",
+    client: "Transportify",
+    driver: "Edcel Ralo",
+    helper: "No Helper",
+    unit: "Rochele Flores",
+    plateNo: "VWX 9753",
+    ruta: "Mandaluyong – Nueva Ecija",
+    bookingDr: "TF-2025-0214",
+    noOfDrops: 3,
+    status: "Completed",
+    deliveryStatus: "Completed",
+    tripRate: "6,000",
+    bookedBy: "Dispatcher",
   },
 ];
