@@ -7,21 +7,15 @@ import {
   Group,
   Paper,
   TextInput,
-  Table,
   Badge,
   Flex,
   Divider,
   Button,
   ScrollArea,
   NumberInput,
-  Combobox,
-  InputBase,
-  useCombobox,
-  Modal,
   SimpleGrid,
   Popover,
   ActionIcon,
-  Loader,
 } from "@mantine/core";
 import { DatePicker, type DateValue } from "@mantine/dates";
 import { notifications } from "@mantine/notifications";
@@ -30,7 +24,6 @@ import React, { useState, useCallback, useEffect } from "react";
 import {
   IconPlus,
   IconCheck,
-  IconEdit,
   IconEye,
   IconX,
   IconCalendar,
@@ -38,6 +31,11 @@ import {
 } from "@tabler/icons-react";
 import "@mantine/dates/styles.css";
 import { useDispatch } from "../context/dispatch-context";
+import { CreatableSelect } from "@/components/dispatch/CreatableSelect";
+import { LocationSearch } from "@/components/dispatch/LocationSearch";
+import { CardHeader } from "@/components/dispatch/CardHeader";
+import { ReviewModal } from "@/components/dispatch/ReviewModal";
+import { TimePickerInput } from "@/components/dispatch/TimePickerInput";
 
 interface DropOff {
   id: number;
@@ -84,436 +82,14 @@ const DEFAULT_HELPERS = [
 ];
 
 const DEFAULT_UNIT_TYPES = [
-  "Alawa Trucking",
-  "Gerald Roco",
-  "Kris Domingo",
-  "Lito Diana",
-  "Rochele Flores",
+  "FB Type",
+  "6W CV",
+  "6W Forward",
+  "10W Wing",
+  "Van",
+  "4W CV",
 ];
 
-/* ── Creatable Select component ── */
-function CreatableSelect({
-  label,
-  placeholder,
-  data: initialData,
-  value,
-  onChange,
-  styles: externalStyles,
-  error,
-}: {
-  label: string;
-  placeholder: string;
-  data: string[];
-  value: string | null;
-  onChange: (val: string | null) => void;
-  styles?: Record<string, React.CSSProperties>;
-  error?: string;
-}) {
-  const combobox = useCombobox({
-    onDropdownClose: () => combobox.resetSelectedOption(),
-  });
-
-  const [data, setData] = useState(initialData);
-  const [search, setSearch] = useState(value || "");
-
-  const exactMatch = data.some(
-    (item) => item.toLowerCase() === search.toLowerCase().trim(),
-  );
-
-  const filtered = data.filter((item) =>
-    item.toLowerCase().includes(search.toLowerCase().trim()),
-  );
-
-  const options = filtered.map((item) => (
-    <Combobox.Option value={item} key={item}>
-      <Text style={{ fontSize: "11px" }} fw={600}>
-        {item}
-      </Text>
-    </Combobox.Option>
-  ));
-
-  return (
-    <Combobox
-      store={combobox}
-      withinPortal={true}
-      onOptionSubmit={(val) => {
-        if (val === "$create") {
-          const trimmed = search.trim();
-          setData((prev) => [...prev, trimmed]);
-          onChange(trimmed);
-          setSearch(trimmed);
-        } else {
-          onChange(val);
-          setSearch(val);
-        }
-        combobox.closeDropdown();
-      }}
-    >
-      <Combobox.Target>
-        <InputBase
-          label={label}
-          placeholder={placeholder}
-          rightSection={<Combobox.Chevron />}
-          rightSectionPointerEvents="none"
-          value={search}
-          onChange={(e) => {
-            combobox.openDropdown();
-            combobox.updateSelectedOptionIndex();
-            setSearch(e.currentTarget.value);
-          }}
-          onClick={() => combobox.openDropdown()}
-          onFocus={() => combobox.openDropdown()}
-          onBlur={() => {
-            combobox.closeDropdown();
-            setSearch(value || "");
-          }}
-          styles={externalStyles}
-          error={error}
-        />
-      </Combobox.Target>
-
-      <Combobox.Dropdown>
-        <Combobox.Options mah={200} style={{ overflowY: "auto" }}>
-          {options}
-          {!exactMatch && search.trim().length > 0 && (
-            <Combobox.Option value="$create">
-              <Group gap={6}>
-                <IconPlus size={10} color="var(--mantine-color-blue-6)" />
-                <Text style={{ fontSize: "11px" }} fw={600} c="blue.6">
-                  Add &ldquo;{search.trim()}&rdquo;
-                </Text>
-              </Group>
-            </Combobox.Option>
-          )}
-          {options.length === 0 && search.trim().length === 0 && (
-            <Combobox.Empty>
-              <Text style={{ fontSize: "11px" }} c="dimmed">
-                No options
-              </Text>
-            </Combobox.Empty>
-          )}
-        </Combobox.Options>
-      </Combobox.Dropdown>
-    </Combobox>
-  );
-}
-
-/* ── Review Modal ── */
-function ReviewModal({
-  opened,
-  onClose,
-  onConfirm,
-  onEdit,
-  data,
-}: {
-  opened: boolean;
-  onClose: () => void;
-  onConfirm: () => void;
-  onEdit: () => void;
-  data: Record<string, string>;
-}) {
-  const sections = [
-    {
-      title: "Trip Booking Details",
-      rows: [
-        { label: "Client (Kliyente)", key: "client" },
-        { label: "Route (Ruta)", key: "ruta" },
-        { label: "Booking / DR#", key: "bookingDr" },
-        { label: "Pickup Location", key: "pickupLocation" },
-        { label: "Drop-off Points", key: "dropOffs" },
-        { label: "No. of Drops", key: "noOfDrops" },
-        { label: "Unit", key: "unit" },
-        { label: "Plate #", key: "plateNo" },
-        { label: "Driver", key: "driver" },
-        { label: "Helper", key: "helper" },
-        { label: "Pickup Date", key: "pickupDate" },
-      ],
-    },
-  ];
-
-  return (
-    <Modal
-      opened={opened}
-      onClose={onClose}
-      title={
-        <Group gap={8}>
-          <IconEye size={16} color="var(--mantine-color-blue-6)" />
-          <Text fw={700} style={{ fontSize: "13px" }} tt="uppercase" lts={0.5}>
-            Review Dispatch Submission
-          </Text>
-        </Group>
-      }
-      size="lg"
-      radius="md"
-      centered
-      scrollAreaComponent={ScrollArea.Autosize}
-    >
-      <Stack gap="md">
-        <Text style={{ fontSize: "11px" }} c="dimmed">
-          Please review all details below before confirming. Click{" "}
-          <strong>Edit</strong> to go back and make changes.
-        </Text>
-
-        {sections.map((section) => {
-          // Only render section if at least one field has a value
-          const hasValues = section.rows.some((r) => data[r.key]);
-          if (!hasValues) return null;
-
-          return (
-            <Box key={section.title}>
-              <Text
-                fw={800}
-                style={{ fontSize: "9px" }}
-                tt="uppercase"
-                lts={1}
-                c="blue.6"
-                mb={6}
-              >
-                {section.title}
-              </Text>
-              <Paper
-                withBorder
-                radius="sm"
-                p={0}
-                style={{ overflow: "hidden" }}
-              >
-                <Table
-                  styles={{
-                    td: { padding: "6px 12px", fontSize: "11px" },
-                    th: { padding: "6px 12px", fontSize: "10px" },
-                  }}
-                >
-                  <Table.Tbody>
-                    {section.rows.map((row) => (
-                      <Table.Tr key={row.key}>
-                        <Table.Td
-                          style={{
-                            width: "45%",
-                            color: "var(--mantine-color-gray-6)",
-                            fontWeight: 600,
-                            backgroundColor: "var(--mantine-color-gray-0)",
-                            borderRight:
-                              "1px solid var(--mantine-color-gray-2)",
-                          }}
-                        >
-                          {row.label}
-                        </Table.Td>
-                        <Table.Td
-                          style={{
-                            fontWeight: 700,
-                            color:
-                              data[row.key] && data[row.key]
-                                ? "var(--mantine-color-gray-9)"
-                                : "var(--mantine-color-gray-4)",
-                          }}
-                        >
-                          {data[row.key] || "—"}
-                        </Table.Td>
-                      </Table.Tr>
-                    ))}
-                  </Table.Tbody>
-                </Table>
-              </Paper>
-            </Box>
-          );
-        })}
-
-        <Divider />
-
-        <Group justify="flex-end" gap="sm">
-          <Button
-            variant="light"
-            color="gray"
-            leftSection={<IconEdit size={14} />}
-            styles={{
-              root: { height: 34 },
-              label: { fontSize: "11px", fontWeight: 700 },
-            }}
-            onClick={onEdit}
-          >
-            Edit
-          </Button>
-          <Button
-            color="blue.6"
-            leftSection={<IconCheck size={14} />}
-            styles={{
-              root: { height: 34 },
-              label: { fontSize: "11px", fontWeight: 700 },
-            }}
-            onClick={onConfirm}
-          >
-            Confirm & Submit
-          </Button>
-        </Group>
-      </Stack>
-    </Modal>
-  );
-}
-
-const CardHeader = ({
-  title,
-  subtitle,
-  icon,
-}: {
-  title: string;
-  subtitle?: React.ReactNode;
-  icon?: React.ReactNode;
-}) => (
-  <Box mb="sm">
-    <Group justify="space-between" align="center">
-      <Group gap={6}>
-        {icon}
-        <Text
-          fw={700}
-          style={{ fontSize: "10px" }}
-          c="gray.9"
-          tt="uppercase"
-          lts={1}
-        >
-          {title}
-        </Text>
-      </Group>
-      {subtitle &&
-        (typeof subtitle === "string" ? (
-          <Text style={{ fontSize: "10px" }} c="dimmed">
-            {subtitle}
-          </Text>
-        ) : (
-          subtitle
-        ))}
-    </Group>
-  </Box>
-);
-
-function LocationSearch({
-  label,
-  placeholder,
-  value,
-  onChange,
-  error,
-  leftSection,
-  rightAction,
-}: {
-  label: string;
-  placeholder: string;
-  value: string;
-  onChange: (val: string) => void;
-  error?: string;
-  leftSection?: React.ReactNode;
-  rightAction?: React.ReactNode;
-}) {
-  const [query, setQuery] = useState(value);
-  const [suggestions, setSuggestions] = useState<{ display_name: string }[]>(
-    [],
-  );
-  const [loading, setLoading] = useState(false);
-  const debounceRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const search = (q: string) => {
-    setQuery(q);
-    onChange(q); // keep parent in sync as user types
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    if (q.trim().length < 3) {
-      setSuggestions([]);
-      return;
-    }
-
-    debounceRef.current = setTimeout(async () => {
-      setLoading(true);
-      try {
-        const res = await fetch(
-          `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&addressdetails=1&limit=5&countrycodes=ph`,
-          { headers: { "Accept-Language": "en" } },
-        );
-        const data = await res.json();
-        setSuggestions(data);
-      } catch {
-        setSuggestions([]);
-      } finally {
-        setLoading(false);
-      }
-    }, 400);
-  };
-
-  const select = (display_name: string) => {
-    setQuery(display_name);
-    onChange(display_name);
-    setSuggestions([]);
-  };
-
-  return (
-    <Box style={{ position: "relative" }}>
-      {/* Label row with optional right action */}
-      <Group justify="space-between" align="center" mb={4}>
-        <Text
-          style={{
-            fontSize: "10px",
-            fontWeight: 700,
-            color: "var(--mantine-color-gray-7)",
-            textTransform: "uppercase",
-            letterSpacing: "0.5px",
-          }}
-        >
-          {label}
-        </Text>
-        {rightAction}
-      </Group>
-      <TextInput
-        placeholder={placeholder}
-        value={query}
-        onChange={(e) => search(e.currentTarget.value)}
-        error={error}
-        leftSection={leftSection}
-        rightSection={loading ? <Loader size={12} /> : null}
-        styles={{
-          input: { fontSize: "11px", fontWeight: 600 },
-        }}
-      />
-      {/* suggestions dropdown unchanged */}
-      {suggestions.length > 0 && (
-        <Paper
-          withBorder
-          shadow="md"
-          radius="sm"
-          style={{
-            position: "absolute",
-            top: "100%",
-            left: 0,
-            right: 0,
-            zIndex: 300,
-            maxHeight: 200,
-            overflowY: "auto",
-          }}
-        >
-          {suggestions.map((s, i) => (
-            <Box
-              key={i}
-              px="sm"
-              py={6}
-              style={{
-                cursor: "pointer",
-                fontSize: "11px",
-                fontWeight: 500,
-                borderBottom:
-                  i < suggestions.length - 1
-                    ? "1px solid var(--mantine-color-gray-2)"
-                    : "none",
-              }}
-              onMouseDown={() => select(s.display_name)}
-              onMouseEnter={(e) =>
-                (e.currentTarget.style.backgroundColor =
-                  "var(--mantine-color-gray-0)")
-              }
-              onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "")}
-            >
-              {s.display_name}
-            </Box>
-          ))}
-        </Paper>
-      )}
-    </Box>
-  );
-}
 export default function DispatchPage() {
   const router = useRouter();
 
@@ -523,13 +99,16 @@ export default function DispatchPage() {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [selectedHelper, setSelectedHelper] = useState<string | null>(null);
   const [selectedUnit, setSelectedUnit] = useState<string | null>(null);
-
+  const [selectedTruckerName, setSelectedTruckerName] = useState("");
   /* ── Field value state ── */
 
   const [ruta, setRuta] = useState("");
   const [bookingDr, setBookingDr] = useState("");
   const [noOfDrops, setNoOfDrops] = useState<string | number>("");
+  const [pickupTime, setPickupTime] = useState("");
   const [plateNo, setPlateNo] = useState("");
+  const [clientRate, setClientRate] = useState("");
+  const [selectedTruckerRate, setSelectedTruckerRate] = useState("");
 
   /* ── Error state ── */
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -572,16 +151,29 @@ export default function DispatchPage() {
     if (!pickupLocation.trim())
       e.pickupLocation = "Pickup location is required";
     if (!selectedClient) e.client = "Client is required";
+    if (!selectedTruckerName) e.truckerName = "Trucker name is required";
+    if (
+      !clientRate.trim() ||
+      isNaN(Number(clientRate)) ||
+      Number(clientRate) <= 0
+    )
+      e.clientRate = "Valid client rate is required";
     if (!ruta.trim()) e.ruta = "Route is required";
     if (!bookingDr.trim()) e.bookingDr = "Booking / DR# is required";
     if (!noOfDrops || Number(noOfDrops) < 1)
       e.noOfDrops = "At least 1 drop required";
-    if (!selectedUnit) e.unit = "Unit is required";
+    if (!selectedUnit) e.unit = "Trucker is required";
     if (!plateNo.trim()) e.plateNo = "Plate number is required";
     else if (!/^[A-Za-z0-9 -]{3,}$/.test(plateNo.trim()))
       e.plateNo = "Invalid plate format (min 3 characters)";
     if (!selectedDriver) e.driver = "Driver is required";
     if (!pickupDate) e.pickupDate = "Pickup date is required";
+    if (
+      !selectedTruckerRate.trim() ||
+      isNaN(Number(selectedTruckerRate)) ||
+      Number(selectedTruckerRate) <= 0
+    )
+      e.truckerRate = "Valid trucker rate is required";
 
     // Validate at least one drop-off has a location
     const hasValidDrop = dropOffs.some((d) => d.location.trim());
@@ -601,6 +193,9 @@ export default function DispatchPage() {
     selectedDriver,
     pickupDate,
     dropOffs,
+    clientRate,
+    selectedTruckerName,
+    selectedTruckerRate,
   ]);
 
   const addDropOff = () => {
@@ -817,7 +412,7 @@ export default function DispatchPage() {
 
               <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm" mb="sm">
                 <CreatableSelect
-                  label="Kliyente"
+                  label="Client"
                   placeholder="Search or add client"
                   data={DEFAULT_CLIENTS}
                   value={selectedClient}
@@ -829,15 +424,15 @@ export default function DispatchPage() {
                   error={errors.client}
                 />
                 <TextInput
-                  label="Ruta"
-                  placeholder="Enter route"
+                  label="Client Rate"
+                  placeholder="Enter client rate"
                   styles={inputStyles}
-                  value={ruta}
+                  value={clientRate}
                   onChange={(e) => {
-                    setRuta(e.currentTarget.value);
-                    if (e.currentTarget.value.trim()) clearError("ruta");
+                    setClientRate(e.currentTarget.value);
+                    if (e.currentTarget.value.trim()) clearError("clientRate");
                   }}
-                  error={errors.ruta}
+                  error={errors.clientRate}
                 />
               </SimpleGrid>
 
@@ -889,7 +484,10 @@ export default function DispatchPage() {
                                   leftSection={<IconPlus size={12} />}
                                   styles={{
                                     root: { height: 18, padding: "0 6px" },
-                                    label: { fontSize: "10px", fontWeight: 700 },
+                                    label: {
+                                      fontSize: "10px",
+                                      fontWeight: 700,
+                                    },
                                   }}
                                   onClick={addDropOff}
                                 >
@@ -912,7 +510,6 @@ export default function DispatchPage() {
                       </Paper>
                     ))}
                   </Stack>
-
 
                   {errors.dropOffs && (
                     <Text style={{ fontSize: "11px" }} c="red" mt={4}>
@@ -948,40 +545,59 @@ export default function DispatchPage() {
                   error={errors.noOfDrops}
                 />
 
-                <Popover
-                  position="bottom-start"
-                  shadow="md"
-                  radius="md"
-                  withinPortal
-                >
-                  <Popover.Target>
-                    <TextInput
-                      label="Pickup Date"
-                      placeholder="Select date"
-                      readOnly
-                      value={formatDate(pickupDate)}
-                      rightSection={
-                        <IconCalendar
-                          size={14}
-                          color="var(--mantine-color-gray-5)"
-                        />
-                      }
-                      styles={inputStyles}
-                      error={errors.pickupDate}
-                      style={{ cursor: "pointer" }}
-                    />
-                  </Popover.Target>
+                <Group gap={4} align="flex-start" grow>
+                  <Popover
+                    position="bottom-start"
+                    shadow="md"
+                    radius="md"
+                    withinPortal
+                  >
+                    <Popover.Target>
+                      <TextInput
+                        label="Pickup Date"
+                        placeholder="Select date"
+                        readOnly
+                        value={formatDate(pickupDate)}
+                        rightSection={
+                          <IconCalendar
+                            size={14}
+                            color="var(--mantine-color-gray-5)"
+                          />
+                        }
+                        styles={inputStyles}
+                        error={errors.pickupDate}
+                        style={{ cursor: "pointer" }}
+                      />
+                    </Popover.Target>
 
-                  <Popover.Dropdown p="sm">
-                    <DatePicker value={pickupDate} onChange={setPickupDate} />
-                  </Popover.Dropdown>
-                </Popover>
+                    <Popover.Dropdown p="sm">
+                      <DatePicker value={pickupDate} onChange={setPickupDate} />
+                    </Popover.Dropdown>
+                  </Popover>
+                  <TimePickerInput
+                    label="Pick up time"
+                    value={pickupTime}
+                    onChange={setPickupTime}
+                    error={errors.pickupTime}
+                  />
+                </Group>
               </SimpleGrid>
 
-              <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm" mb="sm">
+              <SimpleGrid cols={{ base: 1, sm: 2, md: 4 }} spacing="sm" mb="sm">
+                <TextInput
+                  label="Trucker Name"
+                  placeholder="Enter trucker name"
+                  styles={inputStyles}
+                  value={selectedTruckerName}
+                  onChange={(e) => {
+                    setSelectedTruckerName(e.currentTarget.value);
+                    if (e.currentTarget.value.trim()) clearError("truckerName");
+                  }}
+                  error={errors.truckerName}
+                />
                 <CreatableSelect
-                  label="Unit"
-                  placeholder="Search or add unit"
+                  label="Trucker"
+                  placeholder="Search or add trucker"
                   data={DEFAULT_UNIT_TYPES}
                   value={selectedUnit}
                   onChange={(val) => {
@@ -990,6 +606,17 @@ export default function DispatchPage() {
                   }}
                   styles={inputStyles}
                   error={errors.unit}
+                />
+                <TextInput
+                  label="Trucker's Rate (₱)"
+                  placeholder="Amount"
+                  styles={inputStyles}
+                  value={selectedTruckerRate}
+                  onChange={(e) => {
+                    setSelectedTruckerRate(e.currentTarget.value);
+                    if (e.currentTarget.value.trim()) clearError("truckerRate");
+                  }}
+                  error={errors.truckerRate}
                 />
                 <TextInput
                   label="Plate#"
@@ -1116,6 +743,18 @@ export default function DispatchPage() {
                 >
                   Review & Submit
                 </Button>
+
+                <Text
+                  ml="auto"
+                  fz={inputStyles?.label?.fontSize ?? "11px"}
+                  fw={inputStyles?.label?.fontWeight ?? 600}
+                  c="dimmed"
+                >
+                  Booked by:{" "}
+                  <Badge size="xs" variant="light" color="blue" radius="sm">
+                    Admin
+                  </Badge>
+                </Text>
               </Group>
             </Paper>
           </Flex>
