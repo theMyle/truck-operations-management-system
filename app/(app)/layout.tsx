@@ -47,7 +47,7 @@ export default function DashboardLayout({
 
   const navItems = [
     { label: "Dashboard", icon: IconDashboard, href: "/dashboard" },
-    { label: "Dispatch", icon: IconSend, href: "/dispatch" },
+    { label: "Booking Form", icon: IconSend, href: "/dispatch" },
     { label: "Booking List", icon: IconTruckDelivery, href: "/booking" },
     { label: "Trip Logs", icon: IconRoute, href: "/trip-logs" },
     { label: "Billing", icon: IconReceipt2, href: "/billing" },
