@@ -215,12 +215,7 @@ export function TripDetailsModal({
           >
             Timeline
           </Text>
-          <SimpleGrid cols={2} spacing="md">
-            <TimeField
-              label="Pick Up Time"
-              value={form.pickUpTime}
-              onChange={(v) => set("pickUpTime", v)}
-            />
+         <SimpleGrid cols={2} spacing="sm" verticalSpacing="sm">
             <TimeField
               label="Arrival at Pick Up"
               value={form.arrivalPickup}
@@ -241,12 +236,13 @@ export function TripDetailsModal({
               value={form.departurePickup}
               onChange={(v) => set("departurePickup", v)}
             />
-            <TimeField
+          </SimpleGrid>
+          <Divider/>
+           <TimeField
               label="Finish Delivery Time"
               value={form.finishDelivery}
               onChange={(v) => set("finishDelivery", v)}
             />
-          </SimpleGrid>
         </Paper>
 
         <Paper
