@@ -13,6 +13,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
 import { eq } from "drizzle-orm";
+import { deleteFileFromUrl } from "@/actions/file-upload";
 
 
 // Clients
@@ -93,6 +94,15 @@ export const updateDriver = actionClient
 export const deleteDriver = actionClient
   .schema(z.object({ id: z.string() }))
   .action(async ({ parsedInput }) => {
+    // 1. Fetch the driver to get the image URLs
+    const [driver] = await db.select().from(drivers).where(eq(drivers.id, parsedInput.id));
+    if (driver) {
+      // 2. Delete the images from Supabase Storage
+      await deleteFileFromUrl(driver.idFrontLink);
+      await deleteFileFromUrl(driver.idBackLink);
+    }
+    
+    // 3. Delete the driver from the database
     await db.delete(drivers).where(eq(drivers.id, parsedInput.id));
     revalidatePath("/registration");
   });
@@ -120,6 +130,15 @@ export const updateHelper = actionClient
 export const deleteHelper = actionClient
   .schema(z.object({ id: z.string() }))
   .action(async ({ parsedInput }) => {
+    // 1. Fetch the helper to get the image URLs
+    const [helper] = await db.select().from(helpers).where(eq(helpers.id, parsedInput.id));
+    if (helper) {
+      // 2. Delete the images from Supabase Storage
+      await deleteFileFromUrl(helper.idFrontLink);
+      await deleteFileFromUrl(helper.idBackLink);
+    }
+    
+    // 3. Delete the helper from the database
     await db.delete(helpers).where(eq(helpers.id, parsedInput.id));
     revalidatePath("/registration");
   });

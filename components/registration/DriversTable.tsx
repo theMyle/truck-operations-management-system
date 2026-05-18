@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Box, Group, Tooltip, ActionIcon, Text } from "@mantine/core";
-import { IconUser, IconPencil, IconTrash } from "@tabler/icons-react";
+import { IconUser, IconPencil, IconTrash, IconEdit } from "@tabler/icons-react";
 import { DataTable } from "mantine-datatable";
 import { useDisclosure } from "@mantine/hooks";
 import { modals } from "@mantine/modals";
@@ -133,7 +133,7 @@ export function DriversTable({ data }: Props) {
                       color="blue"
                       onClick={() => setEditDriver(row)}
                     >
-                      <IconPencil size={13} />
+                      <IconEdit size={13} />
                     </ActionIcon>
                   </Tooltip>
                   <Tooltip label="Delete" withArrow fz={10}>
