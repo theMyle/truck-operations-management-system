@@ -158,6 +158,18 @@ export function HelpersTable({ data }: Props) {
                 </Text>
               ),
             },
+            {
+              accessor: "contactNumber",
+              title: "Contact",
+            },
+            {
+              accessor: "emergencyContact",
+              title: "Emergency",
+            },
+            {
+              accessor: "address",
+              title: "Address",
+            },
           ]}
         />
       </Box>

@@ -14,7 +14,8 @@ import { z } from "zod";
 
 import { eq } from "drizzle-orm";
 
-// ── Clients ──────────────────────────────────────────────────────────────────
+
+// Clients
 export const createClient = actionClient
   .schema(insertClientSchema.omit({ id: true, createdAt: true, updatedAt: true }))
   .action(async ({ parsedInput }) => {
@@ -40,7 +41,8 @@ export const deleteClient = actionClient
     revalidatePath("/registration");
   });
 
-// ── Trucks ───────────────────────────────────────────────────────────────────
+
+// Trucks
 export const createTruck = actionClient
   .schema(
     insertTruckSchema.omit({ createdAt: true, updatedAt: true })
@@ -68,7 +70,8 @@ export const deleteTruck = actionClient
     revalidatePath("/registration");
   });
 
-// ── Drivers ──────────────────────────────────────────────────────────────────
+
+// Drivers
 export const createDriver = actionClient
   .schema(insertDriverSchema.omit({ id: true, createdAt: true, updatedAt: true }))
   .action(async ({ parsedInput }) => {
@@ -77,10 +80,10 @@ export const createDriver = actionClient
   });
 
 export const updateDriver = actionClient
-  .schema(insertDriverSchema.pick({ id: true, driverName: true }).extend({ id: z.string() }))
+  .schema(insertDriverSchema.omit({ createdAt: true, updatedAt: true }).extend({ id: z.string() }))
   .action(async ({ parsedInput }) => {
     const [updated] = await db.update(drivers)
-      .set({ driverName: parsedInput.driverName, updatedAt: new Date() })
+      .set({ ...parsedInput, updatedAt: new Date() })
       .where(eq(drivers.id, parsedInput.id))
       .returning();
     revalidatePath("/registration");
@@ -94,7 +97,8 @@ export const deleteDriver = actionClient
     revalidatePath("/registration");
   });
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
+
+// Helpers
 export const createHelper = actionClient
   .schema(insertHelperSchema.omit({ id: true, createdAt: true, updatedAt: true }))
   .action(async ({ parsedInput }) => {
@@ -103,10 +107,10 @@ export const createHelper = actionClient
   });
 
 export const updateHelper = actionClient
-  .schema(insertHelperSchema.pick({ id: true, helperName: true }).extend({ id: z.string() }))
+  .schema(insertHelperSchema.omit({ createdAt: true, updatedAt: true }).extend({ id: z.string() }))
   .action(async ({ parsedInput }) => {
     const [updated] = await db.update(helpers)
-      .set({ helperName: parsedInput.helperName, updatedAt: new Date() })
+      .set({ ...parsedInput, updatedAt: new Date() })
       .where(eq(helpers.id, parsedInput.id))
       .returning();
     revalidatePath("/registration");

@@ -16,15 +16,16 @@ interface Props {
 
 export function EditDriverModal({ opened, onClose, driver }: Props) {
   const form = useForm({
-    initialValues: { driverName: "" },
+    initialValues: { driverName: "", contactNumber: "", emergencyContact: "", address: "" },
     validate: {
       driverName: (v) => (v.trim().length < 1 ? "Driver name is required" : null),
+      address: (v) => (v.trim().length < 1 ? "Address is required" : null),
     },
   });
 
   useEffect(() => {
     if (driver) {
-      form.setValues({ driverName: driver.driverName });
+      form.setValues({ driverName: driver.driverName, contactNumber: driver.contactNumber || "", emergencyContact: driver.emergencyContact || "", address: driver.address || "" });
     }
   }, [driver]);
 
@@ -42,7 +43,7 @@ export function EditDriverModal({ opened, onClose, driver }: Props) {
     <Modal opened={opened} onClose={onClose} title="Edit Driver" centered>
       <form onSubmit={form.onSubmit((values) => {
         if (driver) {
-          execute({ id: driver.id, driverName: values.driverName });
+          execute({ id: driver.id, ...values });
         }
       })}>
         <Stack gap="sm">
@@ -50,6 +51,21 @@ export function EditDriverModal({ opened, onClose, driver }: Props) {
             label="Driver Name"
             placeholder="e.g. Juan dela Cruz"
             {...form.getInputProps("driverName")}
+          />
+          <TextInput
+            label="Contact Number"
+            placeholder="e.g. 0912 345 6789"
+            {...form.getInputProps("contactNumber")}
+          />
+          <TextInput
+            label="Emergency Contact"
+            placeholder="e.g. 0912 345 6789"
+            {...form.getInputProps("emergencyContact")}
+          />
+          <TextInput
+            label="Address"
+            placeholder="e.g. 123 Main St, Manila"
+            {...form.getInputProps("address")}
           />
           <Group justify="flex-end" mt="xs">
             <Button variant="default" onClick={onClose}>

@@ -66,16 +66,10 @@ export function AddTruckModal({ opened, onClose }: { opened: boolean; onClose: (
             {...form.getInputProps("fleetType")}
           />
           <TextInput
-            id="input-truck-unit-type"
-            label="Unit Type"
+            id="input-trucker-type"
+            label="Trucker"
             placeholder="e.g. Krisdomingo, Lito Diana"
             {...form.getInputProps("unitType")}
-          />
-          <Select
-            id="input-truck-status"
-            label="Status"
-            data={STATUS_OPTIONS}
-            {...form.getInputProps("status")}
           />
           <Group justify="flex-end" mt="xs">
             <Button variant="default" onClick={onClose}>

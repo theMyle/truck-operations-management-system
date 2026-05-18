@@ -16,15 +16,16 @@ interface Props {
 
 export function EditHelperModal({ opened, onClose, helper }: Props) {
   const form = useForm({
-    initialValues: { helperName: "" },
+    initialValues: { helperName: "", contactNumber: "", emergencyContact: "", address: "" },
     validate: {
       helperName: (v) => (v.trim().length < 1 ? "Helper name is required" : null),
+      address: (v) => (v.trim().length < 1 ? "Address is required" : null),
     },
   });
 
   useEffect(() => {
     if (helper) {
-      form.setValues({ helperName: helper.helperName });
+      form.setValues({ helperName: helper.helperName, contactNumber: helper.contactNumber || "", emergencyContact: helper.emergencyContact || "", address: helper.address || "" });
     }
   }, [helper]);
 
@@ -42,7 +43,7 @@ export function EditHelperModal({ opened, onClose, helper }: Props) {
     <Modal opened={opened} onClose={onClose} title="Edit Helper" centered>
       <form onSubmit={form.onSubmit((values) => {
         if (helper) {
-          execute({ id: helper.id, helperName: values.helperName });
+          execute({ id: helper.id, ...values });
         }
       })}>
         <Stack gap="sm">
@@ -50,6 +51,21 @@ export function EditHelperModal({ opened, onClose, helper }: Props) {
             label="Helper Name"
             placeholder="e.g. Pedro Santos"
             {...form.getInputProps("helperName")}
+          />
+          <TextInput
+            label="Contact Number"
+            placeholder="e.g. 0912 345 6789"
+            {...form.getInputProps("contactNumber")}
+          />
+          <TextInput
+            label="Emergency Contact"
+            placeholder="e.g. 0912 345 6789"
+            {...form.getInputProps("emergencyContact")}
+          />
+          <TextInput
+            label="Address"
+            placeholder="e.g. 123 Main St, Manila"
+            {...form.getInputProps("address")}
           />
           <Group justify="flex-end" mt="xs">
             <Button variant="default" onClick={onClose}>

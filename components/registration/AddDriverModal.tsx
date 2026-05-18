@@ -13,9 +13,10 @@ interface Props {
 
 export function AddDriverModal({ opened, onClose }: { opened: boolean; onClose: () => void }) {
   const form = useForm({
-    initialValues: { driverName: "" },
+    initialValues: { driverName: "", contactNumber: "", emergencyContact: "", address: "" },
     validate: {
       driverName: (v) => (v.trim().length < 1 ? "Driver name is required" : null),
+      address: (v) => (v.trim().length < 1 ? "Address is required" : null),
     },
   });
 
@@ -39,6 +40,21 @@ export function AddDriverModal({ opened, onClose }: { opened: boolean; onClose: 
             label="Driver Name"
             placeholder="e.g. Juan dela Cruz"
             {...form.getInputProps("driverName")}
+          />
+          <TextInput
+            label="Contact Number"
+            placeholder="e.g. 0912 345 6789"
+            {...form.getInputProps("contactNumber")}
+          />
+          <TextInput
+            label="Emergency Contact"
+            placeholder="e.g. 0912 345 6789"
+            {...form.getInputProps("emergencyContact")}
+          />
+          <TextInput
+            label="Address"
+            placeholder="e.g. 123 Main St, Manila"
+            {...form.getInputProps("address")}
           />
           <Group justify="flex-end" mt="xs">
             <Button variant="default" onClick={onClose}>
