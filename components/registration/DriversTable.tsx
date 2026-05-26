@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Box, Group, Tooltip, ActionIcon, Text } from "@mantine/core";
-import { IconUser, IconPencil, IconTrash, IconEdit } from "@tabler/icons-react";
+import { IconUser, IconPencil, IconTrash, IconEdit, IconEye } from "@tabler/icons-react";
 import { DataTable } from "mantine-datatable";
 import { useDisclosure } from "@mantine/hooks";
 import { modals } from "@mantine/modals";
@@ -12,6 +12,7 @@ import { deleteDriver } from "@/actions/registration";
 import { TableHeader } from "./TableHeader";
 import { AddDriverModal } from "./AddDriverModal";
 import { EditDriverModal } from "./EditDriverModal";
+import { ViewDriverModal } from "./ViewDriverModal";
 
 interface Props {
   data: Driver[];
@@ -23,6 +24,7 @@ const UNIFORM_TABLE_HEIGHT = "21rem";
 export function DriversTable({ data }: Props) {
   const [addOpened, { open: openAdd, close: closeAdd }] = useDisclosure(false);
   const [editDriver, setEditDriver] = useState<Driver | null>(null);
+  const [viewDriver, setViewDriver] = useState<Driver | null>(null);
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
 
@@ -70,6 +72,11 @@ export function DriversTable({ data }: Props) {
         onClose={() => setEditDriver(null)}
         driver={editDriver}
       />
+      <ViewDriverModal
+        opened={!!viewDriver}
+        onClose={() => setViewDriver(null)}
+        driver={viewDriver}
+      />
 
       <TableHeader
         icon={IconUser}
@@ -115,7 +122,7 @@ export function DriversTable({ data }: Props) {
             {
               accessor: "actions",
               title: "",
-              width: 68,
+              width: 90,
               titleStyle: {
                 background: "var(--mantine-color-gray-0)",
                 borderRight: "1px solid var(--mantine-color-gray-2)",
@@ -126,6 +133,16 @@ export function DriversTable({ data }: Props) {
               }),
               render: (row) => (
                 <Group gap={4} wrap="nowrap">
+                  <Tooltip label="View" withArrow fz={10}>
+                    <ActionIcon
+                      size="xs"
+                      variant="subtle"
+                      color="gray"
+                      onClick={() => setViewDriver(row)}
+                    >
+                      <IconEye size={13} />
+                    </ActionIcon>
+                  </Tooltip>
                   <Tooltip label="Edit" withArrow fz={10}>
                     <ActionIcon
                       size="xs"

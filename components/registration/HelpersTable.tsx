@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Box, Group, Tooltip, ActionIcon, Text } from "@mantine/core";
-import { IconHelmet, IconPencil, IconTrash } from "@tabler/icons-react";
+import { IconHelmet, IconPencil, IconTrash, IconEye } from "@tabler/icons-react";
 import { DataTable } from "mantine-datatable";
 import { useDisclosure } from "@mantine/hooks";
 import { modals } from "@mantine/modals";
@@ -12,6 +12,7 @@ import { deleteHelper } from "@/actions/registration";
 import { TableHeader } from "./TableHeader";
 import { AddHelperModal } from "./AddHelperModal";
 import { EditHelperModal } from "./EditHelperModal";
+import { ViewHelperModal } from "./ViewHelperModal";
 
 interface Props {
   data: Helper[];
@@ -23,6 +24,7 @@ const UNIFORM_TABLE_HEIGHT = "21rem";
 export function HelpersTable({ data }: Props) {
   const [addOpened, { open: openAdd, close: closeAdd }] = useDisclosure(false);
   const [editHelper, setEditHelper] = useState<Helper | null>(null);
+  const [viewHelper, setViewHelper] = useState<Helper | null>(null);
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
 
@@ -70,6 +72,11 @@ export function HelpersTable({ data }: Props) {
         onClose={() => setEditHelper(null)}
         helper={editHelper}
       />
+      <ViewHelperModal
+        opened={!!viewHelper}
+        onClose={() => setViewHelper(null)}
+        helper={viewHelper}
+      />
 
       <TableHeader
         icon={IconHelmet}
@@ -115,7 +122,7 @@ export function HelpersTable({ data }: Props) {
             {
               accessor: "actions",
               title: "",
-              width: 68,
+              width: 90,
               titleStyle: {
                 background: "var(--mantine-color-gray-0)",
                 borderRight: "1px solid var(--mantine-color-gray-2)",
@@ -126,6 +133,16 @@ export function HelpersTable({ data }: Props) {
               }),
               render: (row) => (
                 <Group gap={4} wrap="nowrap">
+                  <Tooltip label="View" withArrow fz={10}>
+                    <ActionIcon
+                      size="xs"
+                      variant="subtle"
+                      color="gray"
+                      onClick={() => setViewHelper(row)}
+                    >
+                      <IconEye size={13} />
+                    </ActionIcon>
+                  </Tooltip>
                   <Tooltip label="Edit" withArrow fz={10}>
                     <ActionIcon
                       size="xs"
