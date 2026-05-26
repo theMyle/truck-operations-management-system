@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { Box, Group, Tooltip, ActionIcon, Text } from "@mantine/core";
-import { IconUsers, IconPencil, IconTrash } from "@tabler/icons-react";
+import { Box, Text } from "@mantine/core";
+import { IconUsers } from "@tabler/icons-react";
+import { TableRowActions } from "../TableRowActions";
 import { DataTable } from "mantine-datatable";
 import { useDisclosure } from "@mantine/hooks";
 import { modals } from "@mantine/modals";
@@ -77,6 +78,7 @@ export function ClientsTable({ data }: Props) {
         count={filtered.length}
         buttonId="btn-add-client"
         onAdd={openAdd}
+        color="violet"
         searchQuery={search}
         onSearchChange={(val) => {
           setSearch(val);
@@ -115,7 +117,7 @@ export function ClientsTable({ data }: Props) {
             {
               accessor: "actions",
               title: "",
-              width: 68,
+              width: 72,
               titleStyle: {
                 background: "var(--mantine-color-gray-0)",
                 borderRight: "1px solid var(--mantine-color-gray-2)",
@@ -125,28 +127,10 @@ export function ClientsTable({ data }: Props) {
                 borderRight: "1px solid var(--mantine-color-gray-2)",
               }),
               render: (row) => (
-                <Group gap={4} wrap="nowrap">
-                  <Tooltip label="Edit" withArrow fz={10}>
-                    <ActionIcon
-                      size="xs"
-                      variant="subtle"
-                      color="blue"
-                      onClick={() => setEditClient(row)}
-                    >
-                      <IconPencil size={13} />
-                    </ActionIcon>
-                  </Tooltip>
-                  <Tooltip label="Delete" withArrow fz={10}>
-                    <ActionIcon
-                      size="xs"
-                      variant="subtle"
-                      color="red"
-                      onClick={() => openDeleteConfirm(row)}
-                    >
-                      <IconTrash size={13} />
-                    </ActionIcon>
-                  </Tooltip>
-                </Group>
+                <TableRowActions
+                  onEdit={() => setEditClient(row)}
+                  onDelete={() => openDeleteConfirm(row)}
+                />
               ),
             },
             {

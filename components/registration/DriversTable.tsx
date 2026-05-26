@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { Box, Group, Tooltip, ActionIcon, Text } from "@mantine/core";
-import { IconUser, IconPencil, IconTrash } from "@tabler/icons-react";
+import { Box, Text } from "@mantine/core";
+import { IconUser, IconEye } from "@tabler/icons-react";
+import { TableRowActions } from "../TableRowActions";
 import { DataTable } from "mantine-datatable";
 import { useDisclosure } from "@mantine/hooks";
 import { modals } from "@mantine/modals";
@@ -12,6 +13,7 @@ import { deleteDriver } from "@/actions/registration";
 import { TableHeader } from "./TableHeader";
 import { AddDriverModal } from "./AddDriverModal";
 import { EditDriverModal } from "./EditDriverModal";
+import { ViewDriverModal } from "./ViewDriverModal";
 
 interface Props {
   data: Driver[];
@@ -23,6 +25,7 @@ const UNIFORM_TABLE_HEIGHT = "21rem";
 export function DriversTable({ data }: Props) {
   const [addOpened, { open: openAdd, close: closeAdd }] = useDisclosure(false);
   const [editDriver, setEditDriver] = useState<Driver | null>(null);
+  const [viewDriver, setViewDriver] = useState<Driver | null>(null);
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
 
@@ -70,6 +73,11 @@ export function DriversTable({ data }: Props) {
         onClose={() => setEditDriver(null)}
         driver={editDriver}
       />
+      <ViewDriverModal
+        opened={!!viewDriver}
+        onClose={() => setViewDriver(null)}
+        driver={viewDriver}
+      />
 
       <TableHeader
         icon={IconUser}
@@ -77,6 +85,7 @@ export function DriversTable({ data }: Props) {
         count={filtered.length}
         buttonId="btn-add-driver"
         onAdd={openAdd}
+        color="blue"
         searchQuery={search}
         onSearchChange={(val) => {
           setSearch(val);
@@ -115,7 +124,7 @@ export function DriversTable({ data }: Props) {
             {
               accessor: "actions",
               title: "",
-              width: 68,
+              width: 96,
               titleStyle: {
                 background: "var(--mantine-color-gray-0)",
                 borderRight: "1px solid var(--mantine-color-gray-2)",
@@ -125,28 +134,11 @@ export function DriversTable({ data }: Props) {
                 borderRight: "1px solid var(--mantine-color-gray-2)",
               }),
               render: (row) => (
-                <Group gap={4} wrap="nowrap">
-                  <Tooltip label="Edit" withArrow fz={10}>
-                    <ActionIcon
-                      size="xs"
-                      variant="subtle"
-                      color="blue"
-                      onClick={() => setEditDriver(row)}
-                    >
-                      <IconPencil size={13} />
-                    </ActionIcon>
-                  </Tooltip>
-                  <Tooltip label="Delete" withArrow fz={10}>
-                    <ActionIcon
-                      size="xs"
-                      variant="subtle"
-                      color="red"
-                      onClick={() => openDeleteConfirm(row)}
-                    >
-                      <IconTrash size={13} />
-                    </ActionIcon>
-                  </Tooltip>
-                </Group>
+                <TableRowActions
+                  onView={() => setViewDriver(row)}
+                  onEdit={() => setEditDriver(row)}
+                  onDelete={() => openDeleteConfirm(row)}
+                />
               ),
             },
             {
@@ -157,6 +149,18 @@ export function DriversTable({ data }: Props) {
                   {row.driverName}
                 </Text>
               ),
+            },
+            {
+              accessor: "contactNumber",
+              title: "Contact",
+            },
+            {
+              accessor: "emergencyContact",
+              title: "Emergency",
+            },
+            {
+              accessor: "address",
+              title: "Address",
             },
           ]}
         />
