@@ -84,6 +84,7 @@ export function DriversTable({ data }: Props) {
         count={filtered.length}
         buttonId="btn-add-driver"
         onAdd={openAdd}
+        color="blue"
         searchQuery={search}
         onSearchChange={(val) => {
           setSearch(val);

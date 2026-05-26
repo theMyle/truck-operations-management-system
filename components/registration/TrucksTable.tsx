@@ -87,6 +87,7 @@ export function TrucksTable({ data }: Props) {
         count={filtered.length}
         buttonId="btn-add-truck"
         onAdd={openAdd}
+        color="orange"
         searchQuery={search}
         onSearchChange={(val) => {
           setSearch(val);

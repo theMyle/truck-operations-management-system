@@ -84,6 +84,7 @@ export function HelpersTable({ data }: Props) {
         count={filtered.length}
         buttonId="btn-add-helper"
         onAdd={openAdd}
+        color="teal"
         searchQuery={search}
         onSearchChange={(val) => {
           setSearch(val);

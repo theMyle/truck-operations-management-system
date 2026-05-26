@@ -77,6 +77,7 @@ export function ClientsTable({ data }: Props) {
         count={filtered.length}
         buttonId="btn-add-client"
         onAdd={openAdd}
+        color="violet"
         searchQuery={search}
         onSearchChange={(val) => {
           setSearch(val);
