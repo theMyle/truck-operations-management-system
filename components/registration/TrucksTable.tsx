@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { Box, Group, Tooltip, ActionIcon, Text, Badge } from "@mantine/core";
-import { IconTruck, IconPencil, IconTrash } from "@tabler/icons-react";
+import { Box, Text, Badge } from "@mantine/core";
+import { IconTruck } from "@tabler/icons-react";
+import { TableRowActions } from "../TableRowActions";
 import { DataTable } from "mantine-datatable";
 import { useDisclosure } from "@mantine/hooks";
 import { modals } from "@mantine/modals";
@@ -127,7 +128,7 @@ export function TrucksTable({ data }: Props) {
             {
               accessor: "actions",
               title: "",
-              width: 68,
+              width: 72,
               titleStyle: {
                 background: "var(--mantine-color-gray-0)",
                 borderRight: "1px solid var(--mantine-color-gray-2)",
@@ -137,28 +138,10 @@ export function TrucksTable({ data }: Props) {
                 borderRight: "1px solid var(--mantine-color-gray-2)",
               }),
               render: (row) => (
-                <Group gap={4} wrap="nowrap">
-                  <Tooltip label="Edit" withArrow fz={10}>
-                    <ActionIcon
-                      size="xs"
-                      variant="subtle"
-                      color="blue"
-                      onClick={() => setEditTruck(row)}
-                    >
-                      <IconPencil size={13} />
-                    </ActionIcon>
-                  </Tooltip>
-                  <Tooltip label="Delete" withArrow fz={10}>
-                    <ActionIcon
-                      size="xs"
-                      variant="subtle"
-                      color="red"
-                      onClick={() => openDeleteConfirm(row)}
-                    >
-                      <IconTrash size={13} />
-                    </ActionIcon>
-                  </Tooltip>
-                </Group>
+                <TableRowActions
+                  onEdit={() => setEditTruck(row)}
+                  onDelete={() => openDeleteConfirm(row)}
+                />
               ),
             },
             {

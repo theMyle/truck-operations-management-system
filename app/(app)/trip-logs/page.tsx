@@ -36,6 +36,7 @@ import {
 } from "@tabler/icons-react";
 import { useDispatch } from "../context/dispatch-context";
 import { OdoModal, OdoFormData } from "@/components/trip-logs/OdoModal";
+import { TableRowActions } from "@/components/TableRowActions";
 import { MOCK_RECORDS, DispatchRecord } from "@/app/(app)/constant";
 
 /* ── Status badge helper ── */
@@ -591,65 +592,11 @@ export default function DispatchRecordsPage() {
                             }}
                             onClick={(e) => e.stopPropagation()}
                           >
-                            <Group gap={4} wrap="nowrap">
-                              <Tooltip
-                                label="View"
-                                withArrow
-                                position="top"
-                                fz={10}
-                              >
-                                <ActionIcon
-                                  variant="light"
-                                  color="blue"
-                                  size="sm"
-                                  radius="sm"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleView(record);
-                                  }}
-                                >
-                                  <IconEye size={13} />
-                                </ActionIcon>
-                              </Tooltip>
-                              <Tooltip
-                                label="Edit"
-                                withArrow
-                                position="top"
-                                fz={10}
-                              >
-                                <ActionIcon
-                                  variant="light"
-                                  color="orange"
-                                  size="sm"
-                                  radius="sm"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleEdit(record);
-                                  }}
-                                >
-                                  <IconEdit size={13} />
-                                </ActionIcon>
-                              </Tooltip>
-                              <Tooltip
-                                label="Delete"
-                                withArrow
-                                position="top"
-                                fz={10}
-                              >
-                                <ActionIcon
-                                  variant="light"
-                                  color="red"
-                                  size="sm"
-                                  radius="sm"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleDeleteClick(record);
-                                  }}
-                                >
-                                  <IconTrash size={13} />
-                                </ActionIcon>
-                              </Tooltip>
-                            </Group>
+                            <TableRowActions
+                              onView={() => handleView(record)}
+                              onEdit={() => handleEdit(record)}
+                              onDelete={() => handleDeleteClick(record)}
+                            />
                           </Table.Td>
 
                           <Table.Td style={cellStyle}>{record.id}</Table.Td>

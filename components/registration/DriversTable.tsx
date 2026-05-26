@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { Box, Group, Tooltip, ActionIcon, Text } from "@mantine/core";
-import { IconUser, IconPencil, IconTrash, IconEdit, IconEye } from "@tabler/icons-react";
+import { Box, Text } from "@mantine/core";
+import { IconUser, IconEye } from "@tabler/icons-react";
+import { TableRowActions } from "../TableRowActions";
 import { DataTable } from "mantine-datatable";
 import { useDisclosure } from "@mantine/hooks";
 import { modals } from "@mantine/modals";
@@ -123,7 +124,7 @@ export function DriversTable({ data }: Props) {
             {
               accessor: "actions",
               title: "",
-              width: 90,
+              width: 96,
               titleStyle: {
                 background: "var(--mantine-color-gray-0)",
                 borderRight: "1px solid var(--mantine-color-gray-2)",
@@ -133,38 +134,11 @@ export function DriversTable({ data }: Props) {
                 borderRight: "1px solid var(--mantine-color-gray-2)",
               }),
               render: (row) => (
-                <Group gap={4} wrap="nowrap">
-                  <Tooltip label="View" withArrow fz={10}>
-                    <ActionIcon
-                      size="xs"
-                      variant="subtle"
-                      color="gray"
-                      onClick={() => setViewDriver(row)}
-                    >
-                      <IconEye size={13} />
-                    </ActionIcon>
-                  </Tooltip>
-                  <Tooltip label="Edit" withArrow fz={10}>
-                    <ActionIcon
-                      size="xs"
-                      variant="subtle"
-                      color="blue"
-                      onClick={() => setEditDriver(row)}
-                    >
-                      <IconEdit size={13} />
-                    </ActionIcon>
-                  </Tooltip>
-                  <Tooltip label="Delete" withArrow fz={10}>
-                    <ActionIcon
-                      size="xs"
-                      variant="subtle"
-                      color="red"
-                      onClick={() => openDeleteConfirm(row)}
-                    >
-                      <IconTrash size={13} />
-                    </ActionIcon>
-                  </Tooltip>
-                </Group>
+                <TableRowActions
+                  onView={() => setViewDriver(row)}
+                  onEdit={() => setEditDriver(row)}
+                  onDelete={() => openDeleteConfirm(row)}
+                />
               ),
             },
             {

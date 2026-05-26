@@ -56,9 +56,6 @@ export function TableHeader({
                 {count}
               </Badge>
             </Group>
-            <Text size="xs" c="dimmed" lh={1.3}>
-              {count} record{count !== 1 ? "s" : ""} total
-            </Text>
           </Box>
         </Group>
 
