@@ -39,6 +39,8 @@ import { useDispatch } from "../context/dispatch-context";
 import { TripDetailsModal } from "@/components/booking/TripDetailsModal";
 import { ViewModal } from "@/components/booking/ViewModal";
 import { DeleteModal } from "@/components/booking/DeleteModal";
+import { useDispatchExport } from "@/app/hooks/useDispatchExport ";
+import { useDispatchPrint } from "@/app/hooks/useDispatchPrint";
 import { TableRowActions } from "@/components/TableRowActions";
 
 /* ── Status badge helper ── */
@@ -96,6 +98,7 @@ export default function BookingRecordsPage() {
 
   const { setEditingRecord } = useDispatch();
 
+
   /* ── Search filter (searches across all string fields) ── */
   const filtered = useMemo(() => {
     const q = search.toLowerCase().trim();
@@ -106,6 +109,9 @@ export default function BookingRecordsPage() {
       return matchesSearch && matchesStatus;
     });
   }, [search, statusFilter, records]);
+
+  const { handleExport } = useDispatchExport(filtered);
+   const {handlePrint} = useDispatchPrint(filtered);
 
   const handleView = (record: DispatchRecord) => {
     setViewRecord(record);
@@ -265,7 +271,7 @@ export default function BookingRecordsPage() {
                     ),
                   };
                   return (
-                    <Group gap={8} wrap="nowrap">
+                    <Group gap={8} wrap="wrap">
                       {icons[option.value]}
                       <Text style={{ fontSize: "10px" }} fw={600}>
                         {option.label}
@@ -273,13 +279,14 @@ export default function BookingRecordsPage() {
                     </Group>
                   );
                 }}
-                onChange={(val) => {
+                onChange={async (val) => {
                   if (!val) return;
                   notifications.show({
                     title: "Download started",
                     message: `Exporting as ${val.toUpperCase()}`,
                     color: "blue",
                   });
+                  await handleExport(val);
                 }}
                 styles={{
                   input: {
@@ -300,80 +307,18 @@ export default function BookingRecordsPage() {
                 clearable={false}
                 allowDeselect={false}
               />
-              <Select
-                placeholder="Print"
-                leftSection={
-                  <IconPrinter size={12} color="var(--mantine-color-blue-6)" />
-                }
-                data={[
-                  { value: "pdf", label: "PDF" },
-                  { value: "xlsx", label: "Excel (XLSX)" },
-                  { value: "docx", label: "Word (DOCX)" },
-                  { value: "jpg", label: "Image (JPG)" },
-                ]}
-                renderOption={({ option }) => {
-                  const icons: Record<string, React.ReactNode> = {
-                    pdf: (
-                      <IconFileTypePdf
-                        size={14}
-                        color="var(--mantine-color-red-6)"
-                      />
-                    ),
-                    xlsx: (
-                      <IconFileTypeXls
-                        size={14}
-                        color="var(--mantine-color-green-6)"
-                      />
-                    ),
-                    docx: (
-                      <IconFileTypeDoc
-                        size={14}
-                        color="var(--mantine-color-blue-6)"
-                      />
-                    ),
-                    jpg: (
-                      <IconFileTypeJpg
-                        size={14}
-                        color="var(--mantine-color-orange-6)"
-                      />
-                    ),
-                  };
-                  return (
-                    <Group gap={8} wrap="nowrap">
-                      {icons[option.value]}
-                      <Text style={{ fontSize: "10px" }} fw={600}>
-                        {option.label}
-                      </Text>
-                    </Group>
-                  );
-                }}
-                onChange={(val) => {
-                  if (!val) return;
-                  notifications.show({
-                    title: "Printing started",
-                    message: `Printing as ${val.toUpperCase()}`,
-                    color: "blue",
-                  });
-                }}
+              <Button
+                variant="light"
+                color="blue"
+                leftSection={<IconPrinter size={13} />}
                 styles={{
-                  input: {
-                    fontSize: "10px",
-                    fontWeight: 700,
-                    height: 28,
-                    minHeight: 28,
-                    color: "black",
-                    border: "1px solid var(--mantine-color-gray-3)",
-                    cursor: "pointer",
-                  },
-                  section: {
-                    color: "var(--mantine-color-blue-6)",
-                  },
+                  root: { height: 28 },
+                  label: { fontSize: "10px", fontWeight: 700 },
                 }}
-                radius="md"
-                style={{ width: 120 }}
-                clearable={false}
-                allowDeselect={false}
-              />
+                onClick={handlePrint}
+              >
+                Print
+              </Button>
             </Group>
           </Group>
 
