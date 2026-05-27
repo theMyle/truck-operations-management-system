@@ -232,16 +232,16 @@ export default function DispatchPage() {
         prev.map((r) =>
           r.id === editingRecord.id
             ? {
-                ...r,
-                client: selectedClient || "",
-                ruta,
-                bookingDr,
-                noOfDrops: Number(noOfDrops),
-                unit: selectedUnit || "",
-                plateNo,
-                driver: selectedDriver || "",
-                helper: selectedHelpers.join(", "),
-              }
+              ...r,
+              client: selectedClient || "",
+              ruta,
+              bookingDr,
+              noOfDrops: Number(noOfDrops),
+              unit: selectedUnit || "",
+              plateNo,
+              driver: selectedDriver || "",
+              helper: selectedHelpers.join(", "),
+            }
             : r,
         ),
       );
@@ -745,6 +745,7 @@ export default function DispatchPage() {
                 </Button>
 
                 <Text
+                  component="div"
                   ml="auto"
                   fz={inputStyles?.label?.fontSize ?? "11px"}
                   fw={inputStyles?.label?.fontWeight ?? 600}
