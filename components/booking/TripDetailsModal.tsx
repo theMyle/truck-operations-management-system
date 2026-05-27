@@ -17,7 +17,7 @@ import {
 } from "@mantine/core";
 import { TimeInput } from "@mantine/dates";
 import { DispatchRecord } from "@/app/(app)/constant";
-import { useState, useMemo, useRef } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import {
   IconAlertTriangle,
   IconBan,
@@ -120,8 +120,23 @@ export function TripDetailsModal({
   record: DispatchRecord | null;
   onSave: (id: number, details: Partial<DispatchRecord>) => void;
 }) {
-  const initial = useMemo(
-    () => ({
+  const buildInitial = () => ({
+    pickUpTime: record?.pickUpTime ?? "",
+    arrivalPickup: record?.arrivalPickup ?? "",
+    loadingStart: record?.loadingStart ?? "",
+    loadingEnd: record?.loadingEnd ?? "",
+    departurePickup: record?.departurePickup ?? "",
+    finishDelivery: record?.finishDelivery ?? "",
+    deliveryStatus: record?.deliveryStatus ?? "",
+    tripRemarks: record?.tripRemarks ?? "",
+  });
+
+  const [form, setForm] = useState(buildInitial);
+
+  // Reset form state whenever the record changes — fixes stale data across rows
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setForm({
       pickUpTime: record?.pickUpTime ?? "",
       arrivalPickup: record?.arrivalPickup ?? "",
       loadingStart: record?.loadingStart ?? "",
@@ -130,28 +145,55 @@ export function TripDetailsModal({
       finishDelivery: record?.finishDelivery ?? "",
       deliveryStatus: record?.deliveryStatus ?? "",
       tripRemarks: record?.tripRemarks ?? "",
-    }),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [record?.id],
-  );
-
-  const [form, setForm] = useState(initial);
+    });
+  }, [record?.id, record?.pickUpTime, record?.arrivalPickup, record?.loadingStart, record?.loadingEnd, record?.departurePickup, record?.finishDelivery, record?.deliveryStatus, record?.tripRemarks]);
 
   const set = (key: string, val: string) =>
     setForm((prev) => ({ ...prev, [key]: val }));
 
+  /* ── Time validation helpers ── */
+  const timeToMinutes = (t: string): number | null => {
+    if (!t) return null;
+    const [h, m] = t.split(":").map(Number);
+    if (isNaN(h) || isNaN(m)) return null;
+    return h * 60 + m;
+  };
+
+  const timeErrors = useMemo(() => {
+    const errors: Record<string, string | undefined> = {};
+    const arrival = timeToMinutes(form.arrivalPickup);
+    const loadStart = timeToMinutes(form.loadingStart);
+    const loadEnd = timeToMinutes(form.loadingEnd);
+    const departure = timeToMinutes(form.departurePickup);
+    const finish = timeToMinutes(form.finishDelivery);
+
+    if (arrival !== null && loadStart !== null && loadStart < arrival)
+      errors.loadingStart = "Loading start must be after arrival at pickup";
+    if (loadStart !== null && loadEnd !== null && loadEnd < loadStart)
+      errors.loadingEnd = "Loading end must be after loading start";
+    if (loadEnd !== null && departure !== null && departure < loadEnd)
+      errors.departurePickup = "Departure must be after loading end";
+    if (departure !== null && finish !== null && finish < departure)
+      errors.finishDelivery = "Finish time must be after departure";
+
+    return errors;
+  }, [form.arrivalPickup, form.loadingStart, form.loadingEnd, form.departurePickup, form.finishDelivery]);
+
+  const hasTimeErrors = Object.values(timeErrors).some(Boolean);
+
   const isFormValid =
-    !!form.pickUpTime &&
     !!form.arrivalPickup &&
     !!form.loadingStart &&
     !!form.loadingEnd &&
     !!form.departurePickup &&
     !!form.finishDelivery &&
-    !!form.deliveryStatus;
+    !!form.deliveryStatus &&
+    !hasTimeErrors;
 
   if (!record) return null;
 
   const handleSave = () => {
+    if (!isFormValid) return;
     onSave(record.id, form);
     onClose();
   };
@@ -221,28 +263,56 @@ export function TripDetailsModal({
               value={form.arrivalPickup}
               onChange={(v) => set("arrivalPickup", v)}
             />
-            <TimeField
-              label="Loading Start"
-              value={form.loadingStart}
-              onChange={(v) => set("loadingStart", v)}
-            />
-            <TimeField
-              label="Loading End"
-              value={form.loadingEnd}
-              onChange={(v) => set("loadingEnd", v)}
-            />
-            <TimeField
-              label="Departure from Pick Up"
-              value={form.departurePickup}
-              onChange={(v) => set("departurePickup", v)}
-            />
+            <Stack gap={0}>
+              <TimeField
+                label="Loading Start"
+                value={form.loadingStart}
+                onChange={(v) => set("loadingStart", v)}
+              />
+              {timeErrors.loadingStart && (
+                <Text style={{ fontSize: "10px" }} c="red" mt={2}>
+                  {timeErrors.loadingStart}
+                </Text>
+              )}
+            </Stack>
+            <Stack gap={0}>
+              <TimeField
+                label="Loading End"
+                value={form.loadingEnd}
+                onChange={(v) => set("loadingEnd", v)}
+              />
+              {timeErrors.loadingEnd && (
+                <Text style={{ fontSize: "10px" }} c="red" mt={2}>
+                  {timeErrors.loadingEnd}
+                </Text>
+              )}
+            </Stack>
+            <Stack gap={0}>
+              <TimeField
+                label="Departure from Pick Up"
+                value={form.departurePickup}
+                onChange={(v) => set("departurePickup", v)}
+              />
+              {timeErrors.departurePickup && (
+                <Text style={{ fontSize: "10px" }} c="red" mt={2}>
+                  {timeErrors.departurePickup}
+                </Text>
+              )}
+            </Stack>
           </SimpleGrid>
           <Divider/>
-           <TimeField
+          <Stack gap={0}>
+            <TimeField
               label="Finish Delivery Time"
               value={form.finishDelivery}
               onChange={(v) => set("finishDelivery", v)}
             />
+            {timeErrors.finishDelivery && (
+              <Text style={{ fontSize: "10px" }} c="red" mt={2}>
+                {timeErrors.finishDelivery}
+              </Text>
+            )}
+          </Stack>
         </Paper>
 
         <Paper

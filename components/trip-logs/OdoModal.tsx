@@ -29,10 +29,12 @@ import {
   IconTrendingUp,
   IconTrendingDown,
   IconRefresh,
+  IconAlertTriangle,
+  IconCheck,
 } from "@tabler/icons-react";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { DispatchRecord } from "@/app/(app)/constant";
 import { ReviewModal } from "./ReviewModal";
 
@@ -161,6 +163,10 @@ export function OdoModal({
   const [activeTab, setActiveTab] = useState<string | null>("odometer");
   const [touched, setTouched] = useState<Record<string, boolean>>({});
 
+  /* ── Per-tab validation attempt tracking ── */
+  const [tabValidationAttempted, setTabValidationAttempted] = useState<Record<string, boolean>>({});
+
+
   /* ── Review modal state ── */
   const [reviewOpened, setReviewOpened] = useState(false);
   const [pendingRefNumber, setPendingRefNumber] = useState("");
@@ -264,16 +270,30 @@ export function OdoModal({
     totalFunds > 0 ? Math.min((grandTotal / totalFunds) * 100, 100) : 0;
 
   /* ── Validation errors ── */
+  const showOdoErrors = touched.odoEnd || touched.odoStart || !!tabValidationAttempted.odometer;
+  const showBudgetErrors = !!tabValidationAttempted.budget;
+  const showExpenseErrors = !!tabValidationAttempted.expenses;
+
   const odoErrors = {
+    odoStart:
+      showOdoErrors && !form.odoStart.trim()
+        ? "ODO Start is required"
+        : showOdoErrors && form.odoStart && isNaN(Number(form.odoStart))
+          ? "Must be a valid number"
+          : undefined,
     odoEnd:
-      touched.odoEnd &&
-      form.odoStart &&
-      form.odoEnd &&
-      Number(form.odoEnd) < Number(form.odoStart)
-        ? "ODO End must be greater than or equal to ODO Start"
-        : undefined,
+      showOdoErrors && !form.odoEnd.trim()
+        ? "ODO End is required"
+        : showOdoErrors && form.odoEnd && isNaN(Number(form.odoEnd))
+          ? "Must be a valid number"
+          : (touched.odoEnd || showOdoErrors) &&
+              form.odoStart &&
+              form.odoEnd &&
+              Number(form.odoEnd) < Number(form.odoStart)
+            ? "ODO End must be ≥ ODO Start"
+            : undefined,
     singleOdoEnd:
-      touched.singleOdoEnd &&
+      (touched.singleOdoEnd || showOdoErrors) &&
       form.singleOdoStart &&
       form.singleOdoEnd &&
       Number(form.singleOdoEnd) < Number(form.singleOdoStart)
@@ -283,30 +303,48 @@ export function OdoModal({
 
   const budgetErrors = {
     budget:
-      touched.budget && form.budget && !isPositiveNumber(form.budget)
-        ? "Enter a valid positive amount"
+      showBudgetErrors && !form.budget.trim()
+        ? "Budget amount is required"
+        : (touched.budget || showBudgetErrors) && form.budget && !isPositiveNumber(form.budget)
+          ? "Enter a valid positive amount"
+          : undefined,
+    budgetFrom:
+      showBudgetErrors && form.budget.trim() && !form.budgetFrom.trim()
+        ? "Specify who gave the budget"
         : undefined,
     rfidLoad:
-      touched.rfidLoad && form.rfidLoad && !isNonNegativeNumber(form.rfidLoad)
+      (touched.rfidLoad || showBudgetErrors) && form.rfidLoad && !isNonNegativeNumber(form.rfidLoad)
         ? "Enter a valid amount"
         : undefined,
+    rfidPayment:
+      showBudgetErrors && form.rfidLoad && isNonNegativeNumber(form.rfidLoad) && Number(form.rfidLoad) > 0 && !form.rfidPayment
+        ? "Select a payment method for RFID"
+        : undefined,
     fuelAmount:
-      touched.fuelAmount &&
+      (touched.fuelAmount || showBudgetErrors) &&
       form.fuelAmount &&
       !isNonNegativeNumber(form.fuelAmount)
         ? "Enter a valid amount"
         : undefined,
+    fuelPayment:
+      showBudgetErrors && form.fuelAmount && isNonNegativeNumber(form.fuelAmount) && Number(form.fuelAmount) > 0 && !form.fuelPayment
+        ? "Select a payment method for Fuel"
+        : undefined,
     collectionFromCustomer:
-      touched.collectionFromCustomer &&
+      (touched.collectionFromCustomer || showBudgetErrors) &&
       form.collectionFromCustomer &&
       !isNonNegativeNumber(form.collectionFromCustomer)
         ? "Enter a valid amount"
         : undefined,
     naibalikNaSukli:
-      touched.naibalikNaSukli &&
+      (touched.naibalikNaSukli || showBudgetErrors) &&
       form.naibalikNaSukli &&
       !isNonNegativeNumber(form.naibalikNaSukli)
         ? "Enter a valid amount"
+        : undefined,
+    kanino:
+      showBudgetErrors && form.naibalikNaSukli && isNonNegativeNumber(form.naibalikNaSukli) && Number(form.naibalikNaSukli) > 0 && !form.kanino.trim()
+        ? "Specify who received the change"
         : undefined,
   };
 
@@ -314,22 +352,93 @@ export function OdoModal({
     () =>
       form.expenses.map((e) => ({
         category:
-          touched[`exp_cat_${e.id}`] && !e.category
+          (touched[`exp_cat_${e.id}`] || showExpenseErrors) && !e.category
             ? "Select a category"
             : undefined,
         amount:
-          touched[`exp_amt_${e.id}`] && !isPositiveNumber(e.amount)
+          (touched[`exp_amt_${e.id}`] || showExpenseErrors) && !isPositiveNumber(e.amount)
             ? "Enter a valid amount > 0"
             : undefined,
         assignedTo:
-          touched[`exp_assign_${e.id}`] &&
+          (touched[`exp_assign_${e.id}`] || showExpenseErrors) &&
           e.category === "cash_advance" &&
           !e.assignedTo
             ? "Select a crew member"
             : undefined,
       })),
-    [form.expenses, touched],
+    [form.expenses, touched, showExpenseErrors],
   );
+
+  /* ── Per-tab validity checks (always computed, no side effects) ── */
+  const isOdometerValid = useMemo(() => {
+    if (!form.odoStart.trim() || isNaN(Number(form.odoStart))) return false;
+    if (!form.odoEnd.trim() || isNaN(Number(form.odoEnd))) return false;
+    if (Number(form.odoEnd) < Number(form.odoStart)) return false;
+    if (form.tripType === "single") {
+      if (form.singleOdoStart && form.singleOdoEnd && Number(form.singleOdoEnd) < Number(form.singleOdoStart)) return false;
+    }
+    if (form.tripType === "multiple") {
+      for (const trip of form.multipleTrips) {
+        if (trip.odoStart && trip.odoEnd && Number(trip.odoEnd) < Number(trip.odoStart)) return false;
+      }
+    }
+    return true;
+  }, [form.odoStart, form.odoEnd, form.tripType, form.singleOdoStart, form.singleOdoEnd, form.multipleTrips]);
+
+  const isBudgetValid = useMemo(() => {
+    if (!form.budget.trim() || !isPositiveNumber(form.budget)) return false;
+    if (!form.budgetFrom.trim()) return false;
+    if (form.rfidLoad && !isNonNegativeNumber(form.rfidLoad)) return false;
+    if (form.rfidLoad && Number(form.rfidLoad) > 0 && !form.rfidPayment) return false;
+    if (form.fuelAmount && !isNonNegativeNumber(form.fuelAmount)) return false;
+    if (form.fuelAmount && Number(form.fuelAmount) > 0 && !form.fuelPayment) return false;
+    if (form.collectionFromCustomer && !isNonNegativeNumber(form.collectionFromCustomer)) return false;
+    if (form.naibalikNaSukli && !isNonNegativeNumber(form.naibalikNaSukli)) return false;
+    if (form.naibalikNaSukli && Number(form.naibalikNaSukli) > 0 && !form.kanino.trim()) return false;
+    return true;
+  }, [form.budget, form.budgetFrom, form.rfidLoad, form.rfidPayment, form.fuelAmount, form.fuelPayment, form.collectionFromCustomer, form.naibalikNaSukli, form.kanino]);
+
+  const isExpensesValid = useMemo(() => {
+    for (const e of form.expenses) {
+      if (!e.category) return false;
+      if (!isPositiveNumber(e.amount)) return false;
+      if (e.category === "cash_advance" && !e.assignedTo) return false;
+    }
+    return true;
+  }, [form.expenses]);
+
+  const isAllValid = isOdometerValid && isBudgetValid && isExpensesValid;
+
+  const odoErrorMessages = useMemo(() => {
+    const msgs: string[] = [];
+    if (!form.odoStart.trim()) msgs.push("ODO Start is required");
+    else if (isNaN(Number(form.odoStart))) msgs.push("ODO Start must be a valid number");
+    if (!form.odoEnd.trim()) msgs.push("ODO End is required");
+    else if (isNaN(Number(form.odoEnd))) msgs.push("ODO End must be a valid number");
+    else if (form.odoStart && Number(form.odoEnd) < Number(form.odoStart)) msgs.push("ODO End must be ≥ ODO Start");
+    return msgs;
+  }, [form.odoStart, form.odoEnd]);
+
+  const budgetErrorMessages = useMemo(() => {
+    const msgs: string[] = [];
+    if (!form.budget.trim()) msgs.push("Budget amount is required");
+    else if (!isPositiveNumber(form.budget)) msgs.push("Budget must be a valid positive number");
+    if (form.budget.trim() && !form.budgetFrom.trim()) msgs.push("Specify who gave the budget");
+    if (form.rfidLoad && Number(form.rfidLoad) > 0 && !form.rfidPayment) msgs.push("Select RFID payment method");
+    if (form.fuelAmount && Number(form.fuelAmount) > 0 && !form.fuelPayment) msgs.push("Select Fuel payment method");
+    if (form.naibalikNaSukli && Number(form.naibalikNaSukli) > 0 && !form.kanino.trim()) msgs.push("Specify who received the change");
+    return msgs;
+  }, [form.budget, form.budgetFrom, form.rfidLoad, form.rfidPayment, form.fuelAmount, form.fuelPayment, form.naibalikNaSukli, form.kanino]);
+
+  const expenseErrorMessages = useMemo(() => {
+    const msgs: string[] = [];
+    form.expenses.forEach((e, i) => {
+      if (!e.category) msgs.push(`Entry ${i + 1}: Select a category`);
+      if (!isPositiveNumber(e.amount)) msgs.push(`Entry ${i + 1}: Enter a valid amount`);
+      if (e.category === "cash_advance" && !e.assignedTo) msgs.push(`Entry ${i + 1}: Assign a crew member`);
+    });
+    return msgs;
+  }, [form.expenses]);
 
   /* ── Badge count: expenses + rfid + fuel ── */
   const totalEntryCount =
@@ -372,9 +481,29 @@ export function OdoModal({
       form.expenses.filter((e) => e.id !== id),
     );
 
+  /* ── Tab navigation with validation ── */
+  const handleNextToTab = (fromTab: string, toTab: string) => {
+    setTabValidationAttempted((prev) => ({ ...prev, [fromTab]: true }));
+    let valid = true;
+    if (fromTab === "odometer") valid = isOdometerValid;
+    if (fromTab === "budget") valid = isBudgetValid;
+    if (valid) {
+      setActiveTab(toTab);
+    }
+  };
+
   /* ── Open review modal ── */
   const handleOpenReview = () => {
     if (!record) return;
+    // Mark all tabs as validation-attempted
+    setTabValidationAttempted({ odometer: true, budget: true, expenses: true });
+    if (!isAllValid) {
+      // Navigate to the first invalid tab
+      if (!isOdometerValid) { setActiveTab("odometer"); return; }
+      if (!isBudgetValid) { setActiveTab("budget"); return; }
+      if (!isExpensesValid) { setActiveTab("expenses"); return; }
+      return;
+    }
     setPendingRefNumber(generateRefNumber(record.id));
     setReviewOpened(true);
   };
@@ -618,12 +747,36 @@ export function OdoModal({
 
         <Tabs value={activeTab} onChange={setActiveTab}>
           <Tabs.List mb="md">
-            <Tabs.Tab value="odometer" leftSection={<IconGauge size={13} />}>
+            <Tabs.Tab
+              value="odometer"
+              leftSection={<IconGauge size={13} />}
+              rightSection={
+                tabValidationAttempted.odometer ? (
+                  isOdometerValid ? (
+                    <IconCheck size={12} color="var(--mantine-color-green-6)" />
+                  ) : (
+                    <IconAlertTriangle size={12} color="var(--mantine-color-red-6)" />
+                  )
+                ) : null
+              }
+            >
               <Text style={{ fontSize: "11px" }} fw={600}>
                 Odometer
               </Text>
             </Tabs.Tab>
-            <Tabs.Tab value="budget" leftSection={<IconWallet size={13} />}>
+            <Tabs.Tab
+              value="budget"
+              leftSection={<IconWallet size={13} />}
+              rightSection={
+                tabValidationAttempted.budget ? (
+                  isBudgetValid ? (
+                    <IconCheck size={12} color="var(--mantine-color-green-6)" />
+                  ) : (
+                    <IconAlertTriangle size={12} color="var(--mantine-color-red-6)" />
+                  )
+                ) : null
+              }
+            >
               <Text style={{ fontSize: "11px" }} fw={600}>
                 Budget
               </Text>
@@ -632,7 +785,13 @@ export function OdoModal({
               value="expenses"
               leftSection={<IconReceipt size={13} />}
               rightSection={
-                totalEntryCount > 0 ? (
+                tabValidationAttempted.expenses ? (
+                  isExpensesValid ? (
+                    <IconCheck size={12} color="var(--mantine-color-green-6)" />
+                  ) : (
+                    <IconAlertTriangle size={12} color="var(--mantine-color-red-6)" />
+                  )
+                ) : totalEntryCount > 0 ? (
                   <Badge
                     size="xs"
                     color={isOverBudget ? "red" : "green"}
@@ -653,6 +812,21 @@ export function OdoModal({
           {/* ══ ODOMETER TAB ══ */}
           <Tabs.Panel value="odometer">
             <Stack gap="sm">
+              {tabValidationAttempted.odometer && !isOdometerValid && (
+                <Paper withBorder radius="sm" p="xs" bg="red.0" style={{ borderColor: "var(--mantine-color-red-3)" }}>
+                  <Group gap={6} mb={4}>
+                    <IconAlertTriangle size={13} color="var(--mantine-color-red-6)" />
+                    <Text style={{ fontSize: "10px" }} fw={700} c="red.7" tt="uppercase" lts={0.5}>
+                      Please fix the following errors
+                    </Text>
+                  </Group>
+                  {odoErrorMessages.map((msg, i) => (
+                    <Text key={i} style={{ fontSize: "10px" }} c="red.7" fw={600} ml={19}>
+                      • {msg}
+                    </Text>
+                  ))}
+                </Paper>
+              )}
               <SimpleGrid cols={2} spacing="sm">
                 <TextInput
                   label="ODO Start"
@@ -661,6 +835,7 @@ export function OdoModal({
                   value={form.odoStart}
                   onChange={(e) => set("odoStart", e.currentTarget.value)}
                   onBlur={() => touch("odoStart")}
+                  error={odoErrors.odoStart}
                 />
                 <TextInput
                   label="ODO End"
@@ -890,7 +1065,7 @@ export function OdoModal({
                       root: { height: 30 },
                       label: { fontSize: "10px", fontWeight: 700 },
                     }}
-                    onClick={() => setActiveTab("budget")}
+                    onClick={() => handleNextToTab("odometer", "budget")}
                   >
                     Next: Budget →
                   </Button>
@@ -918,6 +1093,7 @@ export function OdoModal({
                   styles={inputStyles}
                   value={form.budgetFrom}
                   onChange={(e) => set("budgetFrom", e.currentTarget.value)}
+                  error={budgetErrors.budgetFrom}
                 />
               </SimpleGrid>
 
@@ -938,11 +1114,11 @@ export function OdoModal({
                   <Text
                     style={{ fontSize: "10px" }}
                     fw={700}
-                    c="gray.7"
+                    c={budgetErrors.rfidPayment ? "var(--mantine-color-red-6)" : "var(--mantine-color-gray-7)"}
                     tt="uppercase"
                     lts={0.5}
                   >
-                    Payment
+                    Payment {budgetErrors.rfidPayment ? "*" : ""}
                   </Text>
                   <Group gap="sm">
                     <Checkbox
@@ -976,6 +1152,11 @@ export function OdoModal({
                       size="xs"
                     />
                   </Group>
+                  {budgetErrors.rfidPayment && (
+                    <Text style={{ fontSize: "10px" }} c="red" fw={600}>
+                      {budgetErrors.rfidPayment}
+                    </Text>
+                  )}
                 </Stack>
               </Group>
 
@@ -995,11 +1176,11 @@ export function OdoModal({
                   <Text
                     style={{ fontSize: "10px" }}
                     fw={700}
-                    c="gray.7"
+                    c={budgetErrors.fuelPayment ? "var(--mantine-color-red-6)" : "var(--mantine-color-gray-7)"}
                     tt="uppercase"
                     lts={0.5}
                   >
-                    Payment
+                    Payment {budgetErrors.fuelPayment ? "*" : ""}
                   </Text>
                   <Group gap="sm">
                     <Checkbox
@@ -1033,6 +1214,11 @@ export function OdoModal({
                       size="xs"
                     />
                   </Group>
+                  {budgetErrors.fuelPayment && (
+                    <Text style={{ fontSize: "10px" }} c="red" fw={600}>
+                      {budgetErrors.fuelPayment}
+                    </Text>
+                  )}
                 </Stack>
               </Group>
 
@@ -1068,6 +1254,7 @@ export function OdoModal({
                   styles={inputStyles}
                   value={form.kanino}
                   onChange={(e) => set("kanino", e.currentTarget.value)}
+                  error={budgetErrors.kanino}
                 />
               </SimpleGrid>
 
@@ -1147,7 +1334,7 @@ export function OdoModal({
                       root: { height: 30 },
                       label: { fontSize: "10px", fontWeight: 700 },
                     }}
-                    onClick={() => setActiveTab("expenses")}
+                    onClick={() => handleNextToTab("budget", "expenses")}
                   >
                     Next: Expenses →
                   </Button>
@@ -1159,6 +1346,21 @@ export function OdoModal({
           {/* ══ EXPENSES TAB ══ */}
           <Tabs.Panel value="expenses">
             <Stack gap="sm">
+              {tabValidationAttempted.expenses && !isExpensesValid && (
+                <Paper withBorder radius="sm" p="xs" bg="red.0" style={{ borderColor: "var(--mantine-color-red-3)" }}>
+                  <Group gap={6} mb={4}>
+                    <IconAlertTriangle size={13} color="var(--mantine-color-red-6)" />
+                    <Text style={{ fontSize: "10px" }} fw={700} c="red.7" tt="uppercase" lts={0.5}>
+                      Please fix the following errors
+                    </Text>
+                  </Group>
+                  {expenseErrorMessages.map((msg, i) => (
+                    <Text key={i} style={{ fontSize: "10px" }} c="red.7" fw={600} ml={19}>
+                      • {msg}
+                    </Text>
+                  ))}
+                </Paper>
+              )}
               {/* Real-time tally */}
               {budgetAmount > 0 && (
                 <Paper
@@ -1597,7 +1799,7 @@ export function OdoModal({
                   </Button>
                   {/* ── SAVE now opens the review modal ── */}
                   <Button
-                    color="blue.6"
+                    color={isAllValid ? "blue.6" : "blue.6"}
                     leftSection={<IconClipboardList size={14} />}
                     styles={{
                       root: { height: 34 },
