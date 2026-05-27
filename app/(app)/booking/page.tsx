@@ -98,7 +98,6 @@ export default function BookingRecordsPage() {
 
   const { setEditingRecord } = useDispatch();
 
-
   /* ── Search filter (searches across all string fields) ── */
   const filtered = useMemo(() => {
     const q = search.toLowerCase().trim();
@@ -110,8 +109,13 @@ export default function BookingRecordsPage() {
     });
   }, [search, statusFilter, records]);
 
+  const paginated = useMemo(
+  () => filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
+  [filtered, page]
+);
+
   const { handleExport } = useDispatchExport(filtered);
-   const {handlePrint} = useDispatchPrint(filtered);
+  const { handlePrint } = useDispatchPrint(filtered);
 
   const handleView = (record: DispatchRecord) => {
     setViewRecord(record);
@@ -359,7 +363,12 @@ export default function BookingRecordsPage() {
 
           {/* Table */}
           <Paper withBorder radius="md" p={0} style={{ overflow: "hidden" }}>
-            <ScrollArea scrollbars="x" type="always" scrollbarSize={4}>
+            <ScrollArea
+              scrollbars="xy"
+              type="always"
+              scrollbarSize={4}
+              mah={500}
+            >
               <Table
                 striped
                 highlightOnHover
@@ -415,7 +424,7 @@ export default function BookingRecordsPage() {
                       </Table.Td>
                     </Table.Tr>
                   ) : (
-                    filtered.map((record) => (
+                    paginated.map((record) => (
                       <Table.Tr
                         key={record.id}
                         onClick={() => handleRowClick(record)}
@@ -464,7 +473,7 @@ export default function BookingRecordsPage() {
                         <Table.Td style={cellStyle}>{record.driver}</Table.Td>
                         <Table.Td style={cellStyle}>{record.trucker}</Table.Td>
                         <Table.Td style={cellStyle}>{record.helper}</Table.Td>
-                        <Table.Td style={cellStyle}>{record.plateNo}</Table.Td>
+                        <Table.Td style={cellStyle}>{record.unit}</Table.Td>
                         <Table.Td
                           style={{
                             ...cellStyle,
@@ -473,7 +482,7 @@ export default function BookingRecordsPage() {
                         >
                           {record.totalKM ? `${record.totalKM} km` : "—"}
                         </Table.Td>
-                        <Table.Td style={cellStyle}>{record.unit}</Table.Td>
+                        <Table.Td style={cellStyle}>{record.plateNo}</Table.Td>
                         <Table.Td style={cellStyle}>
                           {record.pickLocation || "—"}
                         </Table.Td>
@@ -481,7 +490,7 @@ export default function BookingRecordsPage() {
                           {record.dropOffLocation || "—"}
                         </Table.Td>
                         <Table.Td style={{ ...cellStyle, textAlign: "center" }}>
-                          {record.noOfDrops}
+                          {record.dropOffLocation || "—"}
                         </Table.Td>
                         <Table.Td style={cellStyle}>{record.bookedBy}</Table.Td>
                       </Table.Tr>
