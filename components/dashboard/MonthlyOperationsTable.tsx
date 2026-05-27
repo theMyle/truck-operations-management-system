@@ -50,7 +50,7 @@ export const MonthlyOperationsTable = ({
         }
       />
 
-      <Box style={{ flex: 1, overflowY: "auto", maxHeight: 200 }}>
+      <ScrollArea style={{ flex: 1 }} mah={200} scrollbarSize={4} offsetScrollbars>
         <Table
           verticalSpacing={4}
           horizontalSpacing="xs"
@@ -97,9 +97,9 @@ export const MonthlyOperationsTable = ({
             ))}
           </Table.Tbody>
         </Table>
-      </Box>
+      </ScrollArea>
 
-      <ScrollArea mt="sm" bg="blue.0" offsetScrollbars>
+      <Box mt="sm" bg="blue.0">
         <Table
           verticalSpacing={4}
           horizontalSpacing="xs"
@@ -130,7 +130,7 @@ export const MonthlyOperationsTable = ({
             </Table.Tr>
           </Table.Tbody>
         </Table>
-      </ScrollArea>
+      </Box>
     </Paper>
   );
 };
