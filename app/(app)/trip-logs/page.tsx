@@ -376,6 +376,7 @@ export default function DispatchRecordsPage() {
       />
 
       <OdoModal
+        key={odoRecord?.id}
         opened={odoOpened}
         onClose={() => setOdoOpened(false)}
         record={odoRecord}
