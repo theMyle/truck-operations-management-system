@@ -110,9 +110,9 @@ export default function BookingRecordsPage() {
   }, [search, statusFilter, records]);
 
   const paginated = useMemo(
-  () => filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
-  [filtered, page]
-);
+    () => filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
+    [filtered, page],
+  );
 
   const { handleExport } = useDispatchExport(filtered);
   const { handlePrint } = useDispatchPrint(filtered);
@@ -513,8 +513,8 @@ export default function BookingRecordsPage() {
               <Group justify="space-between" align="center">
                 <Text style={{ fontSize: "10px" }} c="dimmed" fw={600}>
                   Showing{" "}
-                  {Math.min((page - 1) * PAGE_SIZE + 1, filtered.length)}
-                  of {filtered.length} record
+                  {Math.min((page - 1) * PAGE_SIZE + 1, filtered.length)} of{" "}
+                  {filtered.length} record
                   {filtered.length !== 1 ? "s" : ""}
                   {search ? ` matching "${search}"` : ""}
                 </Text>
