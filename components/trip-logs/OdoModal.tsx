@@ -17,7 +17,7 @@ import {
   Badge,
   ScrollArea,
   Select,
-  RingProgress,
+  RingProgress
 } from "@mantine/core";
 import {
   IconClipboardList,
@@ -26,7 +26,6 @@ import {
   IconGauge,
   IconWallet,
   IconReceipt,
-  IconDownload,
   IconTrendingUp,
   IconTrendingDown,
   IconRefresh,
@@ -35,8 +34,9 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { useState, useMemo } from "react";
 import { DispatchRecord } from "@/app/(app)/constant";
+import { ReviewModal } from "./ReviewModal";
 
-/* ── Extend jsPDF to include lastAutoTable without using `any` ── */
+
 interface JsPDFWithPlugin extends jsPDF {
   lastAutoTable: { finalY: number };
 }
@@ -77,7 +77,7 @@ export interface OdoFormData {
 }
 
 /* ── Expense categories ── */
-const EXPENSE_CATEGORIES = [
+export const EXPENSE_CATEGORIES = [
   { value: "cash_advance", label: "Cash Advance" },
   { value: "toll_fee", label: "Toll Fee" },
   { value: "cash_out_fee", label: "Cash Out Fee" },
@@ -134,6 +134,13 @@ const isPositiveNumber = (val: string) =>
 const isNonNegativeNumber = (val: string) =>
   val.trim() !== "" && !isNaN(Number(val)) && Number(val) >= 0;
 
+const generateRefNumber = (id: string | number) => {
+  const d = new Date();
+  const datePart = `${String(d.getDate()).padStart(2, "0")}${String(d.getMonth() + 1).padStart(2, "0")}${String(d.getFullYear()).slice(-2)}`;
+  const randomPart = Math.random().toString(36).toUpperCase().slice(2, 5);
+  return `TRP-${datePart}-${String(id).padStart(4, "0")}-${randomPart}`;
+};
+
 /* ══════════════════════════════════════════
       OdoModal Component
     ══════════════════════════════════════════ */
@@ -153,6 +160,10 @@ export function OdoModal({
   const [form, setForm] = useState<OdoFormData>(initialData || defaultForm());
   const [activeTab, setActiveTab] = useState<string | null>("odometer");
   const [touched, setTouched] = useState<Record<string, boolean>>({});
+
+  /* ── Review modal state ── */
+  const [reviewOpened, setReviewOpened] = useState(false);
+  const [pendingRefNumber, setPendingRefNumber] = useState("");
 
   const set = (key: keyof OdoFormData, value: unknown) =>
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -361,6 +372,19 @@ export function OdoModal({
       form.expenses.filter((e) => e.id !== id),
     );
 
+  /* ── Open review modal ── */
+  const handleOpenReview = () => {
+    if (!record) return;
+    setPendingRefNumber(generateRefNumber(record.id));
+    setReviewOpened(true);
+  };
+
+  /* ── Confirm save ── */
+  const handleConfirmSave = () => {
+    setReviewOpened(false);
+    onSave(form);
+  };
+
   /* ── Liquidation PDF download ── */
   const handleDownload = () => {
     if (!record) return;
@@ -546,252 +570,981 @@ export function OdoModal({
   if (!record) return null;
 
   return (
-    <Modal
-      opened={opened}
-      onClose={onClose}
-      title={
-        <Group gap={8}>
-          <IconClipboardList size={16} color="var(--mantine-color-blue-6)" />
-          <Text fw={700} style={{ fontSize: "13px" }} tt="uppercase" lts={0.5}>
-            Trip Details — #{record.id}
-          </Text>
-          <Badge
-            variant="light"
-            color="blue"
-            radius="sm"
-            styles={{ label: { fontSize: "9px" }, root: { height: 18 } }}
-          >
-            {record.client}
-          </Badge>
-        </Group>
-      }
-      size="lg"
-      radius="md"
-      centered
-      scrollAreaComponent={ScrollArea.Autosize}
-    >
-      <Text style={{ fontSize: "11px" }} c="dimmed" mb="sm">
-        {record.driver} · {record.ruta} · {record.date}
-      </Text>
+    <>
+      {/* ── Review Modal ── */}
+      <ReviewModal
+        opened={reviewOpened}
+        onClose={() => setReviewOpened(false)}
+        onDownload={handleDownload}
+        onConfirm={handleConfirmSave}
+        form={form}
+        record={record}
+        refNumber={pendingRefNumber}
+      />
 
-      <Tabs value={activeTab} onChange={setActiveTab}>
-        <Tabs.List mb="md">
-          <Tabs.Tab value="odometer" leftSection={<IconGauge size={13} />}>
-            <Text style={{ fontSize: "11px" }} fw={600}>
-              Odometer
+      {/* ── Main OdoModal ── */}
+      <Modal
+        opened={opened}
+        onClose={onClose}
+        title={
+          <Group gap={8}>
+            <IconClipboardList size={16} color="var(--mantine-color-blue-6)" />
+            <Text
+              fw={700}
+              style={{ fontSize: "13px" }}
+              tt="uppercase"
+              lts={0.5}
+            >
+              Trip Details — #{record.id}
             </Text>
-          </Tabs.Tab>
-          <Tabs.Tab value="budget" leftSection={<IconWallet size={13} />}>
-            <Text style={{ fontSize: "11px" }} fw={600}>
-              Budget
-            </Text>
-          </Tabs.Tab>
-          <Tabs.Tab
-            value="expenses"
-            leftSection={<IconReceipt size={13} />}
-            rightSection={
-              totalEntryCount > 0 ? (
-                <Badge
-                  size="xs"
-                  color={isOverBudget ? "red" : "green"}
-                  variant="filled"
-                  circle
-                >
-                  {totalEntryCount}
-                </Badge>
-              ) : null
-            }
-          >
-            <Text style={{ fontSize: "11px" }} fw={600}>
-              Expenses
-            </Text>
-          </Tabs.Tab>
-        </Tabs.List>
+            <Badge
+              variant="light"
+              color="blue"
+              radius="sm"
+              styles={{ label: { fontSize: "9px" }, root: { height: 18 } }}
+            >
+              {record.client}
+            </Badge>
+          </Group>
+        }
+        size="lg"
+        radius="md"
+        centered
+        scrollAreaComponent={ScrollArea.Autosize}
+      >
+        <Text style={{ fontSize: "11px" }} c="dimmed" mb="sm">
+          {record.driver} · {record.ruta} · {record.date}
+        </Text>
 
-        {/* ══ ODOMETER TAB ══ */}
-        <Tabs.Panel value="odometer">
-          <Stack gap="sm">
-            <SimpleGrid cols={2} spacing="sm">
-              <TextInput
-                label="ODO Start"
-                placeholder="e.g. 12000"
-                styles={inputStyles}
-                value={form.odoStart}
-                onChange={(e) => set("odoStart", e.currentTarget.value)}
-                onBlur={() => touch("odoStart")}
+        <Tabs value={activeTab} onChange={setActiveTab}>
+          <Tabs.List mb="md">
+            <Tabs.Tab value="odometer" leftSection={<IconGauge size={13} />}>
+              <Text style={{ fontSize: "11px" }} fw={600}>
+                Odometer
+              </Text>
+            </Tabs.Tab>
+            <Tabs.Tab value="budget" leftSection={<IconWallet size={13} />}>
+              <Text style={{ fontSize: "11px" }} fw={600}>
+                Budget
+              </Text>
+            </Tabs.Tab>
+            <Tabs.Tab
+              value="expenses"
+              leftSection={<IconReceipt size={13} />}
+              rightSection={
+                totalEntryCount > 0 ? (
+                  <Badge
+                    size="xs"
+                    color={isOverBudget ? "red" : "green"}
+                    variant="filled"
+                    circle
+                  >
+                    {totalEntryCount}
+                  </Badge>
+                ) : null
+              }
+            >
+              <Text style={{ fontSize: "11px" }} fw={600}>
+                Expenses
+              </Text>
+            </Tabs.Tab>
+          </Tabs.List>
+
+          {/* ══ ODOMETER TAB ══ */}
+          <Tabs.Panel value="odometer">
+            <Stack gap="sm">
+              <SimpleGrid cols={2} spacing="sm">
+                <TextInput
+                  label="ODO Start"
+                  placeholder="e.g. 12000"
+                  styles={inputStyles}
+                  value={form.odoStart}
+                  onChange={(e) => set("odoStart", e.currentTarget.value)}
+                  onBlur={() => touch("odoStart")}
+                />
+                <TextInput
+                  label="ODO End"
+                  placeholder="e.g. 12500"
+                  styles={inputStyles}
+                  value={form.odoEnd}
+                  onChange={(e) => set("odoEnd", e.currentTarget.value)}
+                  onBlur={() => touch("odoEnd")}
+                  error={odoErrors.odoEnd}
+                />
+              </SimpleGrid>
+
+              {totalKm !== null && !odoErrors.odoEnd && (
+                <Paper withBorder radius="sm" p="xs" bg="blue.0">
+                  <Group justify="space-between">
+                    <Text
+                      style={{ fontSize: "10px" }}
+                      fw={700}
+                      tt="uppercase"
+                      c="gray.6"
+                      lts={0.5}
+                    >
+                      Total KM
+                    </Text>
+                    <Text style={{ fontSize: "13px" }} fw={900} c="blue.7">
+                      {totalKm} km
+                    </Text>
+                  </Group>
+                </Paper>
+              )}
+
+              <Divider
+                label={
+                  <Text
+                    style={{ fontSize: "9px" }}
+                    tt="uppercase"
+                    lts={1}
+                    c="dimmed"
+                  >
+                    Trip Type
+                  </Text>
+                }
+                labelPosition="left"
               />
-              <TextInput
-                label="ODO End"
-                placeholder="e.g. 12500"
-                styles={inputStyles}
-                value={form.odoEnd}
-                onChange={(e) => set("odoEnd", e.currentTarget.value)}
-                onBlur={() => touch("odoEnd")}
-                error={odoErrors.odoEnd}
-              />
-            </SimpleGrid>
 
-            {totalKm !== null && !odoErrors.odoEnd && (
-              <Paper withBorder radius="sm" p="xs" bg="blue.0">
-                <Group justify="space-between">
+              <SegmentedControl
+                value={form.tripType}
+                onChange={(val) => set("tripType", val)}
+                data={[
+                  { label: "One Drop / Single Trip", value: "single" },
+                  { label: "Multiple Trips", value: "multiple" },
+                ]}
+                styles={{ label: { fontSize: "11px", fontWeight: 600 } }}
+                fullWidth
+              />
+
+              {form.tripType === "single" && (
+                <SimpleGrid cols={2} spacing="sm">
+                  <TextInput
+                    label="ODO Start — Garage"
+                    placeholder="e.g. 12000"
+                    styles={inputStyles}
+                    value={form.singleOdoStart}
+                    onChange={(e) =>
+                      set("singleOdoStart", e.currentTarget.value)
+                    }
+                    onBlur={() => touch("singleOdoStart")}
+                  />
+                  <TextInput
+                    label="ODO End — Garage"
+                    placeholder="e.g. 12500"
+                    styles={inputStyles}
+                    value={form.singleOdoEnd}
+                    onChange={(e) => set("singleOdoEnd", e.currentTarget.value)}
+                    onBlur={() => touch("singleOdoEnd")}
+                    error={odoErrors.singleOdoEnd}
+                  />
+                </SimpleGrid>
+              )}
+
+              {form.tripType === "multiple" && (
+                <Stack gap="xs">
+                  {form.multipleTrips.map((trip, idx) => {
+                    const tripOdoErr =
+                      touched[`trip_odoEnd_${trip.id}`] &&
+                      trip.odoStart &&
+                      trip.odoEnd &&
+                      Number(trip.odoEnd) < Number(trip.odoStart)
+                        ? "ODO End must be ≥ ODO Start"
+                        : undefined;
+
+                    return (
+                      <Paper key={trip.id} withBorder radius="sm" p="sm">
+                        <Group justify="space-between" mb="xs">
+                          <Text
+                            style={{ fontSize: "9px" }}
+                            fw={800}
+                            tt="uppercase"
+                            lts={1}
+                            c="blue.6"
+                          >
+                            Trip {idx + 1}
+                          </Text>
+                          {form.multipleTrips.length > 1 && (
+                            <ActionIcon
+                              size="xs"
+                              color="red"
+                              variant="subtle"
+                              onClick={() =>
+                                set(
+                                  "multipleTrips",
+                                  form.multipleTrips.filter(
+                                    (t) => t.id !== trip.id,
+                                  ),
+                                )
+                              }
+                            >
+                              <IconTrash size={11} />
+                            </ActionIcon>
+                          )}
+                        </Group>
+                        <SimpleGrid cols={2} spacing="sm">
+                          <TextInput
+                            label="ODO Start — Garage"
+                            styles={inputStyles}
+                            value={trip.odoStart}
+                            onChange={(e) =>
+                              set(
+                                "multipleTrips",
+                                form.multipleTrips.map((t) =>
+                                  t.id === trip.id
+                                    ? { ...t, odoStart: e.currentTarget.value }
+                                    : t,
+                                ),
+                              )
+                            }
+                          />
+                          <TextInput
+                            label="ODO End — Garage"
+                            styles={inputStyles}
+                            value={trip.odoEnd}
+                            error={tripOdoErr}
+                            onChange={(e) =>
+                              set(
+                                "multipleTrips",
+                                form.multipleTrips.map((t) =>
+                                  t.id === trip.id
+                                    ? { ...t, odoEnd: e.currentTarget.value }
+                                    : t,
+                                ),
+                              )
+                            }
+                            onBlur={() => touch(`trip_odoEnd_${trip.id}`)}
+                          />
+                        </SimpleGrid>
+                        {idx === form.multipleTrips.length - 1 && (
+                          <TextInput
+                            label="ODO End — Last Drop Off"
+                            styles={inputStyles}
+                            mt="xs"
+                            value={trip.odoEndLastDrop ?? ""}
+                            onChange={(e) =>
+                              set(
+                                "multipleTrips",
+                                form.multipleTrips.map((t) =>
+                                  t.id === trip.id
+                                    ? {
+                                        ...t,
+                                        odoEndLastDrop: e.currentTarget.value,
+                                      }
+                                    : t,
+                                ),
+                              )
+                            }
+                          />
+                        )}
+                      </Paper>
+                    );
+                  })}
+
+                  <Button
+                    size="xs"
+                    variant="light"
+                    color="blue"
+                    leftSection={<IconPlus size={11} />}
+                    styles={{
+                      root: { height: 28 },
+                      label: { fontSize: "10px", fontWeight: 700 },
+                    }}
+                    onClick={() =>
+                      set("multipleTrips", [
+                        ...form.multipleTrips,
+                        {
+                          id: Date.now(),
+                          odoStart: "",
+                          odoEnd: "",
+                          odoEndLastDrop: "",
+                        },
+                      ])
+                    }
+                  >
+                    Add Trip
+                  </Button>
+                </Stack>
+              )}
+
+              <Group justify="flex-end" mt="xs">
+                <Group gap={8}>
+                  <Button
+                    size="xs"
+                    variant="light"
+                    color="red"
+                    leftSection={<IconRefresh size={12} />}
+                    styles={{
+                      root: { height: 30 },
+                      label: { fontSize: "10px", fontWeight: 700 },
+                    }}
+                    onClick={handleReset}
+                  >
+                    Reset
+                  </Button>
+                  <Button
+                    size="xs"
+                    variant="light"
+                    color="blue"
+                    styles={{
+                      root: { height: 30 },
+                      label: { fontSize: "10px", fontWeight: 700 },
+                    }}
+                    onClick={() => setActiveTab("budget")}
+                  >
+                    Next: Budget →
+                  </Button>
+                </Group>
+              </Group>
+            </Stack>
+          </Tabs.Panel>
+
+          {/* ══ BUDGET TAB ══ */}
+          <Tabs.Panel value="budget">
+            <Stack gap="sm">
+              <SimpleGrid cols={2} spacing="sm">
+                <TextInput
+                  label="Binigay na Budget (₱)"
+                  placeholder="e.g. 5000"
+                  styles={inputStyles}
+                  value={form.budget}
+                  onChange={(e) => set("budget", e.currentTarget.value)}
+                  onBlur={() => touch("budget")}
+                  error={budgetErrors.budget}
+                />
+                <TextInput
+                  label="From"
+                  placeholder="e.g. Manager"
+                  styles={inputStyles}
+                  value={form.budgetFrom}
+                  onChange={(e) => set("budgetFrom", e.currentTarget.value)}
+                />
+              </SimpleGrid>
+
+              <Divider />
+              {/* RFID */}
+              <Group align="flex-end" gap="sm">
+                <TextInput
+                  label="RFID Load"
+                  placeholder="Amount"
+                  styles={inputStyles}
+                  style={{ flex: 1 }}
+                  value={form.rfidLoad}
+                  onChange={(e) => set("rfidLoad", e.currentTarget.value)}
+                  onBlur={() => touch("rfidLoad")}
+                  error={budgetErrors.rfidLoad}
+                />
+                <Stack gap={4} mb={budgetErrors.rfidLoad ? 22 : 2}>
                   <Text
                     style={{ fontSize: "10px" }}
                     fw={700}
+                    c="gray.7"
                     tt="uppercase"
-                    c="gray.6"
                     lts={0.5}
                   >
-                    Total KM
+                    Payment
                   </Text>
-                  <Text style={{ fontSize: "13px" }} fw={900} c="blue.7">
-                    {totalKm} km
+                  <Group gap="sm">
+                    <Checkbox
+                      label={
+                        <Text style={{ fontSize: "11px" }} fw={600}>
+                          Card
+                        </Text>
+                      }
+                      checked={form.rfidPayment === "card"}
+                      onChange={() =>
+                        set(
+                          "rfidPayment",
+                          form.rfidPayment === "card" ? "" : "card",
+                        )
+                      }
+                      size="xs"
+                    />
+                    <Checkbox
+                      label={
+                        <Text style={{ fontSize: "11px" }} fw={600}>
+                          Cash
+                        </Text>
+                      }
+                      checked={form.rfidPayment === "cash"}
+                      onChange={() =>
+                        set(
+                          "rfidPayment",
+                          form.rfidPayment === "cash" ? "" : "cash",
+                        )
+                      }
+                      size="xs"
+                    />
+                  </Group>
+                </Stack>
+              </Group>
+
+              {/* Fuel */}
+              <Group align="flex-end" gap="sm">
+                <TextInput
+                  label="Amount of Fuel"
+                  placeholder="Amount"
+                  styles={inputStyles}
+                  style={{ flex: 1 }}
+                  value={form.fuelAmount}
+                  onChange={(e) => set("fuelAmount", e.currentTarget.value)}
+                  onBlur={() => touch("fuelAmount")}
+                  error={budgetErrors.fuelAmount}
+                />
+                <Stack gap={4} mb={budgetErrors.fuelAmount ? 22 : 2}>
+                  <Text
+                    style={{ fontSize: "10px" }}
+                    fw={700}
+                    c="gray.7"
+                    tt="uppercase"
+                    lts={0.5}
+                  >
+                    Payment
                   </Text>
-                </Group>
-              </Paper>
-            )}
+                  <Group gap="sm">
+                    <Checkbox
+                      label={
+                        <Text style={{ fontSize: "11px" }} fw={600}>
+                          Shell Card
+                        </Text>
+                      }
+                      checked={form.fuelPayment === "shell_card"}
+                      onChange={() =>
+                        set(
+                          "fuelPayment",
+                          form.fuelPayment === "shell_card" ? "" : "shell_card",
+                        )
+                      }
+                      size="xs"
+                    />
+                    <Checkbox
+                      label={
+                        <Text style={{ fontSize: "11px" }} fw={600}>
+                          Cash
+                        </Text>
+                      }
+                      checked={form.fuelPayment === "cash"}
+                      onChange={() =>
+                        set(
+                          "fuelPayment",
+                          form.fuelPayment === "cash" ? "" : "cash",
+                        )
+                      }
+                      size="xs"
+                    />
+                  </Group>
+                </Stack>
+              </Group>
 
-            <Divider
-              label={
-                <Text
-                  style={{ fontSize: "9px" }}
-                  tt="uppercase"
-                  lts={1}
-                  c="dimmed"
-                >
-                  Trip Type
-                </Text>
-              }
-              labelPosition="left"
-            />
+              <Divider />
 
-            <SegmentedControl
-              value={form.tripType}
-              onChange={(val) => set("tripType", val)}
-              data={[
-                { label: "One Drop / Single Trip", value: "single" },
-                { label: "Multiple Trips", value: "multiple" },
-              ]}
-              styles={{ label: { fontSize: "11px", fontWeight: 600 } }}
-              fullWidth
-            />
+              <TextInput
+                label="Collection sa Customer (₱)"
+                placeholder="e.g. 3500"
+                styles={inputStyles}
+                value={form.collectionFromCustomer}
+                onChange={(e) =>
+                  set("collectionFromCustomer", e.currentTarget.value)
+                }
+                onBlur={() => touch("collectionFromCustomer")}
+                error={budgetErrors.collectionFromCustomer}
+              />
 
-            {form.tripType === "single" && (
               <SimpleGrid cols={2} spacing="sm">
                 <TextInput
-                  label="ODO Start — Garage"
-                  placeholder="e.g. 12000"
+                  label="Naibalik na Sukli (₱)"
+                  placeholder="e.g. 500"
                   styles={inputStyles}
-                  value={form.singleOdoStart}
-                  onChange={(e) => set("singleOdoStart", e.currentTarget.value)}
-                  onBlur={() => touch("singleOdoStart")}
+                  value={form.naibalikNaSukli}
+                  onChange={(e) =>
+                    set("naibalikNaSukli", e.currentTarget.value)
+                  }
+                  onBlur={() => touch("naibalikNaSukli")}
+                  error={budgetErrors.naibalikNaSukli}
                 />
                 <TextInput
-                  label="ODO End — Garage"
-                  placeholder="e.g. 12500"
+                  label="Kanino Naibalik"
+                  placeholder="e.g. Dispatcher"
                   styles={inputStyles}
-                  value={form.singleOdoEnd}
-                  onChange={(e) => set("singleOdoEnd", e.currentTarget.value)}
-                  onBlur={() => touch("singleOdoEnd")}
-                  error={odoErrors.singleOdoEnd}
+                  value={form.kanino}
+                  onChange={(e) => set("kanino", e.currentTarget.value)}
                 />
               </SimpleGrid>
-            )}
 
-            {form.tripType === "multiple" && (
+              <Stack gap={4}>
+                <Text
+                  style={{ fontSize: "10px" }}
+                  fw={700}
+                  c="gray.7"
+                  tt="uppercase"
+                  lts={0.5}
+                >
+                  Auto CA?
+                </Text>
+                <Group gap="md">
+                  <Checkbox
+                    label={
+                      <Text style={{ fontSize: "11px" }} fw={600}>
+                        Yes
+                      </Text>
+                    }
+                    checked={form.autoCA === "yes"}
+                    onChange={() =>
+                      set("autoCA", form.autoCA === "yes" ? "" : "yes")
+                    }
+                    size="xs"
+                  />
+                  <Checkbox
+                    label={
+                      <Text style={{ fontSize: "11px" }} fw={600}>
+                        No
+                      </Text>
+                    }
+                    checked={form.autoCA === "no"}
+                    onChange={() =>
+                      set("autoCA", form.autoCA === "no" ? "" : "no")
+                    }
+                    size="xs"
+                  />
+                </Group>
+              </Stack>
+
+              <Divider />
+
+              <Group justify="space-between">
+                <Button
+                  size="xs"
+                  variant="subtle"
+                  color="gray"
+                  styles={{
+                    root: { height: 30 },
+                    label: { fontSize: "10px", fontWeight: 700 },
+                  }}
+                  onClick={() => setActiveTab("odometer")}
+                >
+                  ← Back
+                </Button>
+
+                <Group gap={8}>
+                  <Button
+                    size="xs"
+                    variant="light"
+                    color="red"
+                    leftSection={<IconRefresh size={12} />}
+                    styles={{
+                      root: { height: 30 },
+                      label: { fontSize: "10px", fontWeight: 700 },
+                    }}
+                    onClick={handleReset}
+                  >
+                    Reset
+                  </Button>
+                  <Button
+                    size="xs"
+                    variant="light"
+                    color="blue"
+                    styles={{
+                      root: { height: 30 },
+                      label: { fontSize: "10px", fontWeight: 700 },
+                    }}
+                    onClick={() => setActiveTab("expenses")}
+                  >
+                    Next: Expenses →
+                  </Button>
+                </Group>
+              </Group>
+            </Stack>
+          </Tabs.Panel>
+
+          {/* ══ EXPENSES TAB ══ */}
+          <Tabs.Panel value="expenses">
+            <Stack gap="sm">
+              {/* Real-time tally */}
+              {budgetAmount > 0 && (
+                <Paper
+                  withBorder
+                  radius="md"
+                  p="sm"
+                  bg={isOverBudget ? "red.0" : "green.0"}
+                >
+                  <Group
+                    justify="space-between"
+                    align="flex-start"
+                    wrap="nowrap"
+                  >
+                    <Stack gap={4} style={{ flex: 1 }}>
+                      <Text
+                        style={{ fontSize: "9px" }}
+                        fw={800}
+                        tt="uppercase"
+                        lts={1}
+                        c={isOverBudget ? "red.7" : "green.7"}
+                      >
+                        Budget Summary
+                      </Text>
+
+                      <Group justify="space-between">
+                        <Text style={{ fontSize: "10px" }} c="gray.7" fw={600}>
+                          Budget Given
+                        </Text>
+                        <Text style={{ fontSize: "10px" }} fw={700}>
+                          ₱
+                          {budgetAmount.toLocaleString("en-PH", {
+                            minimumFractionDigits: 2,
+                          })}
+                        </Text>
+                      </Group>
+
+                      {collectionAmount > 0 && (
+                        <Group justify="space-between">
+                          <Text
+                            style={{ fontSize: "10px" }}
+                            c="gray.7"
+                            fw={600}
+                          >
+                            Collection from Customer
+                          </Text>
+                          <Text style={{ fontSize: "10px" }} fw={700}>
+                            + ₱
+                            {collectionAmount.toLocaleString("en-PH", {
+                              minimumFractionDigits: 2,
+                            })}
+                          </Text>
+                        </Group>
+                      )}
+
+                      {collectionAmount > 0 && (
+                        <Group justify="space-between">
+                          <Text
+                            style={{ fontSize: "10px" }}
+                            c="gray.7"
+                            fw={600}
+                          >
+                            Total Funds
+                          </Text>
+                          <Text
+                            style={{ fontSize: "10px" }}
+                            fw={700}
+                            c="blue.7"
+                          >
+                            ₱
+                            {totalFunds.toLocaleString("en-PH", {
+                              minimumFractionDigits: 2,
+                            })}
+                          </Text>
+                        </Group>
+                      )}
+
+                      {Object.entries(
+                        form.expenses.reduce<Record<string, number>>(
+                          (acc, e) => {
+                            if (!e.category) return acc;
+                            acc[e.category] =
+                              (acc[e.category] || 0) + (Number(e.amount) || 0);
+                            return acc;
+                          },
+                          {},
+                        ),
+                      ).map(([cat, amt]) => (
+                        <Group key={cat} justify="space-between">
+                          <Badge
+                            size="xs"
+                            variant="dot"
+                            color={CATEGORY_COLORS[cat] || "gray"}
+                            styles={{ label: { fontSize: "9px" } }}
+                          >
+                            {EXPENSE_CATEGORIES.find((c) => c.value === cat)
+                              ?.label || cat}
+                          </Badge>
+                          <Text
+                            style={{ fontSize: "10px" }}
+                            fw={600}
+                            c="gray.7"
+                          >
+                            — ₱
+                            {amt.toLocaleString("en-PH", {
+                              minimumFractionDigits: 2,
+                            })}
+                          </Text>
+                        </Group>
+                      ))}
+
+                      {rfidAmount > 0 && (
+                        <Group justify="space-between">
+                          <Badge
+                            size="xs"
+                            variant="dot"
+                            color="blue"
+                            styles={{ label: { fontSize: "9px" } }}
+                          >
+                            RFID Load (
+                            {form.rfidPayment === "card"
+                              ? "Card"
+                              : form.rfidPayment === "cash"
+                                ? "Cash"
+                                : "—"}
+                            )
+                          </Badge>
+                          <Text
+                            style={{ fontSize: "10px" }}
+                            fw={600}
+                            c="gray.7"
+                          >
+                            — ₱
+                            {rfidAmount.toLocaleString("en-PH", {
+                              minimumFractionDigits: 2,
+                            })}
+                          </Text>
+                        </Group>
+                      )}
+
+                      {fuelAmt > 0 && (
+                        <Group justify="space-between">
+                          <Badge
+                            size="xs"
+                            variant="dot"
+                            color="yellow"
+                            styles={{ label: { fontSize: "9px" } }}
+                          >
+                            Fuel (
+                            {form.fuelPayment === "shell_card"
+                              ? "Shell Card"
+                              : form.fuelPayment === "cash"
+                                ? "Cash"
+                                : "—"}
+                            )
+                          </Badge>
+                          <Text
+                            style={{ fontSize: "10px" }}
+                            fw={600}
+                            c="gray.7"
+                          >
+                            — ₱
+                            {fuelAmt.toLocaleString("en-PH", {
+                              minimumFractionDigits: 2,
+                            })}
+                          </Text>
+                        </Group>
+                      )}
+
+                      <Divider size="xs" />
+
+                      <Group justify="space-between">
+                        <Text style={{ fontSize: "10px" }} c="gray.7" fw={700}>
+                          Total Expenses
+                        </Text>
+                        <Text
+                          style={{ fontSize: "10px" }}
+                          fw={800}
+                          c={isOverBudget ? "red.6" : "gray.8"}
+                        >
+                          — ₱
+                          {grandTotal.toLocaleString("en-PH", {
+                            minimumFractionDigits: 2,
+                          })}
+                        </Text>
+                      </Group>
+
+                      <Group
+                        justify="space-between"
+                        style={{
+                          borderTop: `2px solid var(--mantine-color-${isOverBudget ? "red" : "green"}-4)`,
+                          paddingTop: 6,
+                        }}
+                      >
+                        <Group gap={4}>
+                          {isOverBudget ? (
+                            <IconTrendingUp
+                              size={12}
+                              color="var(--mantine-color-red-6)"
+                            />
+                          ) : (
+                            <IconTrendingDown
+                              size={12}
+                              color="var(--mantine-color-green-6)"
+                            />
+                          )}
+                          <Text
+                            style={{ fontSize: "11px" }}
+                            fw={800}
+                            c={isOverBudget ? "red.7" : "green.7"}
+                          >
+                            {isOverBudget
+                              ? "Over Budget"
+                              : "CASH ONHAND RETURNED"}
+                          </Text>
+                        </Group>
+                        <Text
+                          style={{ fontSize: "13px" }}
+                          fw={900}
+                          c={isOverBudget ? "red.7" : "green.7"}
+                        >
+                          ₱
+                          {Math.abs(balance).toLocaleString("en-PH", {
+                            minimumFractionDigits: 2,
+                          })}
+                        </Text>
+                      </Group>
+                    </Stack>
+
+                    <RingProgress
+                      size={70}
+                      thickness={6}
+                      roundCaps
+                      sections={[
+                        {
+                          value: spentPct,
+                          color: isOverBudget ? "red" : "green",
+                        },
+                      ]}
+                      label={
+                        <Text
+                          ta="center"
+                          style={{ fontSize: "9px" }}
+                          fw={800}
+                          c={isOverBudget ? "red.7" : "green.7"}
+                        >
+                          {Math.round(spentPct)}%
+                        </Text>
+                      }
+                    />
+                  </Group>
+                </Paper>
+              )}
+
+              {!budgetAmount && (
+                <Paper withBorder radius="sm" p="xs" bg="yellow.0">
+                  <Text style={{ fontSize: "10px" }} c="yellow.8" fw={600}>
+                    ⚠ Set a budget in the Budget tab to see the tally.
+                  </Text>
+                </Paper>
+              )}
+
+              <Divider
+                label={
+                  <Text
+                    style={{ fontSize: "9px" }}
+                    tt="uppercase"
+                    lts={1}
+                    c="dimmed"
+                  >
+                    Expense Entries
+                  </Text>
+                }
+                labelPosition="left"
+              />
+
               <Stack gap="xs">
-                {form.multipleTrips.map((trip, idx) => {
-                  const tripOdoErr =
-                    touched[`trip_odoEnd_${trip.id}`] &&
-                    trip.odoStart &&
-                    trip.odoEnd &&
-                    Number(trip.odoEnd) < Number(trip.odoStart)
-                      ? "ODO End must be ≥ ODO Start"
-                      : undefined;
+                {form.expenses.length === 0 && (
+                  <Text
+                    style={{ fontSize: "11px" }}
+                    c="dimmed"
+                    ta="center"
+                    py="xs"
+                  >
+                    No expenses added yet.
+                  </Text>
+                )}
 
+                {form.expenses.map((expense, idx) => {
+                  const errs = expenseErrors[idx] ?? {};
                   return (
-                    <Paper key={trip.id} withBorder radius="sm" p="sm">
-                      <Group justify="space-between" mb="xs">
+                    <Paper key={expense.id} withBorder radius="sm" p="sm">
+                      <Group justify="space-between" mb={6} wrap="nowrap">
                         <Text
                           style={{ fontSize: "9px" }}
                           fw={800}
                           tt="uppercase"
                           lts={1}
-                          c="blue.6"
+                          c={CATEGORY_COLORS[expense.category] || "gray.5"}
                         >
-                          Trip {idx + 1}
+                          Entry {idx + 1}
                         </Text>
-                        {form.multipleTrips.length > 1 && (
-                          <ActionIcon
-                            size="xs"
-                            color="red"
-                            variant="subtle"
-                            onClick={() =>
-                              set(
-                                "multipleTrips",
-                                form.multipleTrips.filter(
-                                  (t) => t.id !== trip.id,
-                                ),
-                              )
-                            }
-                          >
-                            <IconTrash size={11} />
-                          </ActionIcon>
-                        )}
+                        <ActionIcon
+                          size="xs"
+                          color="red"
+                          variant="subtle"
+                          onClick={() => removeExpense(expense.id)}
+                        >
+                          <IconTrash size={11} />
+                        </ActionIcon>
                       </Group>
-                      <SimpleGrid cols={2} spacing="sm">
-                        <TextInput
-                          label="ODO Start — Garage"
+
+                      <SimpleGrid
+                        key={`grid-${expense.id}-${expense.category}`}
+                        cols={expense.category === "cash_advance" ? 1 : 2}
+                        spacing="sm"
+                      >
+                        <Select
+                          label="Expense"
+                          placeholder="Select type"
+                          data={EXPENSE_CATEGORIES}
+                          value={expense.category || null}
+                          onChange={(val) => {
+                            touch(`exp_cat_${expense.id}`);
+                            updateExpense(expense.id, {
+                              category: val || "",
+                              assignedTo: "",
+                            });
+                          }}
+                          onBlur={() => touch(`exp_cat_${expense.id}`)}
+                          error={errs.category}
                           styles={inputStyles}
-                          value={trip.odoStart}
-                          onChange={(e) =>
-                            set(
-                              "multipleTrips",
-                              form.multipleTrips.map((t) =>
-                                t.id === trip.id
-                                  ? { ...t, odoStart: e.currentTarget.value }
-                                  : t,
-                              ),
-                            )
-                          }
                         />
-                        <TextInput
-                          label="ODO End — Garage"
-                          styles={inputStyles}
-                          value={trip.odoEnd}
-                          error={tripOdoErr}
-                          onChange={(e) =>
-                            set(
-                              "multipleTrips",
-                              form.multipleTrips.map((t) =>
-                                t.id === trip.id
-                                  ? { ...t, odoEnd: e.currentTarget.value }
-                                  : t,
-                              ),
-                            )
-                          }
-                          onBlur={() => touch(`trip_odoEnd_${trip.id}`)}
-                        />
+                        {expense.category !== "cash_advance" && (
+                          <TextInput
+                            label="Amount (₱)"
+                            placeholder="0.00"
+                            styles={inputStyles}
+                            value={expense.amount}
+                            onChange={(e) =>
+                              updateExpense(expense.id, {
+                                amount: e.currentTarget.value,
+                              })
+                            }
+                            onBlur={() => touch(`exp_amt_${expense.id}`)}
+                            error={errs.amount}
+                          />
+                        )}
                       </SimpleGrid>
-                      {idx === form.multipleTrips.length - 1 && (
-                        <TextInput
-                          label="ODO End — Last Drop Off"
-                          styles={inputStyles}
+                      {expense.category === "cash_advance" && (
+                        <SimpleGrid
+                          key={`ca-grid-${expense.id}`}
+                          cols={2}
+                          spacing="sm"
                           mt="xs"
-                          value={trip.odoEndLastDrop ?? ""}
-                          onChange={(e) =>
-                            set(
-                              "multipleTrips",
-                              form.multipleTrips.map((t) =>
-                                t.id === trip.id
-                                  ? {
-                                      ...t,
-                                      odoEndLastDrop: e.currentTarget.value,
-                                    }
-                                  : t,
-                              ),
-                            )
-                          }
-                        />
+                        >
+                          <Select
+                            label="Assigned Manpower"
+                            placeholder="Select crew member"
+                            data={manpowerOptions}
+                            value={expense.assignedTo || null}
+                            onChange={(val) => {
+                              touch(`exp_assign_${expense.id}`);
+                              updateExpense(expense.id, {
+                                assignedTo: val || "",
+                              });
+                            }}
+                            onBlur={() => touch(`exp_assign_${expense.id}`)}
+                            error={errs.assignedTo}
+                            searchable
+                            allowDeselect
+                            styles={inputStyles}
+                          />
+                          <TextInput
+                            label="Amount (₱)"
+                            placeholder="0.00"
+                            styles={inputStyles}
+                            value={expense.amount}
+                            onChange={(e) =>
+                              updateExpense(expense.id, {
+                                amount: e.currentTarget.value,
+                              })
+                            }
+                            onBlur={() => touch(`exp_amt_${expense.id}`)}
+                            error={errs.amount}
+                          />
+                        </SimpleGrid>
                       )}
                     </Paper>
                   );
@@ -806,750 +1559,60 @@ export function OdoModal({
                     root: { height: 28 },
                     label: { fontSize: "10px", fontWeight: 700 },
                   }}
-                  onClick={() =>
-                    set("multipleTrips", [
-                      ...form.multipleTrips,
-                      {
-                        id: Date.now(),
-                        odoStart: "",
-                        odoEnd: "",
-                        odoEndLastDrop: "",
-                      },
-                    ])
-                  }
+                  onClick={addExpense}
                 >
-                  Add Trip
+                  Add Expense
                 </Button>
               </Stack>
-            )}
 
-            <Group justify="flex-end" mt="xs">
-              <Group gap={8}>
+              <Divider />
+
+              <Group justify="space-between">
                 <Button
                   size="xs"
-                  variant="light"
-                  color="red"
-                  leftSection={<IconRefresh size={12} />}
-                  styles={{
-                    root: { height: 30 },
-                    label: { fontSize: "10px", fontWeight: 700 },
-                  }}
-                  onClick={handleReset}
-                >
-                  Reset
-                </Button>
-                <Button
-                  size="xs"
-                  variant="light"
-                  color="blue"
+                  variant="subtle"
+                  color="gray"
                   styles={{
                     root: { height: 30 },
                     label: { fontSize: "10px", fontWeight: 700 },
                   }}
                   onClick={() => setActiveTab("budget")}
                 >
-                  Next: Budget →
+                  ← Back
                 </Button>
-              </Group>
-            </Group>
-          </Stack>
-        </Tabs.Panel>
 
-        {/* ══ BUDGET TAB ══ */}
-        <Tabs.Panel value="budget">
-          <Stack gap="sm">
-            <SimpleGrid cols={2} spacing="sm">
-              <TextInput
-                label="Binigay na Budget (₱)"
-                placeholder="e.g. 5000"
-                styles={inputStyles}
-                value={form.budget}
-                onChange={(e) => set("budget", e.currentTarget.value)}
-                onBlur={() => touch("budget")}
-                error={budgetErrors.budget}
-              />
-              <TextInput
-                label="From"
-                placeholder="e.g. Manager"
-                styles={inputStyles}
-                value={form.budgetFrom}
-                onChange={(e) => set("budgetFrom", e.currentTarget.value)}
-              />
-            </SimpleGrid>
-
-            <Divider />
-            {/* RFID */}
-            <Group align="flex-end" gap="sm">
-              <TextInput
-                label="RFID Load"
-                placeholder="Amount"
-                styles={inputStyles}
-                style={{ flex: 1 }}
-                value={form.rfidLoad}
-                onChange={(e) => set("rfidLoad", e.currentTarget.value)}
-                onBlur={() => touch("rfidLoad")}
-                error={budgetErrors.rfidLoad}
-              />
-              <Stack gap={4} mb={budgetErrors.rfidLoad ? 22 : 2}>
-                <Text
-                  style={{ fontSize: "10px" }}
-                  fw={700}
-                  c="gray.7"
-                  tt="uppercase"
-                  lts={0.5}
-                >
-                  Payment
-                </Text>
-                <Group gap="sm">
-                  <Checkbox
-                    label={
-                      <Text style={{ fontSize: "11px" }} fw={600}>
-                        Card
-                      </Text>
-                    }
-                    checked={form.rfidPayment === "card"}
-                    onChange={() =>
-                      set(
-                        "rfidPayment",
-                        form.rfidPayment === "card" ? "" : "card",
-                      )
-                    }
+                <Group gap={8}>
+                  <Button
                     size="xs"
-                  />
-                  <Checkbox
-                    label={
-                      <Text style={{ fontSize: "11px" }} fw={600}>
-                        Cash
-                      </Text>
-                    }
-                    checked={form.rfidPayment === "cash"}
-                    onChange={() =>
-                      set(
-                        "rfidPayment",
-                        form.rfidPayment === "cash" ? "" : "cash",
-                      )
-                    }
-                    size="xs"
-                  />
+                    variant="light"
+                    color="red"
+                    leftSection={<IconRefresh size={12} />}
+                    styles={{
+                      root: { height: 30 },
+                      label: { fontSize: "10px", fontWeight: 700 },
+                    }}
+                    onClick={handleReset}
+                  >
+                    Reset
+                  </Button>
+                  {/* ── SAVE now opens the review modal ── */}
+                  <Button
+                    color="blue.6"
+                    leftSection={<IconClipboardList size={14} />}
+                    styles={{
+                      root: { height: 34 },
+                      label: { fontSize: "11px", fontWeight: 700 },
+                    }}
+                    onClick={handleOpenReview}
+                  >
+                    Save Details
+                  </Button>
                 </Group>
-              </Stack>
-            </Group>
-
-            {/* Fuel */}
-            <Group align="flex-end" gap="sm">
-              <TextInput
-                label="Amount of Fuel"
-                placeholder="Amount"
-                styles={inputStyles}
-                style={{ flex: 1 }}
-                value={form.fuelAmount}
-                onChange={(e) => set("fuelAmount", e.currentTarget.value)}
-                onBlur={() => touch("fuelAmount")}
-                error={budgetErrors.fuelAmount}
-              />
-              <Stack gap={4} mb={budgetErrors.fuelAmount ? 22 : 2}>
-                <Text
-                  style={{ fontSize: "10px" }}
-                  fw={700}
-                  c="gray.7"
-                  tt="uppercase"
-                  lts={0.5}
-                >
-                  Payment
-                </Text>
-                <Group gap="sm">
-                  <Checkbox
-                    label={
-                      <Text style={{ fontSize: "11px" }} fw={600}>
-                        Shell Card
-                      </Text>
-                    }
-                    checked={form.fuelPayment === "shell_card"}
-                    onChange={() =>
-                      set(
-                        "fuelPayment",
-                        form.fuelPayment === "shell_card" ? "" : "shell_card",
-                      )
-                    }
-                    size="xs"
-                  />
-                  <Checkbox
-                    label={
-                      <Text style={{ fontSize: "11px" }} fw={600}>
-                        Cash
-                      </Text>
-                    }
-                    checked={form.fuelPayment === "cash"}
-                    onChange={() =>
-                      set(
-                        "fuelPayment",
-                        form.fuelPayment === "cash" ? "" : "cash",
-                      )
-                    }
-                    size="xs"
-                  />
-                </Group>
-              </Stack>
-            </Group>
-
-            <Divider />
-
-            <TextInput
-              label="Collection sa Customer (₱)"
-              placeholder="e.g. 3500"
-              styles={inputStyles}
-              value={form.collectionFromCustomer}
-              onChange={(e) =>
-                set("collectionFromCustomer", e.currentTarget.value)
-              }
-              onBlur={() => touch("collectionFromCustomer")}
-              error={budgetErrors.collectionFromCustomer}
-            />
-
-            <SimpleGrid cols={2} spacing="sm">
-              <TextInput
-                label="Naibalik na Sukli (₱)"
-                placeholder="e.g. 500"
-                styles={inputStyles}
-                value={form.naibalikNaSukli}
-                onChange={(e) => set("naibalikNaSukli", e.currentTarget.value)}
-                onBlur={() => touch("naibalikNaSukli")}
-                error={budgetErrors.naibalikNaSukli}
-              />
-              <TextInput
-                label="Kanino Naibalik"
-                placeholder="e.g. Dispatcher"
-                styles={inputStyles}
-                value={form.kanino}
-                onChange={(e) => set("kanino", e.currentTarget.value)}
-              />
-            </SimpleGrid>
-
-            <Stack gap={4}>
-              <Text
-                style={{ fontSize: "10px" }}
-                fw={700}
-                c="gray.7"
-                tt="uppercase"
-                lts={0.5}
-              >
-                Auto CA?
-              </Text>
-              <Group gap="md">
-                <Checkbox
-                  label={
-                    <Text style={{ fontSize: "11px" }} fw={600}>
-                      Yes
-                    </Text>
-                  }
-                  checked={form.autoCA === "yes"}
-                  onChange={() =>
-                    set("autoCA", form.autoCA === "yes" ? "" : "yes")
-                  }
-                  size="xs"
-                />
-                <Checkbox
-                  label={
-                    <Text style={{ fontSize: "11px" }} fw={600}>
-                      No
-                    </Text>
-                  }
-                  checked={form.autoCA === "no"}
-                  onChange={() =>
-                    set("autoCA", form.autoCA === "no" ? "" : "no")
-                  }
-                  size="xs"
-                />
               </Group>
             </Stack>
-
-            <Divider />
-
-            <Group justify="space-between">
-              <Button
-                size="xs"
-                variant="subtle"
-                color="gray"
-                styles={{
-                  root: { height: 30 },
-                  label: { fontSize: "10px", fontWeight: 700 },
-                }}
-                onClick={() => setActiveTab("odometer")}
-              >
-                ← Back
-              </Button>
-
-              <Group gap={8}>
-                <Button
-                  size="xs"
-                  variant="light"
-                  color="red"
-                  leftSection={<IconRefresh size={12} />}
-                  styles={{
-                    root: { height: 30 },
-                    label: { fontSize: "10px", fontWeight: 700 },
-                  }}
-                  onClick={handleReset}
-                >
-                  Reset
-                </Button>
-                <Button
-                  size="xs"
-                  variant="light"
-                  color="blue"
-                  styles={{
-                    root: { height: 30 },
-                    label: { fontSize: "10px", fontWeight: 700 },
-                  }}
-                  onClick={() => setActiveTab("expenses")}
-                >
-                  Next: Expenses →
-                </Button>
-              </Group>
-            </Group>
-          </Stack>
-        </Tabs.Panel>
-
-        {/* ══ EXPENSES TAB ══ */}
-        <Tabs.Panel value="expenses">
-          <Stack gap="sm">
-            {/* Real-time tally */}
-            {budgetAmount > 0 && (
-              <Paper
-                withBorder
-                radius="md"
-                p="sm"
-                bg={isOverBudget ? "red.0" : "green.0"}
-              >
-                <Group justify="space-between" align="flex-start" wrap="nowrap">
-                  <Stack gap={4} style={{ flex: 1 }}>
-                    <Text
-                      style={{ fontSize: "9px" }}
-                      fw={800}
-                      tt="uppercase"
-                      lts={1}
-                      c={isOverBudget ? "red.7" : "green.7"}
-                    >
-                      Budget Summary
-                    </Text>
-
-                    <Group justify="space-between">
-                      <Text style={{ fontSize: "10px" }} c="gray.7" fw={600}>
-                        Budget Given
-                      </Text>
-                      <Text style={{ fontSize: "10px" }} fw={700}>
-                        ₱
-                        {budgetAmount.toLocaleString("en-PH", {
-                          minimumFractionDigits: 2,
-                        })}
-                      </Text>
-                    </Group>
-
-                    {collectionAmount > 0 && (
-                      <Group justify="space-between">
-                        <Text style={{ fontSize: "10px" }} c="gray.7" fw={600}>
-                          Collection from Customer
-                        </Text>
-                        <Text style={{ fontSize: "10px" }} fw={700}>
-                          + ₱
-                          {collectionAmount.toLocaleString("en-PH", {
-                            minimumFractionDigits: 2,
-                          })}
-                        </Text>
-                      </Group>
-                    )}
-
-                    {collectionAmount > 0 && (
-                      <Group justify="space-between">
-                        <Text style={{ fontSize: "10px" }} c="gray.7" fw={600}>
-                          Total Funds
-                        </Text>
-                        <Text style={{ fontSize: "10px" }} fw={700} c="blue.7">
-                          ₱
-                          {totalFunds.toLocaleString("en-PH", {
-                            minimumFractionDigits: 2,
-                          })}
-                        </Text>
-                      </Group>
-                    )}
-
-                    {/* Per-category expense breakdown */}
-                    {Object.entries(
-                      form.expenses.reduce<Record<string, number>>((acc, e) => {
-                        if (!e.category) return acc;
-                        acc[e.category] =
-                          (acc[e.category] || 0) + (Number(e.amount) || 0);
-                        return acc;
-                      }, {}),
-                    ).map(([cat, amt]) => (
-                      <Group key={cat} justify="space-between">
-                        <Badge
-                          size="xs"
-                          variant="dot"
-                          color={CATEGORY_COLORS[cat] || "gray"}
-                          styles={{ label: { fontSize: "9px" } }}
-                        >
-                          {EXPENSE_CATEGORIES.find((c) => c.value === cat)
-                            ?.label || cat}
-                        </Badge>
-                        <Text style={{ fontSize: "10px" }} fw={600} c="gray.7">
-                          — ₱
-                          {amt.toLocaleString("en-PH", {
-                            minimumFractionDigits: 2,
-                          })}
-                        </Text>
-                      </Group>
-                    ))}
-
-                    {/* RFID row — live from Budget tab */}
-                    {rfidAmount > 0 && (
-                      <Group justify="space-between">
-                        <Badge
-                          size="xs"
-                          variant="dot"
-                          color="blue"
-                          styles={{ label: { fontSize: "9px" } }}
-                        >
-                          RFID Load (
-                          {form.rfidPayment === "card"
-                            ? "Card"
-                            : form.rfidPayment === "cash"
-                              ? "Cash"
-                              : "—"}
-                          )
-                        </Badge>
-                        <Text style={{ fontSize: "10px" }} fw={600} c="gray.7">
-                          — ₱
-                          {rfidAmount.toLocaleString("en-PH", {
-                            minimumFractionDigits: 2,
-                          })}
-                        </Text>
-                      </Group>
-                    )}
-
-                    {/* Fuel row — live from Budget tab */}
-                    {fuelAmt > 0 && (
-                      <Group justify="space-between">
-                        <Badge
-                          size="xs"
-                          variant="dot"
-                          color="yellow"
-                          styles={{ label: { fontSize: "9px" } }}
-                        >
-                          Fuel (
-                          {form.fuelPayment === "shell_card"
-                            ? "Shell Card"
-                            : form.fuelPayment === "cash"
-                              ? "Cash"
-                              : "—"}
-                          )
-                        </Badge>
-                        <Text style={{ fontSize: "10px" }} fw={600} c="gray.7">
-                          — ₱
-                          {fuelAmt.toLocaleString("en-PH", {
-                            minimumFractionDigits: 2,
-                          })}
-                        </Text>
-                      </Group>
-                    )}
-
-                    <Divider size="xs" />
-
-                    <Group justify="space-between">
-                      <Text style={{ fontSize: "10px" }} c="gray.7" fw={700}>
-                        Total Expenses
-                      </Text>
-                      <Text
-                        style={{ fontSize: "10px" }}
-                        fw={800}
-                        c={isOverBudget ? "red.6" : "gray.8"}
-                      >
-                        — ₱
-                        {grandTotal.toLocaleString("en-PH", {
-                          minimumFractionDigits: 2,
-                        })}
-                      </Text>
-                    </Group>
-
-                    <Group
-                      justify="space-between"
-                      style={{
-                        borderTop: `2px solid var(--mantine-color-${isOverBudget ? "red" : "green"}-4)`,
-                        paddingTop: 6,
-                      }}
-                    >
-                      <Group gap={4}>
-                        {isOverBudget ? (
-                          <IconTrendingUp
-                            size={12}
-                            color="var(--mantine-color-red-6)"
-                          />
-                        ) : (
-                          <IconTrendingDown
-                            size={12}
-                            color="var(--mantine-color-green-6)"
-                          />
-                        )}
-                        <Text
-                          style={{ fontSize: "11px" }}
-                          fw={800}
-                          c={isOverBudget ? "red.7" : "green.7"}
-                        >
-                          {isOverBudget
-                            ? "Over Budget"
-                            : "CASH ONHAND RETURNED"}
-                        </Text>
-                      </Group>
-                      <Text
-                        style={{ fontSize: "13px" }}
-                        fw={900}
-                        c={isOverBudget ? "red.7" : "green.7"}
-                      >
-                        ₱
-                        {Math.abs(balance).toLocaleString("en-PH", {
-                          minimumFractionDigits: 2,
-                        })}
-                      </Text>
-                    </Group>
-                  </Stack>
-
-                  <RingProgress
-                    size={70}
-                    thickness={6}
-                    roundCaps
-                    sections={[
-                      {
-                        value: spentPct,
-                        color: isOverBudget ? "red" : "green",
-                      },
-                    ]}
-                    label={
-                      <Text
-                        ta="center"
-                        style={{ fontSize: "9px" }}
-                        fw={800}
-                        c={isOverBudget ? "red.7" : "green.7"}
-                      >
-                        {Math.round(spentPct)}%
-                      </Text>
-                    }
-                  />
-                </Group>
-              </Paper>
-            )}
-
-            {!budgetAmount && (
-              <Paper withBorder radius="sm" p="xs" bg="yellow.0">
-                <Text style={{ fontSize: "10px" }} c="yellow.8" fw={600}>
-                  ⚠ Set a budget in the Budget tab to see the tally.
-                </Text>
-              </Paper>
-            )}
-
-            <Divider
-              label={
-                <Text
-                  style={{ fontSize: "9px" }}
-                  tt="uppercase"
-                  lts={1}
-                  c="dimmed"
-                >
-                  Expense Entries
-                </Text>
-              }
-              labelPosition="left"
-            />
-
-            <Stack gap="xs">
-              {form.expenses.length === 0 && (
-                <Text
-                  style={{ fontSize: "11px" }}
-                  c="dimmed"
-                  ta="center"
-                  py="xs"
-                >
-                  No expenses added yet.
-                </Text>
-              )}
-
-              {form.expenses.map((expense, idx) => {
-                const errs = expenseErrors[idx] ?? {};
-                return (
-                  <Paper key={expense.id} withBorder radius="sm" p="sm">
-                    <Group justify="space-between" mb={6} wrap="nowrap">
-                      <Text
-                        style={{ fontSize: "9px" }}
-                        fw={800}
-                        tt="uppercase"
-                        lts={1}
-                        c={CATEGORY_COLORS[expense.category] || "gray.5"}
-                      >
-                        Entry {idx + 1}
-                      </Text>
-                      <ActionIcon
-                        size="xs"
-                        color="red"
-                        variant="subtle"
-                        onClick={() => removeExpense(expense.id)}
-                      >
-                        <IconTrash size={11} />
-                      </ActionIcon>
-                    </Group>
-
-                    <SimpleGrid
-                      key={`grid-${expense.id}-${expense.category}`}
-                      cols={expense.category === "cash_advance" ? 1 : 2}
-                      spacing="sm"
-                    >
-                      <Select
-                        label="Expense"
-                        placeholder="Select type"
-                        data={EXPENSE_CATEGORIES}
-                        value={expense.category || null}
-                        onChange={(val) => {
-                          touch(`exp_cat_${expense.id}`);
-                          updateExpense(expense.id, {
-                            category: val || "",
-                            assignedTo: "",
-                          });
-                        }}
-                        onBlur={() => touch(`exp_cat_${expense.id}`)}
-                        error={errs.category}
-                        styles={inputStyles}
-                      />
-                      {expense.category !== "cash_advance" && (
-                        <TextInput
-                          label="Amount (₱)"
-                          placeholder="0.00"
-                          styles={inputStyles}
-                          value={expense.amount}
-                          onChange={(e) =>
-                            updateExpense(expense.id, {
-                              amount: e.currentTarget.value,
-                            })
-                          }
-                          onBlur={() => touch(`exp_amt_${expense.id}`)}
-                          error={errs.amount}
-                        />
-                      )}
-                    </SimpleGrid>
-                    {expense.category === "cash_advance" && (
-                      <SimpleGrid
-                        key={`ca-grid-${expense.id}`}
-                        cols={2}
-                        spacing="sm"
-                        mt="xs"
-                      >
-                        <Select
-                          label="Assigned Manpower"
-                          placeholder="Select crew member"
-                          data={manpowerOptions}
-                          value={expense.assignedTo || null}
-                          onChange={(val) => {
-                            touch(`exp_assign_${expense.id}`);
-                            updateExpense(expense.id, {
-                              assignedTo: val || "",
-                            });
-                          }}
-                          onBlur={() => touch(`exp_assign_${expense.id}`)}
-                          error={errs.assignedTo}
-                          searchable
-                          allowDeselect
-                          styles={inputStyles}
-                        />
-                        <TextInput
-                          label="Amount (₱)"
-                          placeholder="0.00"
-                          styles={inputStyles}
-                          value={expense.amount}
-                          onChange={(e) =>
-                            updateExpense(expense.id, {
-                              amount: e.currentTarget.value,
-                            })
-                          }
-                          onBlur={() => touch(`exp_amt_${expense.id}`)}
-                          error={errs.amount}
-                        />
-                      </SimpleGrid>
-                    )}
-                  </Paper>
-                );
-              })}
-
-              <Button
-                size="xs"
-                variant="light"
-                color="blue"
-                leftSection={<IconPlus size={11} />}
-                styles={{
-                  root: { height: 28 },
-                  label: { fontSize: "10px", fontWeight: 700 },
-                }}
-                onClick={addExpense}
-              >
-                Add Expense
-              </Button>
-            </Stack>
-
-            <Divider />
-
-            <Group justify="space-between">
-              <Button
-                size="xs"
-                variant="subtle"
-                color="gray"
-                styles={{
-                  root: { height: 30 },
-                  label: { fontSize: "10px", fontWeight: 700 },
-                }}
-                onClick={() => setActiveTab("budget")}
-              >
-                ← Back
-              </Button>
-
-              <Group gap={8}>
-                <Button
-                  size="xs"
-                  variant="light"
-                  color="red"
-                  leftSection={<IconRefresh size={12} />}
-                  styles={{
-                    root: { height: 30 },
-                    label: { fontSize: "10px", fontWeight: 700 },
-                  }}
-                  onClick={handleReset}
-                >
-                  Reset
-                </Button>
-                <Button
-                  size="xs"
-                  variant="light"
-                  color="gray"
-                  leftSection={<IconDownload size={12} />}
-                  styles={{
-                    root: { height: 30 },
-                    label: { fontSize: "10px", fontWeight: 700 },
-                  }}
-                  onClick={handleDownload}
-                >
-                  Download Liquidation
-                </Button>
-                <Button
-                  color="blue.6"
-                  leftSection={<IconClipboardList size={14} />}
-                  styles={{
-                    root: { height: 34 },
-                    label: { fontSize: "11px", fontWeight: 700 },
-                  }}
-                  onClick={() => onSave(form)}
-                >
-                  Save Details
-                </Button>
-              </Group>
-            </Group>
-          </Stack>
-        </Tabs.Panel>
-      </Tabs>
-    </Modal>
+          </Tabs.Panel>
+        </Tabs>
+      </Modal>
+    </>
   );
 }
