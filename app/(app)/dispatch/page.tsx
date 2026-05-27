@@ -704,7 +704,7 @@ export default function DispatchPage() {
                             {h}
                           </Badge>
                         ))}
-                      </Group>
+                      </Group>  
                     )}
                   </Box>
 
