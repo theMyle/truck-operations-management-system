@@ -37,6 +37,44 @@
   import { useDispatch } from "../context/dispatch-context";
   import { OdoModal, OdoFormData } from "@/components/trip-logs/OdoModal";
   import { MOCK_RECORDS, DispatchRecord } from "@/app/(app)/constant";
+import {
+  Stack,
+  Text,
+  Box,
+  Group,
+  Paper,
+  TextInput,
+  Table,
+  Badge,
+  Divider,
+  Button,
+  ActionIcon,
+  ScrollArea,
+  Modal,
+  Tooltip,
+  Pagination,
+  Select,
+} from "@mantine/core";
+import { notifications } from "@mantine/notifications";
+import { useRouter } from "next/navigation";
+import React, { useState, useMemo, useEffect } from "react";
+import {
+  IconTrash,
+  IconEye,
+  IconSearch,
+  IconAlertTriangle,
+  IconClipboardList,
+  IconEdit,
+  IconDownload,
+  IconFileTypeDoc,
+  IconFileTypeJpg,
+  IconFileTypePdf,
+  IconFileTypeXls,
+} from "@tabler/icons-react";
+import { useDispatch } from "../context/dispatch-context";
+import { OdoModal, OdoFormData } from "@/components/trip-logs/OdoModal";
+import { TableRowActions } from "@/components/TableRowActions";
+import { MOCK_RECORDS, DispatchRecord } from "@/app/(app)/constant";
 
   /* ── Status badge helper ── */
   const statusColor: Record<DispatchRecord["status"], string> = {
@@ -651,6 +689,12 @@
                                 </Tooltip>
                               </Group>
                             </Table.Td>
+                            <TableRowActions
+                              onView={() => handleView(record)}
+                              onEdit={() => handleEdit(record)}
+                              onDelete={() => handleDeleteClick(record)}
+                            />
+                          </Table.Td>
 
                             <Table.Td style={cellStyle}>{record.id}</Table.Td>
                             <Table.Td style={cellStyle}>

@@ -5,6 +5,11 @@ import { z } from "zod";
 export const drivers = pgTable("drivers", {
   id: uuid("id").primaryKey().defaultRandom(),
   driverName: text("driver_name").notNull(),
+  contactNumber: text("contact_number"),
+  emergencyContact: text("emergency_contact"),
+  address: text("address").notNull(),
+  idFrontLink: text("id_front"),
+  idBackLink: text("id_back"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });

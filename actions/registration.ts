@@ -13,8 +13,10 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
 import { eq } from "drizzle-orm";
+import { deleteFileFromUrl } from "@/actions/file-upload";
 
-// ── Clients ──────────────────────────────────────────────────────────────────
+
+// Clients
 export const createClient = actionClient
   .schema(insertClientSchema.omit({ id: true, createdAt: true, updatedAt: true }))
   .action(async ({ parsedInput }) => {
@@ -40,7 +42,8 @@ export const deleteClient = actionClient
     revalidatePath("/registration");
   });
 
-// ── Trucks ───────────────────────────────────────────────────────────────────
+
+// Trucks
 export const createTruck = actionClient
   .schema(
     insertTruckSchema.omit({ createdAt: true, updatedAt: true })
@@ -68,7 +71,8 @@ export const deleteTruck = actionClient
     revalidatePath("/registration");
   });
 
-// ── Drivers ──────────────────────────────────────────────────────────────────
+
+// Drivers
 export const createDriver = actionClient
   .schema(insertDriverSchema.omit({ id: true, createdAt: true, updatedAt: true }))
   .action(async ({ parsedInput }) => {
@@ -77,10 +81,10 @@ export const createDriver = actionClient
   });
 
 export const updateDriver = actionClient
-  .schema(insertDriverSchema.pick({ id: true, driverName: true }).extend({ id: z.string() }))
+  .schema(insertDriverSchema.omit({ createdAt: true, updatedAt: true }).extend({ id: z.string() }))
   .action(async ({ parsedInput }) => {
     const [updated] = await db.update(drivers)
-      .set({ driverName: parsedInput.driverName, updatedAt: new Date() })
+      .set({ ...parsedInput, updatedAt: new Date() })
       .where(eq(drivers.id, parsedInput.id))
       .returning();
     revalidatePath("/registration");
@@ -90,11 +94,21 @@ export const updateDriver = actionClient
 export const deleteDriver = actionClient
   .schema(z.object({ id: z.string() }))
   .action(async ({ parsedInput }) => {
+    // 1. Fetch the driver to get the image URLs
+    const [driver] = await db.select().from(drivers).where(eq(drivers.id, parsedInput.id));
+    if (driver) {
+      // 2. Delete the images from Supabase Storage
+      await deleteFileFromUrl(driver.idFrontLink);
+      await deleteFileFromUrl(driver.idBackLink);
+    }
+    
+    // 3. Delete the driver from the database
     await db.delete(drivers).where(eq(drivers.id, parsedInput.id));
     revalidatePath("/registration");
   });
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
+
+// Helpers
 export const createHelper = actionClient
   .schema(insertHelperSchema.omit({ id: true, createdAt: true, updatedAt: true }))
   .action(async ({ parsedInput }) => {
@@ -103,10 +117,10 @@ export const createHelper = actionClient
   });
 
 export const updateHelper = actionClient
-  .schema(insertHelperSchema.pick({ id: true, helperName: true }).extend({ id: z.string() }))
+  .schema(insertHelperSchema.omit({ createdAt: true, updatedAt: true }).extend({ id: z.string() }))
   .action(async ({ parsedInput }) => {
     const [updated] = await db.update(helpers)
-      .set({ helperName: parsedInput.helperName, updatedAt: new Date() })
+      .set({ ...parsedInput, updatedAt: new Date() })
       .where(eq(helpers.id, parsedInput.id))
       .returning();
     revalidatePath("/registration");
@@ -116,6 +130,15 @@ export const updateHelper = actionClient
 export const deleteHelper = actionClient
   .schema(z.object({ id: z.string() }))
   .action(async ({ parsedInput }) => {
+    // 1. Fetch the helper to get the image URLs
+    const [helper] = await db.select().from(helpers).where(eq(helpers.id, parsedInput.id));
+    if (helper) {
+      // 2. Delete the images from Supabase Storage
+      await deleteFileFromUrl(helper.idFrontLink);
+      await deleteFileFromUrl(helper.idBackLink);
+    }
+    
+    // 3. Delete the helper from the database
     await db.delete(helpers).where(eq(helpers.id, parsedInput.id));
     revalidatePath("/registration");
   });

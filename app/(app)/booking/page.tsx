@@ -41,6 +41,7 @@ import { ViewModal } from "@/components/booking/ViewModal";
 import { DeleteModal } from "@/components/booking/DeleteModal";
 import { useDispatchExport } from "@/app/hooks/useDispatchExport ";
 import { useDispatchPrint } from "@/app/hooks/useDispatchPrint";
+import { TableRowActions } from "@/components/TableRowActions";
 
 /* ── Status badge helper ── */
 const statusColor: Record<DispatchRecord["status"], string> = {
@@ -431,65 +432,11 @@ export default function BookingRecordsPage() {
                             boxShadow: "2px 0 4px rgba(0,0,0,0.06)",
                           }}
                         >
-                          <Group gap={4} wrap="nowrap">
-                            <Tooltip
-                              label="View"
-                              withArrow
-                              position="top"
-                              fz={10}
-                            >
-                              <ActionIcon
-                                variant="light"
-                                color="blue"
-                                size="sm"
-                                radius="sm"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleView(record);
-                                }}
-                              >
-                                <IconEye size={13} />
-                              </ActionIcon>
-                            </Tooltip>
-                            <Tooltip
-                              label="Edit"
-                              withArrow
-                              position="top"
-                              fz={10}
-                            >
-                              <ActionIcon
-                                variant="light"
-                                color="orange"
-                                size="sm"
-                                radius="sm"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleEdit(record);
-                                }}
-                              >
-                                <IconEdit size={13} />
-                              </ActionIcon>
-                            </Tooltip>
-                            <Tooltip
-                              label="Delete"
-                              withArrow
-                              position="top"
-                              fz={10}
-                            >
-                              <ActionIcon
-                                variant="light"
-                                color="red"
-                                size="sm"
-                                radius="sm"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleDeleteClick(record);
-                                }}
-                              >
-                                <IconTrash size={13} />
-                              </ActionIcon>
-                            </Tooltip>
-                          </Group>
+                          <TableRowActions
+                            onView={() => handleView(record)}
+                            onEdit={() => handleEdit(record)}
+                            onDelete={() => handleDeleteClick(record)}
+                          />
                         </Table.Td>
 
                         <Table.Td style={cellStyle}>{record.id}</Table.Td>

@@ -5,7 +5,6 @@ import {
   Stack,
   Text,
   Paper,
-  Flex,
 } from "@mantine/core";
 import type { Client } from "@/lib/db/schema/clients";
 import type { Truck } from "@/lib/db/schema/trucks";
@@ -30,7 +29,7 @@ export default function RegistrationTables({
   helpers,
 }: Props) {
   return (
-    <Stack gap="md" h="100%">
+    <Stack gap="md">
       <Group justify="space-between" align="center">
         <div>
           <Text fw={800} size="xl" lh={1.2}>
@@ -42,47 +41,21 @@ export default function RegistrationTables({
         </div>
       </Group>
 
-      {/* Top Row: Clients & Drivers */}
-      <Flex gap="md" align="stretch">
-        <Paper
-          withBorder
-          radius="md"
-          p={0}
-          style={{ overflow: "hidden", flex: 1, display: "flex", flexDirection: "column" }}
-        >
-          <ClientsTable data={clients} />
-        </Paper>
+      <Paper withBorder radius="md" p={0} style={{ overflow: "hidden" }}>
+        <ClientsTable data={clients} />
+      </Paper>
 
-        <Paper
-          withBorder
-          radius="md"
-          p={0}
-          style={{ overflow: "hidden", flex: 1, display: "flex", flexDirection: "column" }}
-        >
-          <DriversTable data={drivers} />
-        </Paper>
-      </Flex>
+      <Paper withBorder radius="md" p={0} style={{ overflow: "hidden" }}>
+        <DriversTable data={drivers} />
+      </Paper>
 
-      {/* Bottom Row: Helpers & Trucks */}
-      <Flex gap="md" align="stretch">
-        <Paper
-          withBorder
-          radius="md"
-          p={0}
-          style={{ overflow: "hidden", flex: 3, display: "flex", flexDirection: "column" }}
-        >
-          <HelpersTable data={helpers} />
-        </Paper>
+      <Paper withBorder radius="md" p={0} style={{ overflow: "hidden" }}>
+        <HelpersTable data={helpers} />
+      </Paper>
 
-        <Paper
-          withBorder
-          radius="md"
-          p={0}
-          style={{ overflow: "hidden", flex: 3, display: "flex", flexDirection: "column" }}
-        >
-          <TrucksTable data={trucks} />
-        </Paper>
-      </Flex>
+      <Paper withBorder radius="md" p={0} style={{ overflow: "hidden" }}>
+        <TrucksTable data={trucks} />
+      </Paper>
     </Stack>
   );
 }

@@ -1,12 +1,14 @@
 "use client";
 
-import { Modal, TextInput, Button, Stack, Group } from "@mantine/core";
+import { useState, useEffect } from "react";
+import { Modal, TextInput, Button, Stack, Group, FileInput, SimpleGrid, Title, Image } from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { useAction } from "next-safe-action/hooks";
 import { updateHelper } from "@/actions/registration";
 import { notifications } from "@mantine/notifications";
-import { useEffect } from "react";
 import type { Helper } from "@/lib/db/schema/helpers";
+import { replaceFile } from "@/actions/file-upload";
+import { IconUpload } from "@tabler/icons-react";
 
 interface Props {
   opened: boolean;
@@ -16,17 +18,57 @@ interface Props {
 
 export function EditHelperModal({ opened, onClose, helper }: Props) {
   const form = useForm({
-    initialValues: { helperName: "" },
+    initialValues: { helperName: "", contactNumber: "", emergencyContact: "", address: "" },
     validate: {
       helperName: (v) => (v.trim().length < 1 ? "Helper name is required" : null),
+      address: (v) => (v.trim().length < 1 ? "Address is required" : null),
     },
   });
 
+  const [idFront, setIdFront] = useState<File | null>(null);
+  const [idBack, setIdBack] = useState<File | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [frontPreview, setFrontPreview] = useState<string | null>(null);
+  const [backPreview, setBackPreview] = useState<string | null>(null);
+
   useEffect(() => {
     if (helper) {
-      form.setValues({ helperName: helper.helperName });
+      form.setValues({ 
+        helperName: helper.helperName, 
+        contactNumber: helper.contactNumber || "", 
+        emergencyContact: helper.emergencyContact || "", 
+        address: helper.address || "" 
+      });
+      setFrontPreview(helper.idFrontLink || null);
+      setBackPreview(helper.idBackLink || null);
+      setIdFront(null);
+      setIdBack(null);
     }
   }, [helper]);
+
+  useEffect(() => {
+    if (idFront) {
+      const url = URL.createObjectURL(idFront);
+      setFrontPreview(url);
+      return () => URL.revokeObjectURL(url);
+    } else if (helper?.idFrontLink) {
+      setFrontPreview(helper.idFrontLink);
+    } else {
+      setFrontPreview(null);
+    }
+  }, [idFront, helper]);
+
+  useEffect(() => {
+    if (idBack) {
+      const url = URL.createObjectURL(idBack);
+      setBackPreview(url);
+      return () => URL.revokeObjectURL(url);
+    } else if (helper?.idBackLink) {
+      setBackPreview(helper.idBackLink);
+    } else {
+      setBackPreview(null);
+    }
+  }, [idBack, helper]);
 
   const { execute, isPending } = useAction(updateHelper, {
     onSuccess: () => {
@@ -38,28 +80,132 @@ export function EditHelperModal({ opened, onClose, helper }: Props) {
     },
   });
 
-  return (
-    <Modal opened={opened} onClose={onClose} title="Edit Helper" centered>
-      <form onSubmit={form.onSubmit((values) => {
-        if (helper) {
-          execute({ id: helper.id, helperName: values.helperName });
+  const handleSubmit = async (values: typeof form.values) => {
+    if (!helper) return;
+    
+    setIsUploading(true);
+
+    const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+    if ((idFront && idFront.size > MAX_FILE_SIZE) || (idBack && idBack.size > MAX_FILE_SIZE)) {
+      notifications.show({ 
+        title: "File Too Large", 
+        message: "Images must be smaller than 10MB. Please select a smaller file.", 
+        color: "red" 
+      });
+      setIsUploading(false);
+      return;
+    }
+
+    try {
+      let idFrontLink = helper.idFrontLink || undefined;
+      let idBackLink = helper.idBackLink || undefined;
+
+      if (idFront) {
+        const fd = new FormData();
+        fd.append("file", idFront);
+        fd.append("folder", "helpers/front-id");
+        if (helper.idFrontLink) {
+          fd.append("oldUrl", helper.idFrontLink);
         }
-      })}>
-        <Stack gap="sm">
-          <TextInput
-            label="Helper Name"
-            placeholder="e.g. Pedro Santos"
-            {...form.getInputProps("helperName")}
-          />
-          <Group justify="flex-end" mt="xs">
-            <Button variant="default" onClick={onClose}>
-              Cancel
-            </Button>
-            <Button type="submit" loading={isPending}>
-              Update
-            </Button>
-          </Group>
-        </Stack>
+        const res = await replaceFile(fd);
+        if (res.url) idFrontLink = res.url;
+      }
+
+      if (idBack) {
+        const fd = new FormData();
+        fd.append("file", idBack);
+        fd.append("folder", "helpers/back-id");
+        if (helper.idBackLink) {
+          fd.append("oldUrl", helper.idBackLink);
+        }
+        const res = await replaceFile(fd);
+        if (res.url) idBackLink = res.url;
+      }
+
+      execute({ id: helper.id, ...values, idFrontLink, idBackLink });
+    } catch (err) {
+      notifications.show({ message: "Failed to upload ID images.", color: "red" });
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  return (
+    <Modal opened={opened} onClose={onClose} title="Edit Helper" centered size="lg">
+      <form onSubmit={form.onSubmit(handleSubmit)}>
+        <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="lg">
+          <Stack gap="sm">
+            <Title order={6} c="dimmed" tt="uppercase">Personal Details</Title>
+            <TextInput
+              label="Helper Name"
+              placeholder="e.g. Pedro Santos"
+              {...form.getInputProps("helperName")}
+            />
+            <TextInput
+              label="Contact Number"
+              placeholder="e.g. 0912 345 6789"
+              {...form.getInputProps("contactNumber")}
+            />
+            <TextInput
+              label="Emergency Contact"
+              placeholder="e.g. 0912 345 6789"
+              {...form.getInputProps("emergencyContact")}
+            />
+            <TextInput
+              label="Address"
+              placeholder="e.g. 123 Main St, Manila"
+              {...form.getInputProps("address")}
+            />
+          </Stack>
+
+          <Stack gap="sm">
+            <Title order={6} c="dimmed" tt="uppercase">ID Documents</Title>
+            <FileInput
+              label="Front ID"
+              placeholder="Upload new front ID"
+              accept="image/png,image/jpeg,image/webp"
+              leftSection={<IconUpload size={16} />}
+              value={idFront}
+              onChange={setIdFront}
+            />
+            {frontPreview && (
+              <Image 
+                src={frontPreview} 
+                alt="Front ID preview" 
+                h={100} 
+                fit="contain" 
+                radius="md"
+              />
+            )}
+
+            <FileInput
+              label="Back ID"
+              placeholder="Upload new back ID"
+              accept="image/png,image/jpeg,image/webp"
+              leftSection={<IconUpload size={16} />}
+              value={idBack}
+              onChange={setIdBack}
+            />
+            {backPreview && (
+              <Image 
+                src={backPreview} 
+                alt="Back ID preview" 
+                h={100} 
+                fit="contain" 
+                radius="md"
+              />
+            )}
+          </Stack>
+        </SimpleGrid>
+
+        <Group justify="flex-end" mt="xl">
+          <Button variant="default" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button type="submit" loading={isPending || isUploading}>
+            Update
+          </Button>
+        </Group>
       </form>
     </Modal>
   );
