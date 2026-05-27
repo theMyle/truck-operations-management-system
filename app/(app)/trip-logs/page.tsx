@@ -294,8 +294,8 @@ export default function DispatchRecordsPage() {
   const [odoOpened, setOdoOpened] = useState(false);
   const [odoData, setOdoData] = useState<Record<number, OdoFormData>>({});
   const [page, setPage] = useState(1);
-  const { setEditingRecord, travelLogs, deleteTravelLog, updateTravelLog } = useDispatch();
-
+  const { setEditingRecord, travelLogs, deleteTravelLog, updateTravelLog } =
+    useDispatch();
 
   /* ── Search filter (searches across all string fields) ── */
   const filtered = useMemo(() => {
@@ -306,6 +306,10 @@ export default function DispatchRecordsPage() {
     );
   }, [search, travelLogs]);
 
+  const paginated = useMemo(
+    () => filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
+    [filtered, page],
+  );
   const handleView = (record: DispatchRecord) => {
     setViewRecord(record);
     setViewOpened(true);
@@ -512,7 +516,7 @@ export default function DispatchRecordsPage() {
 
           {/* Table */}
           <Paper withBorder radius="md" p={0} style={{ overflow: "hidden" }}>
-            <ScrollArea scrollbars="x" type="always" scrollbarSize={4}>
+            <ScrollArea scrollbars="xy" type="always" scrollbarSize={4}>
               <Table
                 striped
                 highlightOnHover
@@ -568,7 +572,7 @@ export default function DispatchRecordsPage() {
                       </Table.Td>
                     </Table.Tr>
                   ) : (
-                    filtered.map((record) => (
+                    paginated.map((record) => (
                       <React.Fragment key={record.id}>
                         <Table.Tr
                           key={record.id}
@@ -760,7 +764,7 @@ export default function DispatchRecordsPage() {
                                       {Math.max(
                                         0,
                                         Number(odoData[record.id].odoEnd) -
-                                        Number(odoData[record.id].odoStart),
+                                          Number(odoData[record.id].odoStart),
                                       )}{" "}
                                       km
                                     </Text>
