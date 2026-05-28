@@ -16,11 +16,12 @@ import {
   SimpleGrid,
   Popover,
   ActionIcon,
+  Select,
 } from "@mantine/core";
 import { DatePicker, type DateValue } from "@mantine/dates";
 import { notifications } from "@mantine/notifications";
 import { useRouter } from "next/navigation";
-import React, { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect } from "react";
 import {
   IconPlus,
   IconCheck,
@@ -36,6 +37,8 @@ import { LocationSearch } from "@/components/dispatch/LocationSearch";
 import { CardHeader } from "@/components/dispatch/CardHeader";
 import { ReviewModal } from "@/components/dispatch/ReviewModal";
 import { TimePickerInput } from "@/components/dispatch/TimePickerInput";
+import { getTrucks } from "@/actions/fetch";
+import { Truck } from "@/lib/db/schema";
 
 interface DropOff {
   id: number;
@@ -81,34 +84,30 @@ const DEFAULT_HELPERS = [
   "Vince Marzonia",
 ];
 
-const DEFAULT_UNIT_TYPES = [
-  "FB Type",
-  "6W CV",
-  "6W Forward",
-  "10W Wing",
-  "Van",
-  "4W CV",
-];
-
 export default function DispatchPage() {
   const router = useRouter();
+
+  const [drivers, setDrivers] = useState();
+  const [helpers, setHelpers] = useState([]);
+  const [clients, setClients] = useState([]);
+  const [trucks, setTrucks] = useState<Truck[]>([]);
+
+  // truck & trucker
+  const [selectedTruck, setSeletectedTruck] = useState<Truck | null>(null);
+  const [truckerRate, setTruckerRate] = useState<string>("");
 
   /* ── Combo box state ── */
   const [selectedClient, setSelectedClient] = useState<string | null>(null);
   const [selectedDriver, setSelectedDriver] = useState<string | null>(null);
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [selectedHelper, setSelectedHelper] = useState<string | null>(null);
-  const [selectedUnit, setSelectedUnit] = useState<string | null>(null);
-  const [selectedTruckerName, setSelectedTruckerName] = useState("");
-  /* ── Field value state ── */
+  const [selectedHelper, setSelectedHelper] = useState("");
 
+
+  /* ── Field value state ── */
   const [ruta, setRuta] = useState("");
   const [bookingDr, setBookingDr] = useState("");
   const [noOfDrops, setNoOfDrops] = useState<string | number>("");
   const [pickupTime, setPickupTime] = useState("");
-  const [plateNo, setPlateNo] = useState("");
   const [clientRate, setClientRate] = useState("");
-  const [selectedTruckerRate, setSelectedTruckerRate] = useState("");
 
   /* ── Error state ── */
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -125,6 +124,20 @@ export default function DispatchPage() {
   const [dropOffs, setDropOffs] = useState<DropOff[]>([
     { id: 1, location: "", contactPerson: "", contactNo: "" },
   ]);
+
+
+  useEffect(() => {
+    async function fetchDispatchersData() {
+      const response = await getTrucks();
+
+      if (response.data) {
+        setTrucks(response.data)
+      }
+
+    }
+
+    fetchDispatchersData();
+  }, [])
 
   // Helper function — add this near the top of your component or outside it
   const formatDate = (date: DateValue | null): string => {
@@ -151,7 +164,6 @@ export default function DispatchPage() {
     if (!pickupLocation.trim())
       e.pickupLocation = "Pickup location is required";
     if (!selectedClient) e.client = "Client is required";
-    if (!selectedTruckerName) e.truckerName = "Trucker name is required";
     if (
       !clientRate.trim() ||
       isNaN(Number(clientRate)) ||
@@ -162,18 +174,17 @@ export default function DispatchPage() {
     if (!bookingDr.trim()) e.bookingDr = "Booking / DR# is required";
     if (!noOfDrops || Number(noOfDrops) < 1)
       e.noOfDrops = "At least 1 drop required";
-    if (!selectedUnit) e.unit = "Trucker is required";
-    if (!plateNo.trim()) e.plateNo = "Plate number is required";
-    else if (!/^[A-Za-z0-9 -]{3,}$/.test(plateNo.trim()))
-      e.plateNo = "Invalid plate format (min 3 characters)";
+    if (!selectedTruck?.plateNumber.trim())
+      e.plateNo = "Plate number is required";
     if (!selectedDriver) e.driver = "Driver is required";
     if (!pickupDate) e.pickupDate = "Pickup date is required";
-    if (
-      !selectedTruckerRate.trim() ||
-      isNaN(Number(selectedTruckerRate)) ||
-      Number(selectedTruckerRate) <= 0
-    )
+
+    if (isNaN(Number(truckerRate.trim())) || Number(truckerRate.trim()) <= 0) {
+      console.log(isNaN(Number(truckerRate.trim())));
+      console.log(Number(truckerRate.trim()));
+      console.log(truckerRate);
       e.truckerRate = "Valid trucker rate is required";
+    }
 
     // Validate at least one drop-off has a location
     const hasValidDrop = dropOffs.some((d) => d.location.trim());
@@ -188,14 +199,12 @@ export default function DispatchPage() {
     ruta,
     bookingDr,
     noOfDrops,
-    selectedUnit,
-    plateNo,
     selectedDriver,
     pickupDate,
     dropOffs,
     clientRate,
-    selectedTruckerName,
-    selectedTruckerRate,
+    selectedTruck,
+    truckerRate
   ]);
 
   const addDropOff = () => {
@@ -237,8 +246,8 @@ export default function DispatchPage() {
               ruta,
               bookingDr,
               noOfDrops: Number(noOfDrops),
-              unit: selectedUnit || "",
-              plateNo,
+              unit: selectedTruck?.fleetType || "",
+              plateNo: selectedTruck?.plateNumber || "",
               driver: selectedDriver || "",
               helper: selectedHelpers.join(", "),
             }
@@ -270,14 +279,14 @@ export default function DispatchPage() {
   };
 
   const handleReset = () => {
-    setSelectedClient(null);
-    setSelectedDriver(null);
-    setSelectedHelper(null);
-    setSelectedUnit(null);
+    setSelectedClient("");
+    setSelectedDriver("");
+    setSelectedHelper("");
     setRuta("");
+    setTruckerRate("");
     setBookingDr("");
     setNoOfDrops("");
-    setPlateNo("");
+    setSeletectedTruck(null);
     setPickupDate(null);
     setPickupLocation("");
     setDropOffs([{ id: 1, location: "", contactPerson: "", contactNo: "" }]);
@@ -292,11 +301,9 @@ export default function DispatchPage() {
     setRuta(editingRecord.ruta);
     setBookingDr(editingRecord.bookingDr);
     setNoOfDrops(editingRecord.noOfDrops);
-    setPlateNo(editingRecord.plateNo);
     setSelectedClient(editingRecord.client);
     setSelectedDriver(editingRecord.driver);
     setSelectedHelper(editingRecord.helper);
-    setSelectedUnit(editingRecord.unit);
   }, [editingRecord]);
 
   const inputStyles = {
@@ -320,8 +327,8 @@ export default function DispatchPage() {
     ruta,
     bookingDr,
     noOfDrops: noOfDrops?.toString() || "",
-    unit: selectedUnit || "",
-    plateNo,
+    unit: selectedTruck?.fleetType || "",
+    plateNo: selectedTruck?.plateNumber || "",
     driver: selectedDriver || "",
     helper: selectedHelpers.join(", "),
     pickupDate: formatDate(pickupDate),
@@ -584,53 +591,54 @@ export default function DispatchPage() {
               </SimpleGrid>
 
               <SimpleGrid cols={{ base: 1, sm: 2, md: 4 }} spacing="sm" mb="sm">
-                <TextInput
-                  label="Trucker Name"
-                  placeholder="Enter trucker name"
+
+                <Select
+                  label="Plate No."
+                  placeholder="Enter plate number..."
                   styles={inputStyles}
-                  value={selectedTruckerName}
-                  onChange={(e) => {
-                    setSelectedTruckerName(e.currentTarget.value);
-                    if (e.currentTarget.value.trim()) clearError("truckerName");
-                  }}
-                  error={errors.truckerName}
-                />
-                <CreatableSelect
-                  label="Trucker"
-                  placeholder="Search or add trucker"
-                  data={DEFAULT_UNIT_TYPES}
-                  value={selectedUnit}
+                  data={trucks.map((truck) => truck.plateNumber)}
+                  value={selectedTruck?.plateNumber || null}
+                  clearable
                   onChange={(val) => {
-                    setSelectedUnit(val);
-                    if (val) clearError("unit");
-                  }}
-                  styles={inputStyles}
-                  error={errors.unit}
-                />
-                <TextInput
-                  label="Trucker's Rate (₱)"
-                  placeholder="Amount"
-                  styles={inputStyles}
-                  value={selectedTruckerRate}
-                  onChange={(e) => {
-                    setSelectedTruckerRate(e.currentTarget.value);
-                    if (e.currentTarget.value.trim()) clearError("truckerRate");
-                  }}
-                  error={errors.truckerRate}
-                />
-                <TextInput
-                  label="Plate#"
-                  placeholder="e.g. ABC 1234"
-                  styles={inputStyles}
-                  value={plateNo}
-                  onChange={(e) => {
-                    const val = e.currentTarget.value.toUpperCase();
-                    setPlateNo(val);
-                    if (val.trim().length >= 3) clearError("plateNo");
+                    const truck = trucks
+                      .find(truck => (truck.plateNumber == val))
+                    setSeletectedTruck(truck || null);
                   }}
                   error={errors.plateNo}
-                  maxLength={15}
+                  searchable
+                  nothingFoundMessage="No plates found"
+                  maxDropdownHeight={160}
                 />
+
+                <TextInput
+                  label="Trucker"
+                  styles={inputStyles}
+                  value={selectedTruck?.unitType || ""}
+                  disabled={!selectedTruck}
+                  readOnly
+                  error={errors.truckerName}
+                />
+
+                <TextInput
+                  label="Fleet Type"
+                  styles={inputStyles}
+                  value={selectedTruck?.fleetType || ""}
+                  disabled={!selectedTruck}
+                  readOnly
+                  error={errors.unit}
+                />
+
+                <TextInput
+                  label="Trucker's Rate (₱)"
+                  styles={inputStyles}
+                  value={truckerRate || ""}
+                  onChange={(e) => {
+                    setTruckerRate(e.currentTarget.value);
+                  }}
+                  disabled={!selectedTruck}
+                  error={errors.truckerRate}
+                />
+
               </SimpleGrid>
 
               <Divider
@@ -704,7 +712,7 @@ export default function DispatchPage() {
                             {h}
                           </Badge>
                         ))}
-                      </Group>  
+                      </Group>
                     )}
                   </Box>
 
@@ -751,7 +759,7 @@ export default function DispatchPage() {
                   fw={inputStyles?.label?.fontWeight ?? 600}
                   c="dimmed"
                 >
-                  Booked by:{" "}
+                  Booked by: {" "}
                   <Badge size="xs" variant="light" color="blue" radius="sm">
                     Admin
                   </Badge>
