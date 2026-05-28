@@ -17,6 +17,7 @@ import {
   Popover,
   ActionIcon,
   Select,
+  Grid,
 } from "@mantine/core";
 import { DatePicker, type DateValue } from "@mantine/dates";
 import { notifications } from "@mantine/notifications";
@@ -37,8 +38,8 @@ import { LocationSearch } from "@/components/dispatch/LocationSearch";
 import { CardHeader } from "@/components/dispatch/CardHeader";
 import { ReviewModal } from "@/components/dispatch/ReviewModal";
 import { TimePickerInput } from "@/components/dispatch/TimePickerInput";
-import { getTrucks } from "@/actions/fetch";
-import { Truck } from "@/lib/db/schema";
+import { getClients, getTrucks } from "@/actions/fetch";
+import { Client, Truck } from "@/lib/db/schema";
 
 interface DropOff {
   id: number;
@@ -89,18 +90,17 @@ export default function DispatchPage() {
 
   const [drivers, setDrivers] = useState();
   const [helpers, setHelpers] = useState([]);
-  const [clients, setClients] = useState([]);
+  const [clients, setClients] = useState<Client[]>([]);
   const [trucks, setTrucks] = useState<Truck[]>([]);
 
   // truck & trucker
   const [selectedTruck, setSeletectedTruck] = useState<Truck | null>(null);
   const [truckerRate, setTruckerRate] = useState<string>("");
+  const [selectedClient, setSelectedClient] = useState<Client | null>(null);
 
   /* ── Combo box state ── */
-  const [selectedClient, setSelectedClient] = useState<string | null>(null);
   const [selectedDriver, setSelectedDriver] = useState<string | null>(null);
   const [selectedHelper, setSelectedHelper] = useState("");
-
 
   /* ── Field value state ── */
   const [ruta, setRuta] = useState("");
@@ -125,15 +125,16 @@ export default function DispatchPage() {
     { id: 1, location: "", contactPerson: "", contactNo: "" },
   ]);
 
-
+  // On Load
   useEffect(() => {
     async function fetchDispatchersData() {
-      const response = await getTrucks();
+      const [trucks, clients] = await Promise.all([
+        getTrucks(),
+        getClients()
+      ]);
 
-      if (response.data) {
-        setTrucks(response.data)
-      }
-
+      if (trucks.data) setTrucks(trucks.data);
+      if (clients.data) setClients(clients.data);
     }
 
     fetchDispatchersData();
@@ -180,9 +181,6 @@ export default function DispatchPage() {
     if (!pickupDate) e.pickupDate = "Pickup date is required";
 
     if (isNaN(Number(truckerRate.trim())) || Number(truckerRate.trim()) <= 0) {
-      console.log(isNaN(Number(truckerRate.trim())));
-      console.log(Number(truckerRate.trim()));
-      console.log(truckerRate);
       e.truckerRate = "Valid trucker rate is required";
     }
 
@@ -242,7 +240,7 @@ export default function DispatchPage() {
           r.id === editingRecord.id
             ? {
               ...r,
-              client: selectedClient || "",
+              client: selectedClient?.clientName || "",
               ruta,
               bookingDr,
               noOfDrops: Number(noOfDrops),
@@ -279,7 +277,7 @@ export default function DispatchPage() {
   };
 
   const handleReset = () => {
-    setSelectedClient("");
+    setSelectedClient(null);
     setSelectedDriver("");
     setSelectedHelper("");
     setRuta("");
@@ -294,17 +292,6 @@ export default function DispatchPage() {
     setHelperKey((prev) => prev + 1);
     setErrors({});
   };
-
-  useEffect(() => {
-    if (!editingRecord) return;
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setRuta(editingRecord.ruta);
-    setBookingDr(editingRecord.bookingDr);
-    setNoOfDrops(editingRecord.noOfDrops);
-    setSelectedClient(editingRecord.client);
-    setSelectedDriver(editingRecord.driver);
-    setSelectedHelper(editingRecord.helper);
-  }, [editingRecord]);
 
   const inputStyles = {
     label: {
@@ -323,7 +310,7 @@ export default function DispatchPage() {
 
   /* ── Data snapshot for review modal ── */
   const reviewData: Record<string, string> = {
-    client: selectedClient || "",
+    client: selectedClient?.clientName || "",
     ruta,
     bookingDr,
     noOfDrops: noOfDrops?.toString() || "",
@@ -415,183 +402,225 @@ export default function DispatchPage() {
                 }
               />
 
-              <Divider mb="md" />
+              <Divider mb="xs" mt="lg" label="CLIENT DETAILS" />
 
-              <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm" mb="sm">
-                <CreatableSelect
-                  label="Client"
-                  placeholder="Search or add client"
-                  data={DEFAULT_CLIENTS}
-                  value={selectedClient}
-                  onChange={(val) => {
-                    setSelectedClient(val);
-                    if (val) clearError("client");
-                  }}
-                  styles={inputStyles}
-                  error={errors.client}
-                />
-                <TextInput
-                  label="Client Rate"
-                  placeholder="Enter client rate"
-                  styles={inputStyles}
-                  value={clientRate}
-                  onChange={(e) => {
-                    setClientRate(e.currentTarget.value);
-                    if (e.currentTarget.value.trim()) clearError("clientRate");
-                  }}
-                  error={errors.clientRate}
-                />
-              </SimpleGrid>
-
-              <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm" mb="sm">
-                {/* Left: Pickup Location */}
-                <LocationSearch
-                  label="Pickup Location"
-                  placeholder="Search pickup address..."
-                  value={pickupLocation}
-                  onChange={(val) => {
-                    setPickupLocation(val);
-                    if (val.trim()) clearError("pickupLocation");
-                  }}
-                  error={errors.pickupLocation}
-                  leftSection={
-                    <IconMapPin
-                      size={13}
-                      color="var(--mantine-color-green-6)"
-                    />
-                  }
-                />
-
-                {/* Right: Drop-off Points */}
-                <Box>
-                  <Stack gap={6}>
-                    {dropOffs.map((drop, index) => (
-                      <Paper key={drop.id} withBorder radius="sm" p="xs">
-                        <LocationSearch
-                          label={`Drop ${index + 1}`}
-                          placeholder="Search drop-off address..."
-                          value={drop.location}
-                          onChange={(val) => {
-                            updateDropOff(drop.id, "location", val);
-                            if (val.trim()) clearError("dropOffs");
-                          }}
-                          leftSection={
-                            <IconMapPin
-                              size={11}
-                              color="var(--mantine-color-red-5)"
-                            />
-                          }
-                          rightAction={
-                            <Group gap={4}>
-                              {index === 0 && (
-                                <Button
-                                  size="sm"
-                                  variant="light"
-                                  color="blue"
-                                  leftSection={<IconPlus size={12} />}
-                                  styles={{
-                                    root: { height: 18, padding: "0 6px" },
-                                    label: {
-                                      fontSize: "10px",
-                                      fontWeight: 700,
-                                    },
-                                  }}
-                                  onClick={addDropOff}
-                                >
-                                  Add Drop-off Points
-                                </Button>
-                              )}
-                              {dropOffs.length > 1 && (
-                                <ActionIcon
-                                  variant="subtle"
-                                  color="red"
-                                  size="xs"
-                                  onClick={() => removeDropOff(drop.id)}
-                                >
-                                  <IconX size={11} />
-                                </ActionIcon>
-                              )}
-                            </Group>
-                          }
-                        />
-                      </Paper>
-                    ))}
-                  </Stack>
-
-                  {errors.dropOffs && (
-                    <Text style={{ fontSize: "11px" }} c="red" mt={4}>
-                      {errors.dropOffs}
-                    </Text>
-                  )}
-                </Box>
-              </SimpleGrid>
-              <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="sm" mb="sm">
-                <TextInput
-                  label="Booking / DR#"
-                  placeholder="Enter booking or DR number"
-                  styles={inputStyles}
-                  value={bookingDr}
-                  onChange={(e) => {
-                    setBookingDr(e.currentTarget.value);
-                    if (e.currentTarget.value.trim()) clearError("bookingDr");
-                  }}
-                  tt="capitalize"
-                  error={errors.bookingDr}
-                />
-
-                <NumberInput
-                  label="No. of Drops"
-                  placeholder="Enter number of drops"
-                  min={1}
-                  styles={inputStyles}
-                  value={noOfDrops}
-                  onChange={(val) => {
-                    setNoOfDrops(val);
-                    if (val && Number(val) >= 1) clearError("noOfDrops");
-                  }}
-                  error={errors.noOfDrops}
-                />
-
-                <Group gap={4} align="flex-start" grow>
-                  <Popover
-                    position="bottom-start"
-                    shadow="md"
-                    radius="md"
-                    withinPortal
-                  >
-                    <Popover.Target>
-                      <TextInput
-                        label="Pickup Date"
-                        placeholder="Select date"
-                        readOnly
-                        value={formatDate(pickupDate)}
-                        rightSection={
-                          <IconCalendar
-                            size={14}
-                            color="var(--mantine-color-gray-5)"
-                          />
-                        }
-                        styles={inputStyles}
-                        error={errors.pickupDate}
-                        style={{ cursor: "pointer" }}
-                      />
-                    </Popover.Target>
-
-                    <Popover.Dropdown p="sm">
-                      <DatePicker value={pickupDate} onChange={setPickupDate} />
-                    </Popover.Dropdown>
-                  </Popover>
-                  <TimePickerInput
-                    label="Pick up time"
-                    value={pickupTime}
-                    onChange={setPickupTime}
-                    error={errors.pickupTime}
+              <Grid gap="sm" mb="sm">
+                <Grid.Col span={{ base: 12, sm: 4 }}>
+                  <Select
+                    label="Client"
+                    placeholder="Select client"
+                    data={clients.map(client => client.clientName)}
+                    value={selectedClient?.clientName || ""}
+                    onChange={(val) => {
+                      const client = clients.find(c => c.clientName === val);
+                      setSelectedClient(client || null);
+                    }}
+                    styles={inputStyles}
+                    error={errors.client}
+                    maxDropdownHeight={160}
+                    searchable
+                    clearable
                   />
-                </Group>
-              </SimpleGrid>
+                </Grid.Col>
+
+                <Grid.Col span={{ base: 12, sm: 6 }}>
+                  <TextInput
+                    label="Ruta"
+                    placeholder="Enter Route"
+                    styles={inputStyles}
+                    value={ruta}
+                    onChange={(e) => {
+                      setRuta(e.currentTarget.value);
+                      if (e.currentTarget.value.trim()) clearError("clientRoute");
+                    }}
+                    error={errors.clientRoute}
+                  />
+                </Grid.Col>
+
+                <Grid.Col span={{ base: 12, sm: 2 }}>
+                  <NumberInput
+                    label="Client Rate"
+                    placeholder="0.00"
+                    leftSection={"₱"}
+                    min={0}
+                    styles={inputStyles}
+                    value={clientRate}
+                    onChange={(e) => {
+                      setClientRate(e.toString());
+                      if (e) clearError("clientRate");
+                    }}
+                    error={errors.clientRate}
+                  />
+                </Grid.Col>
+              </Grid>
+
+              <Divider m="xl" label="LOCATION DETAILS" />
+
+              <Grid gap="sm" mb="sm">
+                {/* Left Side Column */}
+                <Grid.Col span={{ base: 12, sm: 6 }}>
+                  <Stack gap="sm">
+                    {/* Row 1: Pickup Location */}
+                    <LocationSearch
+                      label="Pickup Location"
+                      placeholder="Search pickup address..."
+                      value={pickupLocation}
+                      onChange={(val) => {
+                        setPickupLocation(val);
+                        if (val.trim()) clearError("pickupLocation");
+                      }}
+                      error={errors.pickupLocation}
+                      leftSection={
+                        <IconMapPin
+                          size={13}
+                          color="var(--mantine-color-green-6)"
+                        />
+                      }
+                    />
+
+                    {/* Row 2: DR# and No. of Drops */}
+                    <Grid gap="sm">
+                      <Grid.Col span={6}>
+                        <TextInput
+                          label="Booking / DR#"
+                          placeholder="Enter booking or DR number"
+                          styles={inputStyles}
+                          value={bookingDr}
+                          onChange={(e) => {
+                            setBookingDr(e.currentTarget.value);
+                            if (e.currentTarget.value.trim()) clearError("bookingDr");
+                          }}
+                          tt="capitalize"
+                          error={errors.bookingDr}
+                        />
+                      </Grid.Col>
+
+                      <Grid.Col span={6}>
+                        <NumberInput
+                          label="No. of Drops"
+                          placeholder="Enter number of drops"
+                          min={1}
+                          styles={inputStyles}
+                          value={noOfDrops}
+                          onChange={(val) => {
+                            setNoOfDrops(val);
+                            if (val && Number(val) >= 1) clearError("noOfDrops");
+                          }}
+                          error={errors.noOfDrops}
+                        />
+                      </Grid.Col>
+                    </Grid>
+
+                    {/* Row 3: Pickup Date and Pickup Time */}
+                    <Grid gap="sm">
+                      <Grid.Col span={6}>
+                        <Popover position="bottom-start" shadow="md" radius="md" withinPortal>
+                          <Popover.Target>
+                            <TextInput
+                              label="Pickup Date"
+                              placeholder="Select date"
+                              readOnly
+                              value={formatDate(pickupDate)}
+                              rightSection={
+                                <IconCalendar
+                                  size={14}
+                                  color="var(--mantine-color-gray-5)"
+                                />
+                              }
+                              styles={inputStyles}
+                              error={errors.pickupDate}
+                              style={{ cursor: "pointer" }}
+                            />
+                          </Popover.Target>
+                          <Popover.Dropdown p="sm">
+                            <DatePicker value={pickupDate} onChange={setPickupDate} />
+                          </Popover.Dropdown>
+                        </Popover>
+                      </Grid.Col>
+
+                      <Grid.Col span={6}>
+                        <TimePickerInput
+                          label="Pick up time"
+                          value={pickupTime}
+                          onChange={setPickupTime}
+                          error={errors.pickupTime}
+                        />
+                      </Grid.Col>
+                    </Grid>
+                  </Stack>
+                </Grid.Col>
+
+                {/* Right Side Column: Drop-off Points */}
+                <Grid.Col span={{ base: 12, sm: 6 }}>
+                  <Box>
+                    <Stack gap={6}>
+                      {dropOffs.map((drop, index) => (
+                        <Paper key={drop.id} withBorder radius="sm" p="xs">
+                          <LocationSearch
+                            label={`Drop ${index + 1}`}
+                            placeholder="Search drop-off address..."
+                            value={drop.location}
+                            onChange={(val) => {
+                              updateDropOff(drop.id, "location", val);
+                              if (val.trim()) clearError("dropOffs");
+                            }}
+                            leftSection={
+                              <IconMapPin
+                                size={11}
+                                color="var(--mantine-color-red-5)"
+                              />
+                            }
+                            rightAction={
+                              <Group gap={4}>
+                                {index === 0 && (
+                                  <Button
+                                    size="sm"
+                                    variant="light"
+                                    color="blue"
+                                    leftSection={<IconPlus size={12} />}
+                                    styles={{
+                                      root: { height: 18, padding: "0 6px" },
+                                      label: {
+                                        fontSize: "10px",
+                                        fontWeight: 700,
+                                      },
+                                    }}
+                                    onClick={addDropOff}
+                                  >
+                                    Add Drop-off Points
+                                  </Button>
+                                )}
+                                {dropOffs.length > 1 && (
+                                  <ActionIcon
+                                    variant="subtle"
+                                    color="red"
+                                    size="xs"
+                                    onClick={() => removeDropOff(drop.id)}
+                                  >
+                                    <IconX size={11} />
+                                  </ActionIcon>
+                                )}
+                              </Group>
+                            }
+                          />
+                        </Paper>
+                      ))}
+                    </Stack>
+
+                    {errors.dropOffs && (
+                      <Text style={{ fontSize: "11px" }} c="red" mt={4}>
+                        {errors.dropOffs}
+                      </Text>
+                    )}
+                  </Box>
+                </Grid.Col>
+              </Grid>
+
+
+              <Divider m="xl" label="TRUCK DETAILS" />
+
 
               <SimpleGrid cols={{ base: 1, sm: 2, md: 4 }} spacing="sm" mb="sm">
-
                 <Select
                   label="Plate No."
                   placeholder="Enter plate number..."
@@ -641,20 +670,9 @@ export default function DispatchPage() {
 
               </SimpleGrid>
 
-              <Divider
-                my="sm"
-                label={
-                  <Text
-                    style={{ fontSize: "9px" }}
-                    c="dimmed"
-                    tt="uppercase"
-                    lts={1}
-                  >
-                    Personnel
-                  </Text>
-                }
-                labelPosition="left"
-              />
+
+              <Divider m="xl" label="PERSONNEL" />
+
 
               <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm" mb="md">
                 <CreatableSelect
@@ -672,7 +690,7 @@ export default function DispatchPage() {
                 <Stack gap={4}>
                   <CreatableSelect
                     key={helperKey}
-                    label="Helper"
+                    label="Helper/s"
                     placeholder="Add helper"
                     data={DEFAULT_HELPERS}
                     value={null}
@@ -725,7 +743,6 @@ export default function DispatchPage() {
                 </Stack>
               </SimpleGrid>
 
-              <Divider my="sm" />
 
               <Group flex={1}>
                 <Button
