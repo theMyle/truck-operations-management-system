@@ -18,6 +18,7 @@ import {
   ActionIcon,
   Select,
   Grid,
+  MultiSelect,
 } from "@mantine/core";
 import { DatePicker, type DateValue } from "@mantine/dates";
 import { notifications } from "@mantine/notifications";
@@ -33,13 +34,12 @@ import {
 } from "@tabler/icons-react";
 import "@mantine/dates/styles.css";
 import { useDispatch } from "../context/dispatch-context";
-import { CreatableSelect } from "@/components/dispatch/CreatableSelect";
 import { LocationSearch } from "@/components/dispatch/LocationSearch";
 import { CardHeader } from "@/components/dispatch/CardHeader";
 import { ReviewModal } from "@/components/dispatch/ReviewModal";
 import { TimePickerInput } from "@/components/dispatch/TimePickerInput";
-import { getClients, getTrucks } from "@/actions/fetch";
-import { Client, Truck } from "@/lib/db/schema";
+import { getClients, getDrivers, getHelpers, getTrucks } from "@/actions/fetch";
+import { Client, Driver, Helper, Truck } from "@/lib/db/schema";
 
 interface DropOff {
   id: number;
@@ -48,59 +48,27 @@ interface DropOff {
   contactNo: string;
 }
 
-/* ── Predefined data ── */
-const DEFAULT_CLIENTS = [
-  "Flash Express",
-  "IPI",
-  "Inteluck Corp",
-  "KTS Rentals",
-  "Transportify",
-  "XMD Logistics",
-  "Urenholt",
-];
-
-const DEFAULT_DRIVERS = [
-  "Alvin Paluga",
-  "Aniceto Abo",
-  "Edcel Ralo",
-  "Elesio Batallones Jr",
-  "Ever Bacvano",
-  "Gerald Roco",
-  "Jomarie Divina",
-  "Lim Ubal",
-  "Noel Asumbrado",
-  "Ricky Pantua",
-  "Romano Ancheta",
-  "Rommel Lumacang",
-];
-
-const DEFAULT_HELPERS = [
-  "Chester Evasco",
-  "Felipe Guban",
-  "James Eric Manabo",
-  "Jeric Juanico",
-  "Ramil Diana",
-  "Richard Roda",
-  "Rizalito Domingo",
-  "Vince Marzonia",
-];
-
 export default function DispatchPage() {
   const router = useRouter();
 
-  const [drivers, setDrivers] = useState();
-  const [helpers, setHelpers] = useState([]);
+  const [drivers, setDrivers] = useState<Driver[]>([]);
+  const [helpers, setHelpers] = useState<Helper[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [trucks, setTrucks] = useState<Truck[]>([]);
+
+  // client
+  const [selectedClient, setSelectedClient] = useState<Client | null>(null);
 
   // truck & trucker
   const [selectedTruck, setSeletectedTruck] = useState<Truck | null>(null);
   const [truckerRate, setTruckerRate] = useState<string>("");
-  const [selectedClient, setSelectedClient] = useState<Client | null>(null);
 
-  /* ── Combo box state ── */
-  const [selectedDriver, setSelectedDriver] = useState<string | null>(null);
-  const [selectedHelper, setSelectedHelper] = useState("");
+  // personnel
+  const [selectedDriver, setSelectedDriver] = useState<Driver | null>(null);
+  const [selectedHelpers, setSelectedHelpers] = useState<Helper[]>([]);
+  const [helperSearch, setHelperSearch] = useState("");
+
+
 
   /* ── Field value state ── */
   const [ruta, setRuta] = useState("");
@@ -114,11 +82,8 @@ export default function DispatchPage() {
 
   /* ── Review modal state ── */
   const [reviewOpened, setReviewOpened] = useState(false);
-
   const { editingRecord, setEditingRecord, setRecords } = useDispatch();
   const [pickupDate, setPickupDate] = useState<DateValue | null>(null);
-  const [selectedHelpers, setSelectedHelpers] = useState<string[]>([]);
-  const [helperKey, setHelperKey] = useState(0);
 
   const [pickupLocation, setPickupLocation] = useState("");
   const [dropOffs, setDropOffs] = useState<DropOff[]>([
@@ -128,13 +93,17 @@ export default function DispatchPage() {
   // On Load
   useEffect(() => {
     async function fetchDispatchersData() {
-      const [trucks, clients] = await Promise.all([
+      const [trucks, clients, drivers, helpers] = await Promise.all([
         getTrucks(),
-        getClients()
+        getClients(),
+        getDrivers(),
+        getHelpers()
       ]);
 
       if (trucks.data) setTrucks(trucks.data);
       if (clients.data) setClients(clients.data);
+      if (drivers.data) setDrivers(drivers.data);
+      if (helpers.data) setHelpers(helpers.data);
     }
 
     fetchDispatchersData();
@@ -246,7 +215,7 @@ export default function DispatchPage() {
               noOfDrops: Number(noOfDrops),
               unit: selectedTruck?.fleetType || "",
               plateNo: selectedTruck?.plateNumber || "",
-              driver: selectedDriver || "",
+              driver: selectedDriver?.driverName || "",
               helper: selectedHelpers.join(", "),
             }
             : r,
@@ -278,8 +247,7 @@ export default function DispatchPage() {
 
   const handleReset = () => {
     setSelectedClient(null);
-    setSelectedDriver("");
-    setSelectedHelper("");
+    setSelectedDriver(null);
     setRuta("");
     setTruckerRate("");
     setBookingDr("");
@@ -289,7 +257,6 @@ export default function DispatchPage() {
     setPickupLocation("");
     setDropOffs([{ id: 1, location: "", contactPerson: "", contactNo: "" }]);
     setSelectedHelpers([]);
-    setHelperKey((prev) => prev + 1);
     setErrors({});
   };
 
@@ -316,7 +283,7 @@ export default function DispatchPage() {
     noOfDrops: noOfDrops?.toString() || "",
     unit: selectedTruck?.fleetType || "",
     plateNo: selectedTruck?.plateNumber || "",
-    driver: selectedDriver || "",
+    driver: selectedDriver?.driverName || "",
     helper: selectedHelpers.join(", "),
     pickupDate: formatDate(pickupDate),
     pickupLocation,
@@ -329,15 +296,14 @@ export default function DispatchPage() {
       .join("\n"),
   };
 
-  const addHelper = (val: string | null) => {
-    if (val && !selectedHelpers.includes(val)) {
-      setSelectedHelpers((prev) => [...prev, val]);
-      setHelperKey((prev) => prev + 1);
+  const addHelper = (helper: Helper) => {
+    if (helper && !selectedHelpers.includes(helper)) {
+      setSelectedHelpers((prev) => [...prev, helper]);
     }
   };
 
-  const removeHelper = (val: string) => {
-    setSelectedHelpers((prev) => prev.filter((h) => h !== val));
+  const removeHelper = (helperId: string) => {
+    setSelectedHelpers((prev) => prev.filter((h) => h.id !== helperId));
   };
 
   return (
@@ -415,6 +381,7 @@ export default function DispatchPage() {
                       const client = clients.find(c => c.clientName === val);
                       setSelectedClient(client || null);
                     }}
+                    allowDeselect={false}
                     styles={inputStyles}
                     error={errors.client}
                     maxDropdownHeight={160}
@@ -628,6 +595,7 @@ export default function DispatchPage() {
                   data={trucks.map((truck) => truck.plateNumber)}
                   value={selectedTruck?.plateNumber || null}
                   clearable
+                  allowDeselect={false}
                   onChange={(val) => {
                     const truck = trucks
                       .find(truck => (truck.plateNumber == val))
@@ -667,7 +635,6 @@ export default function DispatchPage() {
                   disabled={!selectedTruck}
                   error={errors.truckerRate}
                 />
-
               </SimpleGrid>
 
 
@@ -675,27 +642,45 @@ export default function DispatchPage() {
 
 
               <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm" mb="md">
-                <CreatableSelect
+                <Select
                   label="Driver"
                   placeholder="Search or add driver"
-                  data={DEFAULT_DRIVERS}
-                  value={selectedDriver}
+                  data={drivers.map((driver) => driver.driverName)}
+                  value={selectedDriver?.driverName || ""}
                   onChange={(val) => {
-                    setSelectedDriver(val);
-                    if (val) clearError("driver");
+                    const driver = drivers.find(driver => driver.driverName == val);
+                    setSelectedDriver(driver || null);
                   }}
                   styles={inputStyles}
                   error={errors.driver}
+                  searchable
+                  clearable
                 />
+
                 <Stack gap={4}>
-                  <CreatableSelect
-                    key={helperKey}
+                  <Select
                     label="Helper/s"
                     placeholder="Add helper"
-                    data={DEFAULT_HELPERS}
-                    value={null}
-                    onChange={addHelper}
+                    searchValue={helperSearch}
+                    allowDeselect={false}
+                    onSearchChange={setHelperSearch}
+                    data={helpers
+                      .filter((helper) => !selectedHelpers.some((sh) => sh.id === helper.id))
+                      .map((helper) => helper.helperName)
+                    }
+                    value={""}
+                    onChange={(val) => {
+                      const helper = helpers.find((h) => h.helperName === val);
+                      if (helper) {
+                        addHelper(helper);
+                        setTimeout(() => {
+                          setHelperSearch('');
+                        }, 0);
+                      }
+                    }}
                     styles={inputStyles}
+                    searchable
+                    maxDropdownHeight={160}
                   />
 
                   <Box
@@ -714,7 +699,7 @@ export default function DispatchPage() {
                       <Group gap="xs">
                         {selectedHelpers.map((h) => (
                           <Badge
-                            key={h}
+                            key={h.id}
                             variant="light"
                             color="blue"
                             radius="sm"
@@ -722,12 +707,12 @@ export default function DispatchPage() {
                               <IconX
                                 size={10}
                                 style={{ cursor: "pointer" }}
-                                onClick={() => removeHelper(h)}
+                                onClick={() => removeHelper(h.id)}
                               />
                             }
                             styles={{ label: { fontSize: "10px" } }}
                           >
-                            {h}
+                            {h.helperName}
                           </Badge>
                         ))}
                       </Group>
