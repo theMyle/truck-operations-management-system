@@ -35,7 +35,7 @@ import {
 } from "@tabler/icons-react";
 import { useDispatch } from "../context/dispatch-context";
 import { OdoModal, OdoFormData } from "@/components/trip-logs/OdoModal";
-import { MOCK_RECORDS, DispatchRecord } from "@/app/(app)/constant";
+import {  DispatchRecord } from "@/app/(app)/constant";
 
 /* ── Status badge helper ── */
 const statusColor: Record<DispatchRecord["status"], string> = {
@@ -294,7 +294,7 @@ export default function DispatchRecordsPage() {
   const [odoOpened, setOdoOpened] = useState(false);
   const [odoData, setOdoData] = useState<Record<number, OdoFormData>>({});
   const [page, setPage] = useState(1);
-  const { setEditingRecord, travelLogs, deleteTravelLog, updateTravelLog } =
+  const { setEditingRecord, travelLogs, deleteTravelLog } =
     useDispatch();
 
   /* ── Search filter (searches across all string fields) ── */

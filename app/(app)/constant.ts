@@ -4,6 +4,7 @@ export interface DispatchRecord {
   pickUpTime?: string;
   client: string;
   trucker?: string;
+  podFile?: string | null;
   driver: string;
   helper: string;
   unit: string;
@@ -43,6 +44,7 @@ export const MOCK_RECORDS: DispatchRecord[] = [
     status: "Completed",
     bookedBy: "Admin User",
     tripRate: "₱15,000",
+    podFile: "pod_FE-2025-0001.jpg",
   },
   {
     id: 2,
@@ -59,6 +61,7 @@ export const MOCK_RECORDS: DispatchRecord[] = [
     status: "Completed",
     bookedBy: "Sarah Jenkins",
     tripRate: "₱12,500",
+    podFile: "pod_IPI-2025-0042.jpg",
   },
   {
     id: 3,
@@ -75,6 +78,7 @@ export const MOCK_RECORDS: DispatchRecord[] = [
     status: "In Transit",
     bookedBy: "Mike Ross",
     tripRate: "₱18,000",
+    podFile: "pod_IC-2025-0087.jpg", // ← real file exists in public/uploads/pods/
   },
   {
     id: 4,
@@ -91,6 +95,7 @@ export const MOCK_RECORDS: DispatchRecord[] = [
     status: "Completed",
     bookedBy: "Admin User",
     tripRate: "₱22,000",
+    podFile: null, // intentionally no POD — shows "No POD" state
   },
   {
     id: 5,
@@ -107,6 +112,7 @@ export const MOCK_RECORDS: DispatchRecord[] = [
     status: "Pending",
     bookedBy: "Jessica Pearson",
     tripRate: "₱14,000",
+    podFile: "pod_TF-2025-0203.jpg", // pending — no POD yet
   },
   {
     id: 6,
@@ -123,6 +129,7 @@ export const MOCK_RECORDS: DispatchRecord[] = [
     status: "Completed",
     bookedBy: "Louis Litt",
     tripRate: "₱9,500",
+    podFile: "pod_XMD-2025-0098.jpg",
   },
   {
     id: 7,
@@ -139,6 +146,7 @@ export const MOCK_RECORDS: DispatchRecord[] = [
     status: "In Transit",
     bookedBy: "Donna Paulsen",
     tripRate: "₱45,000",
+    podFile: "pod_UR-2025-0011.jpg", // in transit — no POD yet
   },
   {
     id: 8,
@@ -155,6 +163,7 @@ export const MOCK_RECORDS: DispatchRecord[] = [
     status: "Completed",
     bookedBy: "Harvey Specter",
     tripRate: "₱16,500",
+    podFile: "pod_FE-2025-0009.jpg",
   },
   {
     id: 9,
@@ -170,6 +179,7 @@ export const MOCK_RECORDS: DispatchRecord[] = [
     status: "Pending",
     bookedBy: "Rachel Zane",
     tripRate: "₱25,000",
+    podFile: null,
   },
   {
     id: 10,
@@ -185,6 +195,7 @@ export const MOCK_RECORDS: DispatchRecord[] = [
     status: "Completed",
     bookedBy: "Admin User",
     tripRate: "₱28,000",
+    podFile: "pod_TF-2025-0214.jpg",
   },
 ];
 
@@ -215,6 +226,7 @@ export const MOCK_RECORDS_BOOKING: DispatchRecord[] = [
     tripRate: "3,500",
     bookedBy: "Admin",
     tripRemarks: "All drops completed on time.",
+    podFile: "pod_FE-2025-0001.jpg",
   },
   {
     id: 2,
@@ -242,6 +254,7 @@ export const MOCK_RECORDS_BOOKING: DispatchRecord[] = [
     tripRate: "4,200",
     bookedBy: "Dispatcher",
     tripRemarks: "Slight delay at drop 3 due to rain.",
+    podFile: "pod_IPI-2025-0042.jpg",
   },
   {
     id: 3,
@@ -268,6 +281,7 @@ export const MOCK_RECORDS_BOOKING: DispatchRecord[] = [
     tripRate: "2,900",
     bookedBy: "Dispatcher",
     tripRemarks: "Currently on SLEX.",
+    podFile: "pod_IC-2025-0087.jpg",
   },
   {
     id: 4,
@@ -295,6 +309,7 @@ export const MOCK_RECORDS_BOOKING: DispatchRecord[] = [
     tripRate: "5,800",
     bookedBy: "Admin",
     tripRemarks: "Heavy equipment secured properly.",
+    podFile: null, // intentionally no POD — shows "No POD" state
   },
   {
     id: 5,
@@ -316,6 +331,7 @@ export const MOCK_RECORDS_BOOKING: DispatchRecord[] = [
     tripRate: "4,500",
     bookedBy: "Admin",
     tripRemarks: "Awaiting confirmation from client.",
+    podFile: "pod_TF-2025-0203.jpg",
   },
   {
     id: 6,
@@ -343,6 +359,7 @@ export const MOCK_RECORDS_BOOKING: DispatchRecord[] = [
     tripRate: "3,100",
     bookedBy: "Dispatcher",
     tripRemarks: "Smooth delivery, no issues.",
+    podFile: "pod_XMD-2025-0098.jpg",
   },
   {
     id: 7,
@@ -369,6 +386,7 @@ export const MOCK_RECORDS_BOOKING: DispatchRecord[] = [
     tripRate: "7,200",
     bookedBy: "Admin",
     tripRemarks: "Vessel departed, ETA 2 days.",
+    podFile: "pod_UR-2025-0011.jpg", // in transit — no POD yet
   },
   {
     id: 8,
@@ -396,6 +414,7 @@ export const MOCK_RECORDS_BOOKING: DispatchRecord[] = [
     tripRate: "2,750",
     bookedBy: "Admin",
     tripRemarks: "Multiple drops completed efficiently.",
+    podFile: "pod_FE-2025-0009.jpg",
   },
   {
     id: 9,
@@ -417,6 +436,7 @@ export const MOCK_RECORDS_BOOKING: DispatchRecord[] = [
     tripRate: "3,800",
     bookedBy: "Dispatcher",
     tripRemarks: "Awaiting gate pass clearance.",
+    podFile: null,
   },
   {
     id: 10,
@@ -444,6 +464,7 @@ export const MOCK_RECORDS_BOOKING: DispatchRecord[] = [
     tripRate: "6,000",
     bookedBy: "Dispatcher",
     tripRemarks: "Early morning dispatch successful.",
+    podFile: "pod_TF-2025-0214.jpg",
   },
   {
     id: 11,
@@ -471,6 +492,7 @@ export const MOCK_RECORDS_BOOKING: DispatchRecord[] = [
     tripRate: "2,500",
     bookedBy: "Admin",
     tripRemarks: "All goods delivered safely.",
+    podFile: "pod_FE-2025-0020.jpg",
   },
   {
     id: 12,
@@ -498,6 +520,7 @@ export const MOCK_RECORDS_BOOKING: DispatchRecord[] = [
     tripRate: "4,800",
     bookedBy: "Dispatcher",
     tripRemarks: "Heavy traffic at NLEX.",
+    podFile: null,
   },
   {
     id: 13,
@@ -524,6 +547,7 @@ export const MOCK_RECORDS_BOOKING: DispatchRecord[] = [
     tripRate: "3,200",
     bookedBy: "Dispatcher",
     tripRemarks: "Currently heading to port.",
+    podFile: null, // in transit
   },
   {
     id: 14,
@@ -544,6 +568,7 @@ export const MOCK_RECORDS_BOOKING: DispatchRecord[] = [
     tripRate: "8,500",
     bookedBy: "Admin",
     tripRemarks: "Awaiting trucker assignment.",
+    podFile: null,
   },
   {
     id: 15,
@@ -571,6 +596,7 @@ export const MOCK_RECORDS_BOOKING: DispatchRecord[] = [
     tripRate: "2,000",
     bookedBy: "Admin",
     tripRemarks: "Container dropped off successfully.",
+    podFile: "pod_UR-2025-0022.jpg",
   },
   {
     id: 16,
@@ -598,6 +624,7 @@ export const MOCK_RECORDS_BOOKING: DispatchRecord[] = [
     tripRate: "6,000",
     bookedBy: "Dispatcher",
     tripRemarks: "Equipment secured and delivered.",
+    podFile: "pod_KTS-2025-0030.jpg",
   },
   {
     id: 17,
@@ -624,6 +651,7 @@ export const MOCK_RECORDS_BOOKING: DispatchRecord[] = [
     tripRate: "4,100",
     bookedBy: "Admin",
     tripRemarks: "Tire blowout on highway, currently fixing.",
+    podFile: null, // in transit / delayed
   },
   {
     id: 18,
@@ -644,6 +672,7 @@ export const MOCK_RECORDS_BOOKING: DispatchRecord[] = [
     tripRate: "7,500",
     bookedBy: "Dispatcher",
     tripRemarks: "Waiting for warehouse clearance.",
+    podFile: null,
   },
   {
     id: 19,
@@ -671,6 +700,7 @@ export const MOCK_RECORDS_BOOKING: DispatchRecord[] = [
     tripRate: "2,200",
     bookedBy: "Admin",
     tripRemarks: "Smooth transaction.",
+    podFile: "pod_IC-2025-0122.jpg",
   },
   {
     id: 20,
@@ -698,6 +728,7 @@ export const MOCK_RECORDS_BOOKING: DispatchRecord[] = [
     tripRate: "5,500",
     bookedBy: "Dispatcher",
     tripRemarks: "Delivered on schedule.",
+    podFile: "pod_IPI-2025-0099.jpg",
   },
   {
     id: 21,
@@ -723,6 +754,7 @@ export const MOCK_RECORDS_BOOKING: DispatchRecord[] = [
     tripRate: "4,600",
     bookedBy: "Admin",
     tripRemarks: "Driver resting, ETA 2 hours.",
+    podFile: null,
   },
   {
     id: 22,
@@ -744,6 +776,7 @@ export const MOCK_RECORDS_BOOKING: DispatchRecord[] = [
     tripRate: "1,800",
     bookedBy: "Dispatcher",
     tripRemarks: "Awaiting customs clearance.",
+    podFile: null,
   },
   {
     id: 23,
@@ -771,6 +804,7 @@ export const MOCK_RECORDS_BOOKING: DispatchRecord[] = [
     tripRate: "9,000",
     bookedBy: "Admin",
     tripRemarks: "Client signed POD.",
+    podFile: "pod_KTS-2025-0060.jpg",
   },
   {
     id: 24,
@@ -798,6 +832,7 @@ export const MOCK_RECORDS_BOOKING: DispatchRecord[] = [
     tripRate: "3,500",
     bookedBy: "Dispatcher",
     tripRemarks: "All 4 drops completed successfully.",
+    podFile: "pod_XMD-2025-0180.jpg",
   },
   {
     id: 25,
@@ -823,6 +858,7 @@ export const MOCK_RECORDS_BOOKING: DispatchRecord[] = [
     tripRate: "12,000",
     bookedBy: "Admin",
     tripRemarks: "Long haul, driver switching at Tarlac.",
+    podFile: null,
   },
   {
     id: 26,
@@ -844,6 +880,7 @@ export const MOCK_RECORDS_BOOKING: DispatchRecord[] = [
     tripRate: "3,800",
     bookedBy: "Dispatcher",
     tripRemarks: "Waiting for goods to be manufactured.",
+    podFile: null,
   },
   {
     id: 27,
@@ -871,6 +908,7 @@ export const MOCK_RECORDS_BOOKING: DispatchRecord[] = [
     tripRate: "6,200",
     bookedBy: "Admin",
     tripRemarks: "Gate pass processed smoothly.",
+    podFile: "pod_IPI-2025-0150.jpg",
   },
   {
     id: 28,
@@ -896,6 +934,7 @@ export const MOCK_RECORDS_BOOKING: DispatchRecord[] = [
     tripRate: "7,800",
     bookedBy: "Dispatcher",
     tripRemarks: "Drop 1 and 2 complete, proceeding to 3.",
+    podFile: null,
   },
   {
     id: 29,
@@ -924,6 +963,7 @@ export const MOCK_RECORDS_BOOKING: DispatchRecord[] = [
     bookedBy: "Admin",
     tripRemarks:
       "Late loading due to port congestion, but delivered on same day.",
+    podFile: "pod_UR-2025-0080.jpg",
   },
   {
     id: 30,
@@ -945,5 +985,6 @@ export const MOCK_RECORDS_BOOKING: DispatchRecord[] = [
     tripRate: "11,500",
     bookedBy: "Dispatcher",
     tripRemarks: "Scheduled for early morning dispatch tomorrow.",
+    podFile: null,
   },
 ];
