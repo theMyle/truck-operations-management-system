@@ -27,12 +27,20 @@ import {
   IconLayoutSidebarLeftExpand,
   IconTruckDelivery,
   IconUserPlus,
+  Icon,
 } from "@tabler/icons-react";
 import Image from "next/image";
 import LOGO from "../assets/logo.png";
-import { useClerk } from "@clerk/nextjs";
+import { useClerk, useUser } from "@clerk/nextjs";
 import { usePathname } from "next/navigation";
 import { DispatchProvider } from "./context/dispatch-context";
+
+interface NavItem {
+  label: string
+  icon: Icon
+  href: string
+  allowedRoles: string[]
+}
 
 export default function DashboardLayout({
   children,
@@ -40,19 +48,45 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const { signOut } = useClerk();
+  const { user, isLoaded } = useUser();
   const [mobileOpened, { toggle: toggleMobile }] = useDisclosure();
   const [desktopOpened, { toggle: toggleDesktop }] = useDisclosure(true);
 
   const pathname = usePathname();
+  const userRole = (user?.publicMetadata?.role as string) || "";
 
-  const navItems = [
-    { label: "Dashboard", icon: IconDashboard, href: "/dashboard" },
-    { label: "Booking Form", icon: IconSend, href: "/dispatch" },
-    { label: "Booking List", icon: IconTruckDelivery, href: "/booking" },
-    { label: "Trip Logs", icon: IconRoute, href: "/trip-logs" },
-    { label: "Billing", icon: IconReceipt2, href: "/billing" },
-    { label: "Registration", icon: IconUserPlus, href: "/registration" },
+  const navItems: NavItem[] = [
+    {
+      label: "Dashboard", icon: IconDashboard, href: "/dashboard",
+      allowedRoles: ["admin"]
+    },
+    {
+      label: "Booking Form", icon: IconSend, href: "/dispatch",
+      allowedRoles: ["admin"]
+    },
+    {
+      label: "Booking List", icon: IconTruckDelivery, href: "/booking",
+      allowedRoles: ["admin"]
+    },
+    {
+      label: "Trip Logs", icon: IconRoute, href: "/trip-logs",
+      allowedRoles: ["admin"]
+    },
+    {
+      label: "Billing", icon: IconReceipt2, href: "/billing",
+      allowedRoles: ["admin"]
+    },
+    {
+      label: "Registration", icon: IconUserPlus, href: "/registration",
+      allowedRoles: ["admin"]
+    },
   ];
+
+  const visibleNavItems = navItems.filter((item) => {
+    return item.allowedRoles?.includes(userRole);
+  })
+
+  if (!isLoaded) return null;
 
   return (
     <DispatchProvider>
@@ -121,7 +155,7 @@ export default function DashboardLayout({
         <AppShell.Navbar p="xs">
           <AppShell.Section grow mt="xs">
             <Stack gap={2}>
-              {navItems.map((item) => {
+              {visibleNavItems.map((item) => {
                 const isActive = pathname === item.href;
                 return (
                   <NavLink

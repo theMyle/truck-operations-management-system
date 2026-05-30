@@ -5,36 +5,22 @@
     {
       "idx": 0,
       "version": "7",
-      "when": 1778675347339,
-      "tag": "0000_bumpy_junta",
+      "when": 1780126696812,
+      "tag": "0000_worthless_norman_osborn",
       "breakpoints": true
     },
     {
       "idx": 1,
       "version": "7",
-      "when": 1778676266929,
-      "tag": "0001_pale_hellfire_club",
+      "when": 1780133042394,
+      "tag": "0001_dizzy_gambit",
       "breakpoints": true
     },
     {
       "idx": 2,
       "version": "7",
-      "when": 1778676901881,
-      "tag": "0002_icy_carnage",
-      "breakpoints": true
-    },
-    {
-      "idx": 3,
-      "version": "7",
-      "when": 1778731452674,
-      "tag": "0003_violet_raza",
-      "breakpoints": true
-    },
-    {
-      "idx": 4,
-      "version": "7",
-      "when": 1779105528997,
-      "tag": "0004_dizzy_emma_frost",
+      "when": 1780133156351,
+      "tag": "0002_omniscient_lake",
       "breakpoints": true
     }
   ]

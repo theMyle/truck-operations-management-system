@@ -1,6 +1,6 @@
 {
-  "id": "315b7ce3-59bb-4c77-8907-f533215addd1",
-  "prevId": "f2287159-4952-4aa9-a701-2261d73ffe29",
+  "id": "eeabfec5-fb33-499d-aeee-924ebed4f07c",
+  "prevId": "2d882b10-e186-4de0-ab58-b7f004b04142",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -23,6 +23,12 @@
         "unit_type": {
           "name": "unit_type",
           "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "rate": {
+          "name": "rate",
+          "type": "numeric",
           "primaryKey": false,
           "notNull": false
         },
@@ -74,6 +80,36 @@
           "primaryKey": false,
           "notNull": true
         },
+        "contact_number": {
+          "name": "contact_number",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "emergency_contact": {
+          "name": "emergency_contact",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "address": {
+          "name": "address",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id_front": {
+          "name": "id_front",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "id_back": {
+          "name": "id_back",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
         "created_at": {
           "name": "created_at",
           "type": "timestamp",
@@ -97,21 +133,158 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
+    "public.client_routes": {
+      "name": "client_routes",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "client_id": {
+          "name": "client_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "route": {
+          "name": "route",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "client_routes_client_id_clients_id_fk": {
+          "name": "client_routes_client_id_clients_id_fk",
+          "tableFrom": "client_routes",
+          "tableTo": "clients",
+          "columnsFrom": [
+            "client_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
     "public.clients": {
       "name": "clients",
       "schema": "",
       "columns": {
         "id": {
           "name": "id",
-          "type": "text",
+          "type": "uuid",
           "primaryKey": true,
-          "notNull": true
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "client_rate": {
+          "name": "client_rate",
+          "type": "numeric(10, 2)",
+          "primaryKey": false,
+          "notNull": false
         },
         "client_name": {
           "name": "client_name",
           "type": "text",
           "primaryKey": false,
           "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.helpers": {
+      "name": "helpers",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "helper_name": {
+          "name": "helper_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "contact_number": {
+          "name": "contact_number",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "emergency_contact": {
+          "name": "emergency_contact",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "address": {
+          "name": "address",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id_front": {
+          "name": "id_front",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "id_back": {
+          "name": "id_back",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
         },
         "created_at": {
           "name": "created_at",
@@ -155,7 +328,7 @@
         },
         "client_id": {
           "name": "client_id",
-          "type": "text",
+          "type": "uuid",
           "primaryKey": false,
           "notNull": false
         },

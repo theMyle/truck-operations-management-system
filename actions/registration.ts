@@ -2,9 +2,8 @@
 
 import { actionClient } from "@/lib/safe-action";
 import { db } from "@/lib/db";
-import { clients, drivers, helpers, trucks } from "@/lib/db/schema";
+import { clientRoutes, clients, drivers, helpers, insertClientRouteSchema, trucks } from "@/lib/db/schema";
 import {
-  insertClientSchema,
   insertDriverSchema,
   insertHelperSchema,
   insertTruckSchema,
@@ -17,35 +16,88 @@ import { deleteFileFromUrl } from "@/actions/file-upload";
 
 
 // Clients
+const saveClientSchema = z.object({
+  clientName: z.string().min(1, "Client name is required"),
+  rate: z.string().default("0.00"),
+  routeTemplates: z.array(z.string().min(1)).default([]),
+});
+
 export const createClient = actionClient
-  .schema(insertClientSchema.omit({ id: true, createdAt: true, updatedAt: true }))
+  .inputSchema(saveClientSchema)
   .action(async ({ parsedInput }) => {
-    await db.insert(clients).values({ id: crypto.randomUUID(), ...parsedInput });
+    const { clientName, rate, routeTemplates } = parsedInput;
+
+    await db.transaction(async (tx) => {
+      const [newClient] = await tx
+        .insert(clients)
+        .values({
+          clientName,
+          rate,
+        })
+        .returning({ id: clients.id });
+
+      if (routeTemplates.length > 0) {
+        const templateRows = routeTemplates.map((routeName) => ({
+          clientId: newClient.id,
+          route: routeName,
+        }));
+
+        await tx.insert(clientRoutes).values(templateRows);
+      }
+    });
+
     revalidatePath("/registration");
+    return { success: true };
   });
+
 
 export const updateClient = actionClient
-  .schema(insertClientSchema.pick({ id: true, clientName: true }).extend({ id: z.string() }))
+  .inputSchema(saveClientSchema.extend({ id: z.string().uuid() }))
   .action(async ({ parsedInput }) => {
-    const [updated] = await db.update(clients)
-      .set({ clientName: parsedInput.clientName, updatedAt: new Date() })
-      .where(eq(clients.id, parsedInput.id))
-      .returning();
+    const { id: clientId, clientName, rate, routeTemplates } = parsedInput;
+
+    await db.transaction(async (tx) => {
+      await tx
+        .update(clients)
+        .set({
+          clientName,
+          rate,
+          updatedAt: new Date()
+        })
+        .where(eq(clients.id, clientId));
+
+      await tx
+        .delete(clientRoutes)
+        .where(eq(clientRoutes.clientId, clientId));
+
+      if (routeTemplates.length > 0) {
+        const templateRows = routeTemplates.map((routeName) => ({
+          clientId,
+          route: routeName,
+        }));
+
+        await tx.insert(clientRoutes).values(templateRows);
+      }
+    });
+
     revalidatePath("/registration");
-    return updated;
+    return { success: true };
   });
 
+
 export const deleteClient = actionClient
-  .schema(z.object({ id: z.string() }))
+  .inputSchema(z.object({ id: z.string().uuid() }))
   .action(async ({ parsedInput }) => {
     await db.delete(clients).where(eq(clients.id, parsedInput.id));
+
     revalidatePath("/registration");
+    return { success: true };
   });
 
 
 // Trucks
 export const createTruck = actionClient
-  .schema(
+  .inputSchema(
     insertTruckSchema.omit({ createdAt: true, updatedAt: true })
   )
   .action(async ({ parsedInput }) => {
@@ -54,7 +106,17 @@ export const createTruck = actionClient
   });
 
 export const updateTruck = actionClient
-  .schema(insertTruckSchema.pick({ plateNumber: true, fleetType: true, unitType: true, status: true }).extend({ plateNumber: z.string() }))
+  .inputSchema(
+    insertTruckSchema
+      .pick({
+        plateNumber: true,
+        fleetType: true,
+        unitType: true,
+        rate: true,
+        status: true,
+      })
+      .extend({ plateNumber: z.string() })
+  )
   .action(async ({ parsedInput }) => {
     const [updated] = await db.update(trucks)
       .set({ ...parsedInput, updatedAt: new Date() })
@@ -65,7 +127,7 @@ export const updateTruck = actionClient
   });
 
 export const deleteTruck = actionClient
-  .schema(z.object({ plateNumber: z.string() }))
+  .inputSchema(z.object({ plateNumber: z.string() }))
   .action(async ({ parsedInput }) => {
     await db.delete(trucks).where(eq(trucks.plateNumber, parsedInput.plateNumber));
     revalidatePath("/registration");
@@ -74,14 +136,14 @@ export const deleteTruck = actionClient
 
 // Drivers
 export const createDriver = actionClient
-  .schema(insertDriverSchema.omit({ id: true, createdAt: true, updatedAt: true }))
+  .inputSchema(insertDriverSchema.omit({ id: true, createdAt: true, updatedAt: true }))
   .action(async ({ parsedInput }) => {
     await db.insert(drivers).values(parsedInput);
     revalidatePath("/registration");
   });
 
 export const updateDriver = actionClient
-  .schema(insertDriverSchema.omit({ createdAt: true, updatedAt: true }).extend({ id: z.string() }))
+  .inputSchema(insertDriverSchema.omit({ createdAt: true, updatedAt: true }).extend({ id: z.string() }))
   .action(async ({ parsedInput }) => {
     const [updated] = await db.update(drivers)
       .set({ ...parsedInput, updatedAt: new Date() })
@@ -92,7 +154,7 @@ export const updateDriver = actionClient
   });
 
 export const deleteDriver = actionClient
-  .schema(z.object({ id: z.string() }))
+  .inputSchema(z.object({ id: z.string() }))
   .action(async ({ parsedInput }) => {
     // 1. Fetch the driver to get the image URLs
     const [driver] = await db.select().from(drivers).where(eq(drivers.id, parsedInput.id));
@@ -101,7 +163,7 @@ export const deleteDriver = actionClient
       await deleteFileFromUrl(driver.idFrontLink);
       await deleteFileFromUrl(driver.idBackLink);
     }
-    
+
     // 3. Delete the driver from the database
     await db.delete(drivers).where(eq(drivers.id, parsedInput.id));
     revalidatePath("/registration");
@@ -110,14 +172,15 @@ export const deleteDriver = actionClient
 
 // Helpers
 export const createHelper = actionClient
-  .schema(insertHelperSchema.omit({ id: true, createdAt: true, updatedAt: true }))
+  .inputSchema(insertHelperSchema.omit({ id: true, createdAt: true, updatedAt: true }))
   .action(async ({ parsedInput }) => {
     await db.insert(helpers).values(parsedInput);
     revalidatePath("/registration");
   });
 
+
 export const updateHelper = actionClient
-  .schema(insertHelperSchema.omit({ createdAt: true, updatedAt: true }).extend({ id: z.string() }))
+  .inputSchema(insertHelperSchema.omit({ createdAt: true, updatedAt: true }).extend({ id: z.string() }))
   .action(async ({ parsedInput }) => {
     const [updated] = await db.update(helpers)
       .set({ ...parsedInput, updatedAt: new Date() })
@@ -127,17 +190,20 @@ export const updateHelper = actionClient
     return updated;
   });
 
+
 export const deleteHelper = actionClient
-  .schema(z.object({ id: z.string() }))
+  .inputSchema(z.object({ id: z.string() }))
   .action(async ({ parsedInput }) => {
+
     // 1. Fetch the helper to get the image URLs
     const [helper] = await db.select().from(helpers).where(eq(helpers.id, parsedInput.id));
     if (helper) {
+
       // 2. Delete the images from Supabase Storage
       await deleteFileFromUrl(helper.idFrontLink);
       await deleteFileFromUrl(helper.idBackLink);
     }
-    
+
     // 3. Delete the helper from the database
     await db.delete(helpers).where(eq(helpers.id, parsedInput.id));
     revalidatePath("/registration");

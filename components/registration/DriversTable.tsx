@@ -11,8 +11,7 @@ import { notifications } from "@mantine/notifications";
 import type { Driver } from "@/lib/db/schema/drivers";
 import { deleteDriver } from "@/actions/registration";
 import { TableHeader } from "./TableHeader";
-import { AddDriverModal } from "./AddDriverModal";
-import { EditDriverModal } from "./EditDriverModal";
+import { DriverModal } from "./DriverModal";
 import { ViewDriverModal } from "./ViewDriverModal";
 
 interface Props {
@@ -67,8 +66,8 @@ export function DriversTable({ data }: Props) {
 
   return (
     <>
-      <AddDriverModal opened={addOpened} onClose={closeAdd} />
-      <EditDriverModal
+      <DriverModal opened={addOpened} onClose={closeAdd} />
+      <DriverModal
         opened={!!editDriver}
         onClose={() => setEditDriver(null)}
         driver={editDriver}

@@ -16,11 +16,14 @@ import {
   SimpleGrid,
   Popover,
   ActionIcon,
+  Select,
+  Grid,
+  Autocomplete,
 } from "@mantine/core";
 import { DatePicker, type DateValue } from "@mantine/dates";
 import { notifications } from "@mantine/notifications";
 import { useRouter } from "next/navigation";
-import React, { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect } from "react";
 import {
   IconPlus,
   IconCheck,
@@ -31,11 +34,12 @@ import {
 } from "@tabler/icons-react";
 import "@mantine/dates/styles.css";
 import { useDispatch } from "../context/dispatch-context";
-import { CreatableSelect } from "@/components/dispatch/CreatableSelect";
 import { LocationSearch } from "@/components/dispatch/LocationSearch";
 import { CardHeader } from "@/components/dispatch/CardHeader";
 import { ReviewModal } from "@/components/dispatch/ReviewModal";
 import { TimePickerInput } from "@/components/dispatch/TimePickerInput";
+import { getClients, getDrivers, getHelpers, getTrucks } from "@/actions/fetch";
+import { ClientWithRoutes, Driver, Helper, Truck } from "@/lib/db/schema";
 
 interface DropOff {
   id: number;
@@ -44,87 +48,66 @@ interface DropOff {
   contactNo: string;
 }
 
-/* ── Predefined data ── */
-const DEFAULT_CLIENTS = [
-  "Flash Express",
-  "IPI",
-  "Inteluck Corp",
-  "KTS Rentals",
-  "Transportify",
-  "XMD Logistics",
-  "Urenholt",
-];
-
-const DEFAULT_DRIVERS = [
-  "Alvin Paluga",
-  "Aniceto Abo",
-  "Edcel Ralo",
-  "Elesio Batallones Jr",
-  "Ever Bacvano",
-  "Gerald Roco",
-  "Jomarie Divina",
-  "Lim Ubal",
-  "Noel Asumbrado",
-  "Ricky Pantua",
-  "Romano Ancheta",
-  "Rommel Lumacang",
-];
-
-const DEFAULT_HELPERS = [
-  "Chester Evasco",
-  "Felipe Guban",
-  "James Eric Manabo",
-  "Jeric Juanico",
-  "Ramil Diana",
-  "Richard Roda",
-  "Rizalito Domingo",
-  "Vince Marzonia",
-];
-
-const DEFAULT_UNIT_TYPES = [
-  "FB Type",
-  "6W CV",
-  "6W Forward",
-  "10W Wing",
-  "Van",
-  "4W CV",
-];
-
 export default function DispatchPage() {
   const router = useRouter();
 
-  /* ── Combo box state ── */
-  const [selectedClient, setSelectedClient] = useState<string | null>(null);
-  const [selectedDriver, setSelectedDriver] = useState<string | null>(null);
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [selectedHelper, setSelectedHelper] = useState<string | null>(null);
-  const [selectedUnit, setSelectedUnit] = useState<string | null>(null);
-  const [selectedTruckerName, setSelectedTruckerName] = useState("");
-  /* ── Field value state ── */
+  const [drivers, setDrivers] = useState<Driver[]>([]);
+  const [helpers, setHelpers] = useState<Helper[]>([]);
+  const [clients, setClients] = useState<ClientWithRoutes[]>([]);
+  const [trucks, setTrucks] = useState<Truck[]>([]);
+
+  // client
+  const [selectedClient, setSelectedClient] = useState<ClientWithRoutes | null>(null);
+  const [clientRate, setClientRate] = useState<string>("");
+
+  // truck & trucker
+  const [selectedTruck, setSeletectedTruck] = useState<Truck | null>(null);
+  const [truckerRate, setTruckerRate] = useState<string>("");
+
+  // personnel
+  const [selectedDriver, setSelectedDriver] = useState<Driver | null>(null);
+  const [selectedHelpers, setSelectedHelpers] = useState<Helper[]>([]);
+  const [helperSearch, setHelperSearch] = useState("");
+
 
   const [ruta, setRuta] = useState("");
+
+  /* ── Field value state ── */
   const [bookingDr, setBookingDr] = useState("");
   const [noOfDrops, setNoOfDrops] = useState<string | number>("");
   const [pickupTime, setPickupTime] = useState("");
-  const [plateNo, setPlateNo] = useState("");
-  const [clientRate, setClientRate] = useState("");
-  const [selectedTruckerRate, setSelectedTruckerRate] = useState("");
 
   /* ── Error state ── */
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   /* ── Review modal state ── */
   const [reviewOpened, setReviewOpened] = useState(false);
-
   const { editingRecord, setEditingRecord, setRecords } = useDispatch();
   const [pickupDate, setPickupDate] = useState<DateValue | null>(null);
-  const [selectedHelpers, setSelectedHelpers] = useState<string[]>([]);
-  const [helperKey, setHelperKey] = useState(0);
 
   const [pickupLocation, setPickupLocation] = useState("");
   const [dropOffs, setDropOffs] = useState<DropOff[]>([
     { id: 1, location: "", contactPerson: "", contactNo: "" },
   ]);
+
+  // On Load
+  useEffect(() => {
+    async function fetchDispatchersData() {
+      const [trucks, clients, drivers, helpers] = await Promise.all([
+        getTrucks(),
+        getClients(),
+        getDrivers(),
+        getHelpers()
+      ]);
+
+      if (trucks.data) setTrucks(trucks.data);
+      if (clients.data) setClients(clients.data);
+      if (drivers.data) setDrivers(drivers.data);
+      if (helpers.data) setHelpers(helpers.data);
+    }
+
+    fetchDispatchersData();
+  }, [])
 
   // Helper function — add this near the top of your component or outside it
   const formatDate = (date: DateValue | null): string => {
@@ -148,54 +131,47 @@ export default function DispatchPage() {
   const validate = useCallback((): boolean => {
     const e: Record<string, string> = {};
 
-    if (!pickupLocation.trim())
-      e.pickupLocation = "Pickup location is required";
+    // Client Details
     if (!selectedClient) e.client = "Client is required";
-    if (!selectedTruckerName) e.truckerName = "Trucker name is required";
-    if (
-      !clientRate.trim() ||
-      isNaN(Number(clientRate)) ||
-      Number(clientRate) <= 0
-    )
+    if (selectedClient && (!clientRate?.trim() || isNaN(Number(clientRate)) || Number(clientRate) <= 0))
       e.clientRate = "Valid client rate is required";
-    if (!ruta.trim()) e.ruta = "Route is required";
+    if (selectedClient && !ruta.trim()) e.ruta = "Route is required";
+
+
+    // Location Details
+    if (!pickupLocation.trim()) e.pickupLocation = "Pickup location is required";
     if (!bookingDr.trim()) e.bookingDr = "Booking / DR# is required";
-    if (!noOfDrops || Number(noOfDrops) < 1)
-      e.noOfDrops = "At least 1 drop required";
-    if (!selectedUnit) e.unit = "Trucker is required";
-    if (!plateNo.trim()) e.plateNo = "Plate number is required";
-    else if (!/^[A-Za-z0-9 -]{3,}$/.test(plateNo.trim()))
-      e.plateNo = "Invalid plate format (min 3 characters)";
-    if (!selectedDriver) e.driver = "Driver is required";
+    if (!noOfDrops || Number(noOfDrops) < 1) e.noOfDrops = "At least 1 drop required";
     if (!pickupDate) e.pickupDate = "Pickup date is required";
-    if (
-      !selectedTruckerRate.trim() ||
-      isNaN(Number(selectedTruckerRate)) ||
-      Number(selectedTruckerRate) <= 0
-    )
+
+    const hasValidDrop = dropOffs.some((d) => d.location.trim());
+    if (!hasValidDrop) e.dropOffs = "At least one drop-off location is required";
+
+
+    // Truck Details
+    if (!selectedTruck) e.plateNo = "Plate number is required";
+    if (selectedTruck && (isNaN(Number(truckerRate.trim())) || Number(truckerRate.trim()) <= 0))
       e.truckerRate = "Valid trucker rate is required";
 
-    // Validate at least one drop-off has a location
-    const hasValidDrop = dropOffs.some((d) => d.location.trim());
-    if (!hasValidDrop)
-      e.dropOffs = "At least one drop-off location is required";
+
+    // Personnel
+    if (!selectedDriver) e.driver = "Driver is required";
+
 
     setErrors(e);
     return Object.keys(e).length === 0;
   }, [
-    pickupLocation,
     selectedClient,
+    clientRate,
     ruta,
+    pickupLocation,
     bookingDr,
     noOfDrops,
-    selectedUnit,
-    plateNo,
-    selectedDriver,
     pickupDate,
     dropOffs,
-    clientRate,
-    selectedTruckerName,
-    selectedTruckerRate,
+    selectedTruck,
+    truckerRate,
+    selectedDriver,
   ]);
 
   const addDropOff = () => {
@@ -233,13 +209,13 @@ export default function DispatchPage() {
           r.id === editingRecord.id
             ? {
               ...r,
-              client: selectedClient || "",
+              client: selectedClient?.clientName || "",
               ruta,
               bookingDr,
               noOfDrops: Number(noOfDrops),
-              unit: selectedUnit || "",
-              plateNo,
-              driver: selectedDriver || "",
+              unit: selectedTruck?.fleetType || "",
+              plateNo: selectedTruck?.plateNumber || "",
+              driver: selectedDriver?.driverName || "",
               helper: selectedHelpers.join(", "),
             }
             : r,
@@ -272,32 +248,17 @@ export default function DispatchPage() {
   const handleReset = () => {
     setSelectedClient(null);
     setSelectedDriver(null);
-    setSelectedHelper(null);
-    setSelectedUnit(null);
     setRuta("");
+    setTruckerRate("");
     setBookingDr("");
     setNoOfDrops("");
-    setPlateNo("");
+    setSeletectedTruck(null);
     setPickupDate(null);
     setPickupLocation("");
     setDropOffs([{ id: 1, location: "", contactPerson: "", contactNo: "" }]);
     setSelectedHelpers([]);
-    setHelperKey((prev) => prev + 1);
     setErrors({});
   };
-
-  useEffect(() => {
-    if (!editingRecord) return;
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setRuta(editingRecord.ruta);
-    setBookingDr(editingRecord.bookingDr);
-    setNoOfDrops(editingRecord.noOfDrops);
-    setPlateNo(editingRecord.plateNo);
-    setSelectedClient(editingRecord.client);
-    setSelectedDriver(editingRecord.driver);
-    setSelectedHelper(editingRecord.helper);
-    setSelectedUnit(editingRecord.unit);
-  }, [editingRecord]);
 
   const inputStyles = {
     label: {
@@ -316,13 +277,13 @@ export default function DispatchPage() {
 
   /* ── Data snapshot for review modal ── */
   const reviewData: Record<string, string> = {
-    client: selectedClient || "",
+    client: selectedClient?.clientName || "",
     ruta,
     bookingDr,
     noOfDrops: noOfDrops?.toString() || "",
-    unit: selectedUnit || "",
-    plateNo,
-    driver: selectedDriver || "",
+    unit: selectedTruck?.fleetType || "",
+    plateNo: selectedTruck?.plateNumber || "",
+    driver: selectedDriver?.driverName || "",
     helper: selectedHelpers.join(", "),
     pickupDate: formatDate(pickupDate),
     pickupLocation,
@@ -335,15 +296,14 @@ export default function DispatchPage() {
       .join("\n"),
   };
 
-  const addHelper = (val: string | null) => {
-    if (val && !selectedHelpers.includes(val)) {
-      setSelectedHelpers((prev) => [...prev, val]);
-      setHelperKey((prev) => prev + 1);
+  const addHelper = (helper: Helper) => {
+    if (helper && !selectedHelpers.includes(helper)) {
+      setSelectedHelpers((prev) => [...prev, helper]);
     }
   };
 
-  const removeHelper = (val: string) => {
-    setSelectedHelpers((prev) => prev.filter((h) => h !== val));
+  const removeHelper = (helperId: string) => {
+    setSelectedHelpers((prev) => prev.filter((h) => h.id !== helperId));
   };
 
   return (
@@ -408,268 +368,329 @@ export default function DispatchPage() {
                 }
               />
 
-              <Divider mb="md" />
+              <Divider mb="xs" mt="lg" label="CLIENT DETAILS" />
 
-              <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm" mb="sm">
-                <CreatableSelect
-                  label="Client"
-                  placeholder="Search or add client"
-                  data={DEFAULT_CLIENTS}
-                  value={selectedClient}
-                  onChange={(val) => {
-                    setSelectedClient(val);
-                    if (val) clearError("client");
-                  }}
-                  styles={inputStyles}
-                  error={errors.client}
-                />
-                <TextInput
-                  label="Client Rate"
-                  placeholder="Enter client rate"
-                  styles={inputStyles}
-                  value={clientRate}
-                  onChange={(e) => {
-                    setClientRate(e.currentTarget.value);
-                    if (e.currentTarget.value.trim()) clearError("clientRate");
-                  }}
-                  error={errors.clientRate}
-                />
-              </SimpleGrid>
-
-              <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm" mb="sm">
-                {/* Left: Pickup Location */}
-                <LocationSearch
-                  label="Pickup Location"
-                  placeholder="Search pickup address..."
-                  value={pickupLocation}
-                  onChange={(val) => {
-                    setPickupLocation(val);
-                    if (val.trim()) clearError("pickupLocation");
-                  }}
-                  error={errors.pickupLocation}
-                  leftSection={
-                    <IconMapPin
-                      size={13}
-                      color="var(--mantine-color-green-6)"
+              <Grid gap="md" mb="sm">
+                <Grid.Col span={{ base: 12, sm: 4 }}>
+                  <Stack gap="sm">
+                    <Select
+                      label="Client"
+                      placeholder="Select client"
+                      data={clients.map(client => client.clientName)}
+                      value={selectedClient?.clientName || ""}
+                      onChange={(val) => {
+                        const client = clients.find(c => c.clientName === val) ?? null;
+                        setSelectedClient(client);
+                        setClientRate(client?.rate ?? "");
+                        if (!client) setRuta("");
+                        if (val) clearError("client");
+                      }}
+                      allowDeselect={false}
+                      styles={inputStyles}
+                      error={errors.client}
+                      maxDropdownHeight={160}
+                      searchable
+                      clearable
                     />
-                  }
-                />
 
-                {/* Right: Drop-off Points */}
-                <Box>
-                  <Stack gap={6}>
-                    {dropOffs.map((drop, index) => (
-                      <Paper key={drop.id} withBorder radius="sm" p="xs">
-                        <LocationSearch
-                          label={`Drop ${index + 1}`}
-                          placeholder="Search drop-off address..."
-                          value={drop.location}
-                          onChange={(val) => {
-                            updateDropOff(drop.id, "location", val);
-                            if (val.trim()) clearError("dropOffs");
-                          }}
-                          leftSection={
-                            <IconMapPin
-                              size={11}
-                              color="var(--mantine-color-red-5)"
-                            />
-                          }
-                          rightAction={
-                            <Group gap={4}>
-                              {index === 0 && (
-                                <Button
-                                  size="sm"
-                                  variant="light"
-                                  color="blue"
-                                  leftSection={<IconPlus size={12} />}
-                                  styles={{
-                                    root: { height: 18, padding: "0 6px" },
-                                    label: {
-                                      fontSize: "10px",
-                                      fontWeight: 700,
-                                    },
-                                  }}
-                                  onClick={addDropOff}
-                                >
-                                  Add Drop-off Points
-                                </Button>
-                              )}
-                              {dropOffs.length > 1 && (
-                                <ActionIcon
-                                  variant="subtle"
-                                  color="red"
-                                  size="xs"
-                                  onClick={() => removeDropOff(drop.id)}
-                                >
-                                  <IconX size={11} />
-                                </ActionIcon>
-                              )}
-                            </Group>
-                          }
-                        />
-                      </Paper>
-                    ))}
+                    <NumberInput
+                      label="Rate"
+                      placeholder="0.00"
+                      leftSection={"₱"}
+                      min={0}
+                      styles={inputStyles}
+                      value={clientRate}
+                      onChange={(e) => {
+                        setClientRate(e.toString());
+                        if (e) clearError("clientRate");
+                      }}
+                      disabled={!selectedClient}
+                      error={errors.clientRate}
+                    />
                   </Stack>
+                </Grid.Col>
 
-                  {errors.dropOffs && (
-                    <Text style={{ fontSize: "11px" }} c="red" mt={4}>
-                      {errors.dropOffs}
-                    </Text>
-                  )}
-                </Box>
-              </SimpleGrid>
-              <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="sm" mb="sm">
-                <TextInput
-                  label="Booking / DR#"
-                  placeholder="Enter booking or DR number"
-                  styles={inputStyles}
-                  value={bookingDr}
-                  onChange={(e) => {
-                    setBookingDr(e.currentTarget.value);
-                    if (e.currentTarget.value.trim()) clearError("bookingDr");
-                  }}
-                  tt="capitalize"
-                  error={errors.bookingDr}
-                />
+                <Grid.Col span={{ base: 12, sm: 8 }}>
+                  <Stack gap="sm">
+                    <Autocomplete
+                      label="Ruta"
+                      placeholder="Select Existing Route"
+                      styles={inputStyles}
+                      data={selectedClient?.routes.map(route => route.route)}
+                      value={ruta}
+                      onChange={(value) => {
+                        setRuta(value);
+                        if (value) clearError("ruta");
+                      }}
+                      error={errors.ruta}
+                      disabled={!selectedClient}
+                    />
+                  </Stack>
+                </Grid.Col>
+              </Grid>
 
-                <NumberInput
-                  label="No. of Drops"
-                  placeholder="Enter number of drops"
-                  min={1}
-                  styles={inputStyles}
-                  value={noOfDrops}
-                  onChange={(val) => {
-                    setNoOfDrops(val);
-                    if (val && Number(val) >= 1) clearError("noOfDrops");
-                  }}
-                  error={errors.noOfDrops}
-                />
+              <Divider m="xl" label="LOCATION DETAILS" />
 
-                <Group gap={4} align="flex-start" grow>
-                  <Popover
-                    position="bottom-start"
-                    shadow="md"
-                    radius="md"
-                    withinPortal
-                  >
-                    <Popover.Target>
-                      <TextInput
-                        label="Pickup Date"
-                        placeholder="Select date"
-                        readOnly
-                        value={formatDate(pickupDate)}
-                        rightSection={
-                          <IconCalendar
-                            size={14}
-                            color="var(--mantine-color-gray-5)"
+              <Grid gap="sm" mb="sm">
+                {/* Left Side Column */}
+                <Grid.Col span={{ base: 12, sm: 6 }}>
+                  <Stack gap="sm">
+                    {/* Row 1: Pickup Location */}
+                    <LocationSearch
+                      label="Pickup Location"
+                      placeholder="Search pickup address..."
+                      value={pickupLocation}
+                      onChange={(val) => {
+                        setPickupLocation(val);
+                        if (val.trim()) clearError("pickupLocation");
+                      }}
+                      error={errors.pickupLocation}
+                      leftSection={
+                        <IconMapPin
+                          size={13}
+                          color="var(--mantine-color-green-6)"
+                        />
+                      }
+                    />
+
+                    {/* Row 2: DR# and No. of Drops */}
+                    <Grid gap="sm">
+                      <Grid.Col span={6}>
+                        <TextInput
+                          label="Booking / DR#"
+                          placeholder="Enter booking or DR number"
+                          styles={inputStyles}
+                          value={bookingDr}
+                          onChange={(e) => {
+                            setBookingDr(e.currentTarget.value);
+                            if (e.currentTarget.value.trim()) clearError("bookingDr");
+                          }}
+                          tt="capitalize"
+                          error={errors.bookingDr}
+                        />
+                      </Grid.Col>
+
+                      <Grid.Col span={6}>
+                        <NumberInput
+                          label="No. of Drops"
+                          placeholder="Enter number of drops"
+                          min={1}
+                          styles={inputStyles}
+                          value={noOfDrops}
+                          onChange={(val) => {
+                            setNoOfDrops(val);
+                            if (val && Number(val) >= 1) clearError("noOfDrops");
+                          }}
+                          error={errors.noOfDrops}
+                        />
+                      </Grid.Col>
+                    </Grid>
+
+                    {/* Row 3: Pickup Date and Pickup Time */}
+                    <Grid gap="sm">
+                      <Grid.Col span={6}>
+                        <Popover position="bottom-start" shadow="md" radius="md" withinPortal>
+                          <Popover.Target>
+                            <TextInput
+                              label="Pickup Date"
+                              placeholder="Select date"
+                              readOnly
+                              value={formatDate(pickupDate)}
+                              rightSection={
+                                <IconCalendar
+                                  size={14}
+                                  color="var(--mantine-color-gray-5)"
+                                />
+                              }
+                              styles={inputStyles}
+                              error={errors.pickupDate}
+                              style={{ cursor: "pointer" }}
+                            />
+                          </Popover.Target>
+                          <Popover.Dropdown p="sm">
+                            <DatePicker value={pickupDate} onChange={setPickupDate} />
+                          </Popover.Dropdown>
+                        </Popover>
+                      </Grid.Col>
+
+                      <Grid.Col span={6}>
+                        <TimePickerInput
+                          label="Pick up time"
+                          value={pickupTime}
+                          onChange={setPickupTime}
+                          error={errors.pickupTime}
+                        />
+                      </Grid.Col>
+                    </Grid>
+                  </Stack>
+                </Grid.Col>
+
+                {/* Right Side Column: Drop-off Points */}
+                <Grid.Col span={{ base: 12, sm: 6 }}>
+                  <Box>
+                    <Stack gap={6}>
+                      {dropOffs.map((drop, index) => (
+                        <Paper key={drop.id} withBorder radius="sm" p="xs">
+                          <LocationSearch
+                            label={`Drop ${index + 1}`}
+                            placeholder="Search drop-off address..."
+                            value={drop.location}
+                            onChange={(val) => {
+                              updateDropOff(drop.id, "location", val);
+                              if (val.trim()) clearError("dropOffs");
+                            }}
+                            leftSection={
+                              <IconMapPin
+                                size={11}
+                                color="var(--mantine-color-red-5)"
+                              />
+                            }
+                            rightAction={
+                              <Group gap={4}>
+                                {index === 0 && (
+                                  <Button
+                                    size="sm"
+                                    variant="light"
+                                    color="blue"
+                                    leftSection={<IconPlus size={12} />}
+                                    styles={{
+                                      root: { height: 18, padding: "0 6px" },
+                                      label: {
+                                        fontSize: "10px",
+                                        fontWeight: 700,
+                                      },
+                                    }}
+                                    onClick={addDropOff}
+                                  >
+                                    Add Drop-off Points
+                                  </Button>
+                                )}
+                                {dropOffs.length > 1 && (
+                                  <ActionIcon
+                                    variant="subtle"
+                                    color="red"
+                                    size="xs"
+                                    onClick={() => removeDropOff(drop.id)}
+                                  >
+                                    <IconX size={11} />
+                                  </ActionIcon>
+                                )}
+                              </Group>
+                            }
                           />
-                        }
-                        styles={inputStyles}
-                        error={errors.pickupDate}
-                        style={{ cursor: "pointer" }}
-                      />
-                    </Popover.Target>
+                        </Paper>
+                      ))}
+                    </Stack>
 
-                    <Popover.Dropdown p="sm">
-                      <DatePicker value={pickupDate} onChange={setPickupDate} />
-                    </Popover.Dropdown>
-                  </Popover>
-                  <TimePickerInput
-                    label="Pick up time"
-                    value={pickupTime}
-                    onChange={setPickupTime}
-                    error={errors.pickupTime}
-                  />
-                </Group>
-              </SimpleGrid>
+                    {errors.dropOffs && (
+                      <Text style={{ fontSize: "11px" }} c="red" mt={4}>
+                        {errors.dropOffs}
+                      </Text>
+                    )}
+                  </Box>
+                </Grid.Col>
+              </Grid>
+
+
+              <Divider m="xl" label="TRUCK DETAILS" />
+
 
               <SimpleGrid cols={{ base: 1, sm: 2, md: 4 }} spacing="sm" mb="sm">
-                <TextInput
-                  label="Trucker Name"
-                  placeholder="Enter trucker name"
+                <Select
+                  label="Plate No."
+                  placeholder="Enter plate number..."
                   styles={inputStyles}
-                  value={selectedTruckerName}
-                  onChange={(e) => {
-                    setSelectedTruckerName(e.currentTarget.value);
-                    if (e.currentTarget.value.trim()) clearError("truckerName");
-                  }}
-                  error={errors.truckerName}
-                />
-                <CreatableSelect
-                  label="Trucker"
-                  placeholder="Search or add trucker"
-                  data={DEFAULT_UNIT_TYPES}
-                  value={selectedUnit}
+                  data={trucks.map((truck) => truck.plateNumber)}
+                  value={selectedTruck?.plateNumber || null}
+                  clearable
+                  allowDeselect={false}
                   onChange={(val) => {
-                    setSelectedUnit(val);
-                    if (val) clearError("unit");
-                  }}
-                  styles={inputStyles}
-                  error={errors.unit}
-                />
-                <TextInput
-                  label="Trucker's Rate (₱)"
-                  placeholder="Amount"
-                  styles={inputStyles}
-                  value={selectedTruckerRate}
-                  onChange={(e) => {
-                    setSelectedTruckerRate(e.currentTarget.value);
-                    if (e.currentTarget.value.trim()) clearError("truckerRate");
-                  }}
-                  error={errors.truckerRate}
-                />
-                <TextInput
-                  label="Plate#"
-                  placeholder="e.g. ABC 1234"
-                  styles={inputStyles}
-                  value={plateNo}
-                  onChange={(e) => {
-                    const val = e.currentTarget.value.toUpperCase();
-                    setPlateNo(val);
-                    if (val.trim().length >= 3) clearError("plateNo");
+                    const truck = trucks.find(t => t.plateNumber === val) ?? null;
+                    setSeletectedTruck(truck);
+                    setTruckerRate(truck?.rate ?? "");
                   }}
                   error={errors.plateNo}
-                  maxLength={15}
+                  searchable
+                  nothingFoundMessage="No plates found"
+                  maxDropdownHeight={160}
+                />
+
+                <TextInput
+                  label="Trucker"
+                  styles={inputStyles}
+                  value={selectedTruck?.unitType || ""}
+                  disabled={!selectedTruck}
+                  readOnly
+                  error={errors.truckerName}
+                />
+
+                <TextInput
+                  label="Fleet Type"
+                  styles={inputStyles}
+                  value={selectedTruck?.fleetType || ""}
+                  disabled={!selectedTruck}
+                  readOnly
+                  error={errors.unit}
+                />
+
+                <TextInput
+                  label="Trucker's Rate (₱)"
+                  styles={inputStyles}
+                  leftSection={"₱"}
+                  value={truckerRate}
+                  onChange={(e) => {
+                    setTruckerRate(e.currentTarget.value);
+                    clearError("truckerRate");
+                  }}
+                  disabled={!selectedTruck}
+                  error={errors.truckerRate}
                 />
               </SimpleGrid>
 
-              <Divider
-                my="sm"
-                label={
-                  <Text
-                    style={{ fontSize: "9px" }}
-                    c="dimmed"
-                    tt="uppercase"
-                    lts={1}
-                  >
-                    Personnel
-                  </Text>
-                }
-                labelPosition="left"
-              />
+
+              <Divider m="xl" label="PERSONNEL" />
+
 
               <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm" mb="md">
-                <CreatableSelect
+                <Select
                   label="Driver"
                   placeholder="Search or add driver"
-                  data={DEFAULT_DRIVERS}
-                  value={selectedDriver}
+                  data={drivers.map((driver) => driver.driverName)}
+                  value={selectedDriver?.driverName || ""}
                   onChange={(val) => {
-                    setSelectedDriver(val);
-                    if (val) clearError("driver");
+                    const driver = drivers.find(driver => driver.driverName == val);
+                    setSelectedDriver(driver || null);
                   }}
                   styles={inputStyles}
                   error={errors.driver}
+                  searchable
+                  clearable
                 />
+
                 <Stack gap={4}>
-                  <CreatableSelect
-                    key={helperKey}
-                    label="Helper"
+                  <Select
+                    label="Helper/s"
                     placeholder="Add helper"
-                    data={DEFAULT_HELPERS}
-                    value={null}
-                    onChange={addHelper}
+                    searchValue={helperSearch}
+                    allowDeselect={false}
+                    onSearchChange={setHelperSearch}
+                    data={helpers
+                      .filter((helper) => !selectedHelpers.some((sh) => sh.id === helper.id))
+                      .map((helper) => helper.helperName)
+                    }
+                    value={""}
+                    onChange={(val) => {
+                      const helper = helpers.find((h) => h.helperName === val);
+                      if (helper) {
+                        addHelper(helper);
+                        setTimeout(() => {
+                          setHelperSearch('');
+                        }, 0);
+                      }
+                    }}
                     styles={inputStyles}
+                    searchable
+                    maxDropdownHeight={160}
                   />
 
                   <Box
@@ -688,7 +709,7 @@ export default function DispatchPage() {
                       <Group gap="xs">
                         {selectedHelpers.map((h) => (
                           <Badge
-                            key={h}
+                            key={h.id}
                             variant="light"
                             color="blue"
                             radius="sm"
@@ -696,15 +717,15 @@ export default function DispatchPage() {
                               <IconX
                                 size={10}
                                 style={{ cursor: "pointer" }}
-                                onClick={() => removeHelper(h)}
+                                onClick={() => removeHelper(h.id)}
                               />
                             }
                             styles={{ label: { fontSize: "10px" } }}
                           >
-                            {h}
+                            {h.helperName}
                           </Badge>
                         ))}
-                      </Group>  
+                      </Group>
                     )}
                   </Box>
 
@@ -717,7 +738,6 @@ export default function DispatchPage() {
                 </Stack>
               </SimpleGrid>
 
-              <Divider my="sm" />
 
               <Group flex={1}>
                 <Button
@@ -751,7 +771,7 @@ export default function DispatchPage() {
                   fw={inputStyles?.label?.fontWeight ?? 600}
                   c="dimmed"
                 >
-                  Booked by:{" "}
+                  Booked by: {" "}
                   <Badge size="xs" variant="light" color="blue" radius="sm">
                     Admin
                   </Badge>

@@ -11,8 +11,7 @@ import { notifications } from "@mantine/notifications";
 import type { Truck } from "@/lib/db/schema/trucks";
 import { deleteTruck } from "@/actions/registration";
 import { TableHeader } from "./TableHeader";
-import { AddTruckModal } from "./AddTruckModal";
-import { EditTruckModal } from "./EditTruckModal";
+import { TruckModal } from "./TruckModal";
 
 interface Props {
   data: Truck[];
@@ -75,8 +74,8 @@ export function TrucksTable({ data }: Props) {
 
   return (
     <>
-      <AddTruckModal opened={addOpened} onClose={closeAdd} />
-      <EditTruckModal
+      <TruckModal opened={addOpened} onClose={closeAdd} />
+      <TruckModal
         opened={!!editTruck}
         onClose={() => setEditTruck(null)}
         truck={editTruck}
@@ -156,12 +155,21 @@ export function TrucksTable({ data }: Props) {
             {
               accessor: "fleetType",
               title: "Fleet Type",
-              render: (row) => <Text size="sm">{row.fleetType ?? "—"}</Text>,
             },
             {
               accessor: "unitType",
-              title: "Unit Type",
-              render: (row) => <Text size="sm">{row.unitType ?? "—"}</Text>,
+              title: "Trucker",
+            },
+            {
+              accessor: "rate",
+              title: "Trucker Rate",
+              render: (row) =>
+                row.rate
+                  ? `₱ ${Number(row.rate).toLocaleString(undefined, {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}`
+                  : "-",
             },
             {
               accessor: "status",
