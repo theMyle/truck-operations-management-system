@@ -11,7 +11,11 @@ export const getTrucks = actionClient.action(async () => {
 });
 
 export const getClients = actionClient.action(async () => {
-    return await db.select().from(clients);
+    return await db.query.clients.findMany({
+        with: {
+            routes: true
+        }
+    });
 });
 
 export const getDrivers = actionClient.action(async () => {

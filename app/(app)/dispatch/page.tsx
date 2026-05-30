@@ -18,6 +18,7 @@ import {
   ActionIcon,
   Select,
   Grid,
+  Autocomplete,
 } from "@mantine/core";
 import { DatePicker, type DateValue } from "@mantine/dates";
 import { notifications } from "@mantine/notifications";
@@ -38,7 +39,7 @@ import { CardHeader } from "@/components/dispatch/CardHeader";
 import { ReviewModal } from "@/components/dispatch/ReviewModal";
 import { TimePickerInput } from "@/components/dispatch/TimePickerInput";
 import { getClients, getDrivers, getHelpers, getTrucks } from "@/actions/fetch";
-import { Client, Driver, Helper, Truck } from "@/lib/db/schema";
+import { Client, ClientWithRoutes, Driver, Helper, Truck } from "@/lib/db/schema";
 
 interface DropOff {
   id: number;
@@ -52,11 +53,12 @@ export default function DispatchPage() {
 
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [helpers, setHelpers] = useState<Helper[]>([]);
-  const [clients, setClients] = useState<Client[]>([]);
+  const [clients, setClients] = useState<ClientWithRoutes[]>([]);
   const [trucks, setTrucks] = useState<Truck[]>([]);
 
   // client
-  const [selectedClient, setSelectedClient] = useState<Client | null>(null);
+  const [selectedClient, setSelectedClient] = useState<ClientWithRoutes | null>(null);
+  const [clientRate, setClientRate] = useState<string>("");
 
   // truck & trucker
   const [selectedTruck, setSeletectedTruck] = useState<Truck | null>(null);
@@ -68,13 +70,12 @@ export default function DispatchPage() {
   const [helperSearch, setHelperSearch] = useState("");
 
 
+  const [ruta, setRuta] = useState("");
 
   /* ── Field value state ── */
-  const [ruta, setRuta] = useState("");
   const [bookingDr, setBookingDr] = useState("");
   const [noOfDrops, setNoOfDrops] = useState<string | number>("");
   const [pickupTime, setPickupTime] = useState("");
-  const [clientRate, setClientRate] = useState("");
 
   /* ── Error state ── */
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -134,12 +135,12 @@ export default function DispatchPage() {
       e.pickupLocation = "Pickup location is required";
     if (!selectedClient) e.client = "Client is required";
     if (
-      !clientRate.trim() ||
+      !clientRate?.trim() ||
       isNaN(Number(clientRate)) ||
       Number(clientRate) <= 0
     )
       e.clientRate = "Valid client rate is required";
-    if (!ruta.trim()) e.ruta = "Route is required";
+    if (selectedClient && !ruta.trim()) e.ruta = "Route is required";
     if (!bookingDr.trim()) e.bookingDr = "Booking / DR# is required";
     if (!noOfDrops || Number(noOfDrops) < 1)
       e.noOfDrops = "At least 1 drop required";
@@ -378,8 +379,11 @@ export default function DispatchPage() {
                       data={clients.map(client => client.clientName)}
                       value={selectedClient?.clientName || ""}
                       onChange={(val) => {
+                        if (!val) setRuta("");
+
                         const client = clients.find(c => c.clientName === val);
                         setSelectedClient(client || null);
+                        clearError("client");
                       }}
                       allowDeselect={false}
                       styles={inputStyles}
@@ -395,7 +399,7 @@ export default function DispatchPage() {
                       leftSection={"₱"}
                       min={0}
                       styles={inputStyles}
-                      value={clientRate}
+                      value={selectedClient?.rate || ""}
                       onChange={(e) => {
                         setClientRate(e.toString());
                         if (e) clearError("clientRate");
@@ -408,29 +412,18 @@ export default function DispatchPage() {
 
                 <Grid.Col span={{ base: 12, sm: 8 }}>
                   <Stack gap="sm">
-                    <Select
-                      label="Ruta (Static)"
+                    <Autocomplete
+                      label="Ruta"
                       placeholder="Select Existing Route"
                       styles={inputStyles}
-                      data={["Sample 1", "Sample 2"]} // TODO
+                      data={selectedClient?.routes.map(route => route.route)}
                       value={ruta}
-                      error={errors.clientRoute}
-                      disabled={!selectedClient}
-                      searchable
-                      clearable
-                    />
-
-                    <TextInput
-                      label="Ruta (Dynamic)"
-                      placeholder="Enter New Route"
-                      styles={inputStyles}
-                      value={ruta}
-                      onChange={(e) => {
-                        setRuta(e.currentTarget.value);
-                        if (e.currentTarget.value.trim()) clearError("clientRoute");
+                      onChange={(value) => {
+                        setRuta(value);
+                        clearError("ruta");
                       }}
+                      error={errors.ruta}
                       disabled={!selectedClient}
-                      error={errors.clientRoute}
                     />
                   </Stack>
                 </Grid.Col>

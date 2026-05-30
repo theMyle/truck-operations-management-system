@@ -45,3 +45,7 @@ export type NewClient = z.infer<typeof insertClientSchema>;
 
 export type ClientRoute = z.infer<typeof selectClientRouteSchema>;
 export type NewClientRoute = z.infer<typeof insertClientRouteSchema>;
+
+export type ClientWithRoutes = Client & {
+    routes: ClientRoute[];
+};
