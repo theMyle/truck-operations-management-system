@@ -271,10 +271,7 @@ export default function DispatchPage() {
                   fw={700}
                   c="dimmed"
                 >
-                  Booked by: {" "}
-                  <Badge size="xs" variant="light" color="blue" radius="sm">
-                    Admin
-                  </Badge>
+                  Booked by: <Badge size="xs" variant="light" color="blue" radius="sm"> Admin </Badge> {/** TODO - user actual username */}
                 </Text>
               </Group>
             </Paper>
