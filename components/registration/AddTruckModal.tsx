@@ -11,18 +11,13 @@ interface Props {
   onClose: () => void;
 }
 
-const STATUS_OPTIONS = [
-  { value: "available", label: "Available" },
-  { value: "maintenance", label: "Maintenance" },
-  { value: "unavailable", label: "Unavailable" },
-];
-
 export function AddTruckModal({ opened, onClose }: { opened: boolean; onClose: () => void }) {
   const form = useForm({
     initialValues: {
       plateNumber: "",
       fleetType: "",
       unitType: "",
+      rate: "",
       status: "available" as "available" | "maintenance" | "unavailable",
     },
     validate: {
@@ -49,6 +44,7 @@ export function AddTruckModal({ opened, onClose }: { opened: boolean; onClose: (
             ...values,
             fleetType: values.fleetType || null,
             unitType: values.unitType || null,
+            rate: values.rate || null,
           })
         )}
       >
@@ -70,6 +66,12 @@ export function AddTruckModal({ opened, onClose }: { opened: boolean; onClose: (
             label="Trucker"
             placeholder="e.g. Krisdomingo, Lito Diana"
             {...form.getInputProps("unitType")}
+          />
+          <TextInput
+            id="input-trucker-rate"
+            label="Trucker Rate"
+            placeholder="e.g. 5000"
+            {...form.getInputProps("rate")}
           />
           <Group justify="flex-end" mt="xs">
             <Button variant="default" onClick={onClose}>

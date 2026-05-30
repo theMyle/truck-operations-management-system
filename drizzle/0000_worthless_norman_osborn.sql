@@ -1,7 +1,23 @@
+CREATE TYPE "public"."truck_status" AS ENUM('available', 'maintenance', 'on trip', 'unavailable');--> statement-breakpoint
 CREATE TYPE "public"."booking_status" AS ENUM('booked', 'unassigned', 'completed', 'cancelled');--> statement-breakpoint
+CREATE TABLE "trucks" (
+	"plate_number" text PRIMARY KEY NOT NULL,
+	"fleet_type" text,
+	"unit_type" text,
+	"rate" numeric,
+	"status" "truck_status" DEFAULT 'available' NOT NULL,
+	"created_at" timestamp DEFAULT now() NOT NULL,
+	"updated_at" timestamp DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
 CREATE TABLE "drivers" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"driver_name" text NOT NULL,
+	"contact_number" text,
+	"emergency_contact" text,
+	"address" text NOT NULL,
+	"id_front" text,
+	"id_back" text,
 	"created_at" timestamp DEFAULT now() NOT NULL,
 	"updated_at" timestamp DEFAULT now() NOT NULL
 );
@@ -9,6 +25,18 @@ CREATE TABLE "drivers" (
 CREATE TABLE "clients" (
 	"id" text PRIMARY KEY NOT NULL,
 	"client_name" text NOT NULL,
+	"created_at" timestamp DEFAULT now() NOT NULL,
+	"updated_at" timestamp DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "helpers" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"helper_name" text NOT NULL,
+	"contact_number" text,
+	"emergency_contact" text,
+	"address" text NOT NULL,
+	"id_front" text,
+	"id_back" text,
 	"created_at" timestamp DEFAULT now() NOT NULL,
 	"updated_at" timestamp DEFAULT now() NOT NULL
 );
@@ -39,7 +67,6 @@ CREATE TABLE "dispatch" (
 	"updated_at" timestamp DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-DROP TABLE "samples" CASCADE;--> statement-breakpoint
 ALTER TABLE "dispatch" ADD CONSTRAINT "dispatch_client_id_clients_id_fk" FOREIGN KEY ("client_id") REFERENCES "public"."clients"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "dispatch" ADD CONSTRAINT "dispatch_driver_id_drivers_id_fk" FOREIGN KEY ("driver_id") REFERENCES "public"."drivers"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "dispatch" ADD CONSTRAINT "dispatch_plate_number_trucks_plate_number_fk" FOREIGN KEY ("plate_number") REFERENCES "public"."trucks"("plate_number") ON DELETE no action ON UPDATE no action;

@@ -27,6 +27,7 @@ export function EditTruckModal({ opened, onClose, truck }: Props) {
       plateNumber: "",
       fleetType: "",
       unitType: "",
+      rate: "",
       status: "available" as "available" | "on trip" | "maintenance" | "unavailable",
     },
     validate: {
@@ -40,6 +41,7 @@ export function EditTruckModal({ opened, onClose, truck }: Props) {
         plateNumber: truck.plateNumber,
         fleetType: truck.fleetType || "",
         unitType: truck.unitType || "",
+        rate: truck.rate || "",
         status: truck.status,
       });
     }
@@ -63,6 +65,7 @@ export function EditTruckModal({ opened, onClose, truck }: Props) {
             ...values,
             fleetType: values.fleetType || null,
             unitType: values.unitType || null,
+            rate: values.rate || null,
           })
         )}
       >
@@ -75,13 +78,18 @@ export function EditTruckModal({ opened, onClose, truck }: Props) {
           />
           <TextInput
             label="Fleet Type"
-            placeholder="e.g. KTS, Subcon"
+            placeholder="e.g. Krisdomingo"
             {...form.getInputProps("fleetType")}
           />
           <TextInput
-            label="Unit Type"
-            placeholder="e.g. 10-Wheeler, 6-Wheeler"
+            label="Trucker"
+            placeholder="e.g. 4W, 6W"
             {...form.getInputProps("unitType")}
+          />
+          <TextInput
+            label="Trucker Rate"
+            placeholder="e.g. 5000"
+            {...form.getInputProps("rate")}
           />
           <Select
             label="Status"

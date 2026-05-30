@@ -54,7 +54,17 @@ export const createTruck = actionClient
   });
 
 export const updateTruck = actionClient
-  .schema(insertTruckSchema.pick({ plateNumber: true, fleetType: true, unitType: true, status: true }).extend({ plateNumber: z.string() }))
+  .schema(
+    insertTruckSchema
+      .pick({
+        plateNumber: true,
+        fleetType: true,
+        unitType: true,
+        rate: true,
+        status: true,
+      })
+      .extend({ plateNumber: z.string() })
+  )
   .action(async ({ parsedInput }) => {
     const [updated] = await db.update(trucks)
       .set({ ...parsedInput, updatedAt: new Date() })

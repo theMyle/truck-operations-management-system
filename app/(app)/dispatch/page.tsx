@@ -18,7 +18,6 @@ import {
   ActionIcon,
   Select,
   Grid,
-  MultiSelect,
 } from "@mantine/core";
 import { DatePicker, type DateValue } from "@mantine/dates";
 import { notifications } from "@mantine/notifications";
@@ -628,7 +627,8 @@ export default function DispatchPage() {
                 <TextInput
                   label="Trucker's Rate (₱)"
                   styles={inputStyles}
-                  value={truckerRate || ""}
+                  leftSection={"₱"}
+                  value={selectedTruck?.rate || ""}
                   onChange={(e) => {
                     setTruckerRate(e.currentTarget.value);
                   }}
