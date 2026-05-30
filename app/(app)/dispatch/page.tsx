@@ -39,7 +39,7 @@ import { CardHeader } from "@/components/dispatch/CardHeader";
 import { ReviewModal } from "@/components/dispatch/ReviewModal";
 import { TimePickerInput } from "@/components/dispatch/TimePickerInput";
 import { getClients, getDrivers, getHelpers, getTrucks } from "@/actions/fetch";
-import { Client, ClientWithRoutes, Driver, Helper, Truck } from "@/lib/db/schema";
+import { ClientWithRoutes, Driver, Helper, Truck } from "@/lib/db/schema";
 
 interface DropOff {
   id: number;
@@ -131,47 +131,47 @@ export default function DispatchPage() {
   const validate = useCallback((): boolean => {
     const e: Record<string, string> = {};
 
-    if (!pickupLocation.trim())
-      e.pickupLocation = "Pickup location is required";
+    // Client Details
     if (!selectedClient) e.client = "Client is required";
-    if (
-      !clientRate?.trim() ||
-      isNaN(Number(clientRate)) ||
-      Number(clientRate) <= 0
-    )
+    if (selectedClient && (!clientRate?.trim() || isNaN(Number(clientRate)) || Number(clientRate) <= 0))
       e.clientRate = "Valid client rate is required";
     if (selectedClient && !ruta.trim()) e.ruta = "Route is required";
+
+
+    // Location Details
+    if (!pickupLocation.trim()) e.pickupLocation = "Pickup location is required";
     if (!bookingDr.trim()) e.bookingDr = "Booking / DR# is required";
-    if (!noOfDrops || Number(noOfDrops) < 1)
-      e.noOfDrops = "At least 1 drop required";
-    if (!selectedTruck?.plateNumber.trim())
-      e.plateNo = "Plate number is required";
-    if (!selectedDriver) e.driver = "Driver is required";
+    if (!noOfDrops || Number(noOfDrops) < 1) e.noOfDrops = "At least 1 drop required";
     if (!pickupDate) e.pickupDate = "Pickup date is required";
 
-    if (isNaN(Number(truckerRate.trim())) || Number(truckerRate.trim()) <= 0) {
-      e.truckerRate = "Valid trucker rate is required";
-    }
-
-    // Validate at least one drop-off has a location
     const hasValidDrop = dropOffs.some((d) => d.location.trim());
-    if (!hasValidDrop)
-      e.dropOffs = "At least one drop-off location is required";
+    if (!hasValidDrop) e.dropOffs = "At least one drop-off location is required";
+
+
+    // Truck Details
+    if (!selectedTruck) e.plateNo = "Plate number is required";
+    if (selectedTruck && (isNaN(Number(truckerRate.trim())) || Number(truckerRate.trim()) <= 0))
+      e.truckerRate = "Valid trucker rate is required";
+
+
+    // Personnel
+    if (!selectedDriver) e.driver = "Driver is required";
+
 
     setErrors(e);
     return Object.keys(e).length === 0;
   }, [
-    pickupLocation,
     selectedClient,
+    clientRate,
     ruta,
+    pickupLocation,
     bookingDr,
     noOfDrops,
-    selectedDriver,
     pickupDate,
     dropOffs,
-    clientRate,
     selectedTruck,
-    truckerRate
+    truckerRate,
+    selectedDriver,
   ]);
 
   const addDropOff = () => {
@@ -379,11 +379,11 @@ export default function DispatchPage() {
                       data={clients.map(client => client.clientName)}
                       value={selectedClient?.clientName || ""}
                       onChange={(val) => {
-                        if (!val) setRuta("");
-
-                        const client = clients.find(c => c.clientName === val);
-                        setSelectedClient(client || null);
-                        clearError("client");
+                        const client = clients.find(c => c.clientName === val) ?? null;
+                        setSelectedClient(client);
+                        setClientRate(client?.rate ?? "");
+                        if (!client) setRuta("");
+                        if (val) clearError("client");
                       }}
                       allowDeselect={false}
                       styles={inputStyles}
@@ -399,7 +399,7 @@ export default function DispatchPage() {
                       leftSection={"₱"}
                       min={0}
                       styles={inputStyles}
-                      value={selectedClient?.rate || ""}
+                      value={clientRate}
                       onChange={(e) => {
                         setClientRate(e.toString());
                         if (e) clearError("clientRate");
@@ -420,7 +420,7 @@ export default function DispatchPage() {
                       value={ruta}
                       onChange={(value) => {
                         setRuta(value);
-                        clearError("ruta");
+                        if (value) clearError("ruta");
                       }}
                       error={errors.ruta}
                       disabled={!selectedClient}
@@ -605,9 +605,9 @@ export default function DispatchPage() {
                   clearable
                   allowDeselect={false}
                   onChange={(val) => {
-                    const truck = trucks
-                      .find(truck => (truck.plateNumber == val))
-                    setSeletectedTruck(truck || null);
+                    const truck = trucks.find(t => t.plateNumber === val) ?? null;
+                    setSeletectedTruck(truck);
+                    setTruckerRate(truck?.rate ?? "");
                   }}
                   error={errors.plateNo}
                   searchable
@@ -637,9 +637,10 @@ export default function DispatchPage() {
                   label="Trucker's Rate (₱)"
                   styles={inputStyles}
                   leftSection={"₱"}
-                  value={selectedTruck?.rate || ""}
+                  value={truckerRate}
                   onChange={(e) => {
                     setTruckerRate(e.currentTarget.value);
+                    clearError("truckerRate");
                   }}
                   disabled={!selectedTruck}
                   error={errors.truckerRate}
