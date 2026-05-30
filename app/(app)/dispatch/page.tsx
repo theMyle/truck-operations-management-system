@@ -369,54 +369,70 @@ export default function DispatchPage() {
 
               <Divider mb="xs" mt="lg" label="CLIENT DETAILS" />
 
-              <Grid gap="sm" mb="sm">
+              <Grid gap="md" mb="sm">
                 <Grid.Col span={{ base: 12, sm: 4 }}>
-                  <Select
-                    label="Client"
-                    placeholder="Select client"
-                    data={clients.map(client => client.clientName)}
-                    value={selectedClient?.clientName || ""}
-                    onChange={(val) => {
-                      const client = clients.find(c => c.clientName === val);
-                      setSelectedClient(client || null);
-                    }}
-                    allowDeselect={false}
-                    styles={inputStyles}
-                    error={errors.client}
-                    maxDropdownHeight={160}
-                    searchable
-                    clearable
-                  />
+                  <Stack gap="sm">
+                    <Select
+                      label="Client"
+                      placeholder="Select client"
+                      data={clients.map(client => client.clientName)}
+                      value={selectedClient?.clientName || ""}
+                      onChange={(val) => {
+                        const client = clients.find(c => c.clientName === val);
+                        setSelectedClient(client || null);
+                      }}
+                      allowDeselect={false}
+                      styles={inputStyles}
+                      error={errors.client}
+                      maxDropdownHeight={160}
+                      searchable
+                      clearable
+                    />
+
+                    <NumberInput
+                      label="Rate"
+                      placeholder="0.00"
+                      leftSection={"₱"}
+                      min={0}
+                      styles={inputStyles}
+                      value={clientRate}
+                      onChange={(e) => {
+                        setClientRate(e.toString());
+                        if (e) clearError("clientRate");
+                      }}
+                      disabled={!selectedClient}
+                      error={errors.clientRate}
+                    />
+                  </Stack>
                 </Grid.Col>
 
-                <Grid.Col span={{ base: 12, sm: 6 }}>
-                  <TextInput
-                    label="Ruta"
-                    placeholder="Enter Route"
-                    styles={inputStyles}
-                    value={ruta}
-                    onChange={(e) => {
-                      setRuta(e.currentTarget.value);
-                      if (e.currentTarget.value.trim()) clearError("clientRoute");
-                    }}
-                    error={errors.clientRoute}
-                  />
-                </Grid.Col>
+                <Grid.Col span={{ base: 12, sm: 8 }}>
+                  <Stack gap="sm">
+                    <Select
+                      label="Ruta (Static)"
+                      placeholder="Select Existing Route"
+                      styles={inputStyles}
+                      data={["Sample 1", "Sample 2"]} // TODO
+                      value={ruta}
+                      error={errors.clientRoute}
+                      disabled={!selectedClient}
+                      searchable
+                      clearable
+                    />
 
-                <Grid.Col span={{ base: 12, sm: 2 }}>
-                  <NumberInput
-                    label="Client Rate"
-                    placeholder="0.00"
-                    leftSection={"₱"}
-                    min={0}
-                    styles={inputStyles}
-                    value={clientRate}
-                    onChange={(e) => {
-                      setClientRate(e.toString());
-                      if (e) clearError("clientRate");
-                    }}
-                    error={errors.clientRate}
-                  />
+                    <TextInput
+                      label="Ruta (Dynamic)"
+                      placeholder="Enter New Route"
+                      styles={inputStyles}
+                      value={ruta}
+                      onChange={(e) => {
+                        setRuta(e.currentTarget.value);
+                        if (e.currentTarget.value.trim()) clearError("clientRoute");
+                      }}
+                      disabled={!selectedClient}
+                      error={errors.clientRoute}
+                    />
+                  </Stack>
                 </Grid.Col>
               </Grid>
 
