@@ -11,8 +11,7 @@ import { notifications } from "@mantine/notifications";
 import type { Helper } from "@/lib/db/schema/helpers";
 import { deleteHelper } from "@/actions/registration";
 import { TableHeader } from "./TableHeader";
-import { AddHelperModal } from "./AddHelperModal";
-import { EditHelperModal } from "./EditHelperModal";
+import { HelperModal } from "./HelperModal";
 import { ViewHelperModal } from "./ViewHelperModal";
 
 interface Props {
@@ -67,8 +66,8 @@ export function HelpersTable({ data }: Props) {
 
   return (
     <>
-      <AddHelperModal opened={addOpened} onClose={closeAdd} />
-      <EditHelperModal
+      <HelperModal opened={addOpened} onClose={closeAdd} />
+      <HelperModal
         opened={!!editHelper}
         onClose={() => setEditHelper(null)}
         helper={editHelper}

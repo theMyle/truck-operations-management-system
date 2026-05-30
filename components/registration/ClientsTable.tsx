@@ -11,8 +11,7 @@ import { notifications } from "@mantine/notifications";
 import type { Client } from "@/lib/db/schema/clients";
 import { deleteClient } from "@/actions/registration";
 import { TableHeader } from "./TableHeader";
-import { AddClientModal } from "./AddClientModal";
-import { EditClientModal } from "./EditClientModal";
+import { ClientModal } from "./ClientModal";
 
 interface Props {
   data: Client[];
@@ -65,8 +64,8 @@ export function ClientsTable({ data }: Props) {
 
   return (
     <>
-      <AddClientModal opened={addOpened} onClose={closeAdd} />
-      <EditClientModal
+      <ClientModal opened={addOpened} onClose={closeAdd} />
+      <ClientModal
         opened={!!editClient}
         onClose={() => setEditClient(null)}
         client={editClient}
