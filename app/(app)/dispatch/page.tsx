@@ -50,6 +50,7 @@ interface DropOff {
 
 export default function DispatchPage() {
   const router = useRouter();
+  const [isLoading, setIsLoading] = useState(true);
 
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [helpers, setHelpers] = useState<Helper[]>([]);
@@ -104,6 +105,7 @@ export default function DispatchPage() {
       if (clients.data) setClients(clients.data);
       if (drivers.data) setDrivers(drivers.data);
       if (helpers.data) setHelpers(helpers.data);
+      setIsLoading(false);
     }
 
     fetchDispatchersData();
@@ -305,6 +307,8 @@ export default function DispatchPage() {
   const removeHelper = (helperId: string) => {
     setSelectedHelpers((prev) => prev.filter((h) => h.id !== helperId));
   };
+
+  if (isLoading) return null;
 
   return (
     <>
