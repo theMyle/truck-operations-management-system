@@ -17,7 +17,7 @@ export const bookingStatusEnum = pgEnum("booking_status",
 export const dispatch = pgTable("dispatch", {
   id: uuid("id").primaryKey().defaultRandom(),
   pickupDate: date("pickup_date"),
-  clientId: text("client_id").references(() => clients.id),
+  clientId: uuid("client_id").references(() => clients.id),
   driverId: uuid("driver_id").references(() => drivers.id),
   helpers: text("helpers"),
   plateNumber: text("plate_number").references(() => trucks.plateNumber),

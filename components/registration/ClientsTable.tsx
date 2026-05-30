@@ -141,6 +141,17 @@ export function ClientsTable({ data }: Props) {
                 </Text>
               ),
             },
+            {
+              accessor: "rate",
+              title: "Client Rate",
+              render: (row) =>
+                row.rate
+                  ? `₱ ${Number(row.rate).toLocaleString(undefined, {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}`
+                  : "-",
+            }
           ]}
         />
       </Box>
