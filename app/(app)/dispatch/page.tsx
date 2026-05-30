@@ -3,53 +3,51 @@
 import {
   Stack,
   Text,
-  Box,
   Group,
   Paper,
-  TextInput,
   Badge,
   Flex,
-  Divider,
   Button,
   ScrollArea,
-  NumberInput,
-  SimpleGrid,
-  Popover,
-  ActionIcon,
-  Select,
-  Grid,
-  Autocomplete,
+  Divider,
 } from "@mantine/core";
-import { DatePicker, type DateValue } from "@mantine/dates";
+import { type DateValue } from "@mantine/dates";
 import { notifications } from "@mantine/notifications";
-import { useRouter } from "next/navigation";
-import { useState, useCallback, useEffect } from "react";
+import { useState, useEffect } from "react";
+import { useForm } from "@mantine/form";
 import {
-  IconPlus,
   IconCheck,
   IconEye,
   IconX,
-  IconCalendar,
-  IconMapPin,
 } from "@tabler/icons-react";
 import "@mantine/dates/styles.css";
-import { useDispatch } from "../context/dispatch-context";
-import { LocationSearch } from "@/components/dispatch/LocationSearch";
 import { CardHeader } from "@/components/dispatch/CardHeader";
 import { ReviewModal } from "@/components/dispatch/ReviewModal";
-import { TimePickerInput } from "@/components/dispatch/TimePickerInput";
 import { getClients, getDrivers, getHelpers, getTrucks } from "@/actions/fetch";
 import { ClientWithRoutes, Driver, Helper, Truck } from "@/lib/db/schema";
+import { ClientSection } from "@/components/dispatch/ClientSection";
+import { LocationSection } from "@/components/dispatch/LocationSection";
+import { TruckSection } from "@/components/dispatch/TruckSection";
+import { PersonnelSection } from "@/components/dispatch/PersonnelSection";
 
-interface DropOff {
-  id: number;
-  location: string;
-  contactPerson: string;
-  contactNo: string;
-}
+import { DropOff, FormValues } from "@/types/dispatch";
+
+export const inputStyles = {
+  label: {
+    fontSize: "10px",
+    fontWeight: 700,
+    color: "var(--mantine-color-gray-7)",
+    textTransform: "uppercase" as const,
+    letterSpacing: "0.5px",
+    marginBottom: "4px",
+  },
+  input: {
+    fontSize: "11px",
+    fontWeight: 600,
+  },
+};
 
 export default function DispatchPage() {
-  const router = useRouter();
   const [isLoading, setIsLoading] = useState(true);
 
   const [drivers, setDrivers] = useState<Driver[]>([]);
@@ -57,255 +55,100 @@ export default function DispatchPage() {
   const [clients, setClients] = useState<ClientWithRoutes[]>([]);
   const [trucks, setTrucks] = useState<Truck[]>([]);
 
-  // client
-  const [selectedClient, setSelectedClient] = useState<ClientWithRoutes | null>(null);
-  const [clientRate, setClientRate] = useState<string>("");
-
-  // truck & trucker
-  const [selectedTruck, setSeletectedTruck] = useState<Truck | null>(null);
-  const [truckerRate, setTruckerRate] = useState<string>("");
-
-  // personnel
-  const [selectedDriver, setSelectedDriver] = useState<Driver | null>(null);
-  const [selectedHelpers, setSelectedHelpers] = useState<Helper[]>([]);
-  const [helperSearch, setHelperSearch] = useState("");
-
-
-  const [ruta, setRuta] = useState("");
-
-  /* ── Field value state ── */
-  const [bookingDr, setBookingDr] = useState("");
-  const [noOfDrops, setNoOfDrops] = useState<string | number>("");
-  const [pickupTime, setPickupTime] = useState("");
-
-  /* ── Error state ── */
-  const [errors, setErrors] = useState<Record<string, string>>({});
-
-  /* ── Review modal state ── */
   const [reviewOpened, setReviewOpened] = useState(false);
-  const { editingRecord, setEditingRecord, setRecords } = useDispatch();
-  const [pickupDate, setPickupDate] = useState<DateValue | null>(null);
 
-  const [pickupLocation, setPickupLocation] = useState("");
-  const [dropOffs, setDropOffs] = useState<DropOff[]>([
-    { id: 1, location: "", contactPerson: "", contactNo: "" },
-  ]);
+  const form = useForm<FormValues>({
+    initialValues: {
+      clientName: "",
+      clientRate: "",
+      ruta: "",
+      pickupLocation: "",
+      bookingDr: "",
+      noOfDrops: "" as string | number,
+      pickupDate: null as DateValue | null,
+      pickupTime: "",
+      dropOffs: [{ id: Date.now(), location: "", contactPerson: "", contactNo: "" }] as DropOff[],
+      plateNo: "",
+      truckerRate: "",
+      driverName: "",
+      helpers: [] as Helper[],
+    },
+    validate: {
+      clientName: (value) => (!value ? "Client is required" : null),
+      clientRate: (value, values) => {
+        if (!values.clientName) return null;
+        return !value?.toString().trim() || isNaN(Number(value)) || Number(value) <= 0
+          ? "Valid client rate is required"
+          : null;
+      },
+      ruta: (value, values) => {
+        if (!values.clientName) return null;
+        return !value?.trim() ? "Route is required" : null;
+      },
+      pickupLocation: (value) => (!value?.trim() ? "Pickup location is required" : null),
+      bookingDr: (value) => (!value?.trim() ? "Booking / DR# is required" : null),
+      noOfDrops: (value) => (!value || Number(value) < 1 ? "At least 1 drop required" : null),
+      pickupDate: (value) => (!value ? "Pickup date is required" : null),
+      dropOffs: {
+        location: (value) => (!value?.trim() ? "Location is required" : null),
+      },
+      plateNo: (value) => (!value ? "Plate number is required" : null),
+      truckerRate: (value, values) => {
+        if (!values.plateNo) return null;
+        return !value?.toString().trim() || isNaN(Number(value)) || Number(value) <= 0
+          ? "Valid trucker rate is required"
+          : null;
+      },
+      driverName: (value) => (!value ? "Driver is required" : null),
+    },
+  });
+
+  const selectedClient = clients.find(c => c.clientName === form.values.clientName) ?? null;
+  const selectedTruck = trucks.find(t => t.plateNumber === form.values.plateNo) ?? null;
 
   // On Load
   useEffect(() => {
     async function fetchDispatchersData() {
-      const [trucks, clients, drivers, helpers] = await Promise.all([
+      const [trucksRes, clientsRes, driversRes, helpersRes] = await Promise.all([
         getTrucks(),
         getClients(),
         getDrivers(),
         getHelpers()
       ]);
 
-      if (trucks.data) setTrucks(trucks.data);
-      if (clients.data) setClients(clients.data);
-      if (drivers.data) setDrivers(drivers.data);
-      if (helpers.data) setHelpers(helpers.data);
+      if (trucksRes.data) setTrucks(trucksRes.data);
+      if (clientsRes.data) setClients(clientsRes.data);
+      if (driversRes.data) setDrivers(driversRes.data);
+      if (helpersRes.data) setHelpers(helpersRes.data);
       setIsLoading(false);
     }
 
     fetchDispatchersData();
-  }, [])
+  }, []);
 
-  // Helper function — add this near the top of your component or outside it
-  const formatDate = (date: DateValue | null): string => {
-    if (!date) return "";
-    return new Date(date).toLocaleDateString("en-US", {
-      month: "long",
-      day: "numeric",
-      year: "numeric",
-    });
-  };
-
-  /** Clear a single error key when the user changes the field */
-  const clearError = (key: string) =>
-    setErrors((prev) => {
-      const next = { ...prev };
-      delete next[key];
-      return next;
-    });
-
-  /* ── Validation ── */
-  const validate = useCallback((): boolean => {
-    const e: Record<string, string> = {};
-
-    // Client Details
-    if (!selectedClient) e.client = "Client is required";
-    if (selectedClient && (!clientRate?.trim() || isNaN(Number(clientRate)) || Number(clientRate) <= 0))
-      e.clientRate = "Valid client rate is required";
-    if (selectedClient && !ruta.trim()) e.ruta = "Route is required";
-
-
-    // Location Details
-    if (!pickupLocation.trim()) e.pickupLocation = "Pickup location is required";
-    if (!bookingDr.trim()) e.bookingDr = "Booking / DR# is required";
-    if (!noOfDrops || Number(noOfDrops) < 1) e.noOfDrops = "At least 1 drop required";
-    if (!pickupDate) e.pickupDate = "Pickup date is required";
-
-    const hasValidDrop = dropOffs.some((d) => d.location.trim());
-    if (!hasValidDrop) e.dropOffs = "At least one drop-off location is required";
-
-
-    // Truck Details
-    if (!selectedTruck) e.plateNo = "Plate number is required";
-    if (selectedTruck && (isNaN(Number(truckerRate.trim())) || Number(truckerRate.trim()) <= 0))
-      e.truckerRate = "Valid trucker rate is required";
-
-
-    // Personnel
-    if (!selectedDriver) e.driver = "Driver is required";
-
-
-    setErrors(e);
-    return Object.keys(e).length === 0;
-  }, [
-    selectedClient,
-    clientRate,
-    ruta,
-    pickupLocation,
-    bookingDr,
-    noOfDrops,
-    pickupDate,
-    dropOffs,
-    selectedTruck,
-    truckerRate,
-    selectedDriver,
-  ]);
-
-  const addDropOff = () => {
-    setDropOffs((prev) => [
-      ...prev,
-      { id: prev.length + 1, location: "", contactPerson: "", contactNo: "" },
-    ]);
-  };
-
-  const removeDropOff = (id: number) => {
-    if (dropOffs.length > 1) {
-      setDropOffs((prev) => prev.filter((d) => d.id !== id));
-    }
-  };
-
-  const updateDropOff = (id: number, field: keyof DropOff, value: string) => {
-    setDropOffs((prev) =>
-      prev.map((d) => (d.id === id ? { ...d, [field]: value } : d)),
-    );
-  };
-
-  /* ── Open review modal (validate first) ── */
   const handleOpenReview = () => {
-    if (!validate()) return;
+    const validation = form.validate() as any;
+    if (validation.hasErrors) return;
     setReviewOpened(true);
   };
 
   const handleConfirmSubmit = () => {
     setReviewOpened(false);
-
-    if (editingRecord) {
-      // Update existing record
-      setRecords((prev) =>
-        prev.map((r) =>
-          r.id === editingRecord.id
-            ? {
-              ...r,
-              client: selectedClient?.clientName || "",
-              ruta,
-              bookingDr,
-              noOfDrops: Number(noOfDrops),
-              unit: selectedTruck?.fleetType || "",
-              plateNo: selectedTruck?.plateNumber || "",
-              driver: selectedDriver?.driverName || "",
-              helper: selectedHelpers.join(", "),
-            }
-            : r,
-        ),
-      );
-      setEditingRecord(null); // clear editing state
-      notifications.show({
-        title: "Dispatch updated",
-        message: "The record has been updated successfully.",
-        color: "blue",
-        icon: <IconCheck size={16} />,
-      });
-    } else {
-      // New record — just notify for now (no ID generation without DB)
-      notifications.show({
-        title: "Dispatch submitted",
-        message: "The dispatch form was submitted successfully.",
-        color: "green",
-        icon: <IconCheck size={16} />,
-      });
-    }
+    notifications.show({
+      title: "Dispatch submitted",
+      message: "The dispatch form was submitted successfully.",
+      color: "green",
+      icon: <IconCheck size={16} />,
+    });
+    form.reset();
   };
 
-  /* ── Edit → redirect to /dispatch ── */
   const handleEditRedirect = () => {
     setReviewOpened(false);
-    router.push("/dispatch");
   };
 
   const handleReset = () => {
-    setSelectedClient(null);
-    setSelectedDriver(null);
-    setRuta("");
-    setTruckerRate("");
-    setBookingDr("");
-    setNoOfDrops("");
-    setSeletectedTruck(null);
-    setPickupDate(null);
-    setPickupLocation("");
-    setDropOffs([{ id: 1, location: "", contactPerson: "", contactNo: "" }]);
-    setSelectedHelpers([]);
-    setErrors({});
-  };
-
-  const inputStyles = {
-    label: {
-      fontSize: "10px",
-      fontWeight: 700,
-      color: "var(--mantine-color-gray-7)",
-      textTransform: "uppercase" as const,
-      letterSpacing: "0.5px",
-      marginBottom: "4px",
-    },
-    input: {
-      fontSize: "11px",
-      fontWeight: 600,
-    },
-  };
-
-  /* ── Data snapshot for review modal ── */
-  const reviewData: Record<string, string> = {
-    client: selectedClient?.clientName || "",
-    ruta,
-    bookingDr,
-    noOfDrops: noOfDrops?.toString() || "",
-    unit: selectedTruck?.fleetType || "",
-    plateNo: selectedTruck?.plateNumber || "",
-    driver: selectedDriver?.driverName || "",
-    helper: selectedHelpers.join(", "),
-    pickupDate: formatDate(pickupDate),
-    pickupLocation,
-    dropOffs: dropOffs
-      .filter((d) => d.location)
-      .map(
-        (d, i) =>
-          `Drop ${i + 1}: ${d.location}${d.contactPerson ? ` (${d.contactPerson}` : ""}${d.contactNo ? ` – ${d.contactNo})` : d.contactPerson ? ")" : ""}`,
-      )
-      .join("\n"),
-  };
-
-  const addHelper = (helper: Helper) => {
-    if (helper && !selectedHelpers.includes(helper)) {
-      setSelectedHelpers((prev) => [...prev, helper]);
-    }
-  };
-
-  const removeHelper = (helperId: string) => {
-    setSelectedHelpers((prev) => prev.filter((h) => h.id !== helperId));
+    form.reset();
   };
 
   if (isLoading) return null;
@@ -317,12 +160,12 @@ export default function DispatchPage() {
         onClose={() => setReviewOpened(false)}
         onConfirm={handleConfirmSubmit}
         onEdit={handleEditRedirect}
-        data={reviewData}
+        values={form.values}
+        selectedTruck={selectedTruck}
       />
 
       <ScrollArea h="calc(100vh - 72px)" scrollbars="y">
         <Stack gap="md">
-          {/* Page Title */}
           <Group justify="space-between" align="center">
             <Group gap={8}>
               <Badge
@@ -338,7 +181,7 @@ export default function DispatchPage() {
                   },
                 }}
               >
-                {editingRecord ? "Edit Booking" : "Booking Form"}
+                Booking Form
               </Badge>
               <Text style={{ fontSize: "10px" }} c="dimmed" fw={500}>
                 Create and manage trip dispatches
@@ -372,376 +215,29 @@ export default function DispatchPage() {
                 }
               />
 
-              <Divider mb="xs" mt="lg" label="CLIENT DETAILS" />
+              <ClientSection
+                form={form}
+                clients={clients}
+                selectedClient={selectedClient}
+              />
 
-              <Grid gap="md" mb="sm">
-                <Grid.Col span={{ base: 12, sm: 4 }}>
-                  <Stack gap="sm">
-                    <Select
-                      label="Client"
-                      placeholder="Select client"
-                      data={clients.map(client => client.clientName)}
-                      value={selectedClient?.clientName || ""}
-                      onChange={(val) => {
-                        const client = clients.find(c => c.clientName === val) ?? null;
-                        setSelectedClient(client);
-                        setClientRate(client?.rate ?? "");
-                        if (!client) setRuta("");
-                        if (val) clearError("client");
-                      }}
-                      allowDeselect={false}
-                      styles={inputStyles}
-                      error={errors.client}
-                      maxDropdownHeight={160}
-                      searchable
-                      clearable
-                    />
+              <LocationSection
+                form={form}
+              />
 
-                    <NumberInput
-                      label="Rate"
-                      placeholder="0.00"
-                      leftSection={"₱"}
-                      min={0}
-                      styles={inputStyles}
-                      value={clientRate}
-                      onChange={(e) => {
-                        setClientRate(e.toString());
-                        if (e) clearError("clientRate");
-                      }}
-                      disabled={!selectedClient}
-                      error={errors.clientRate}
-                    />
-                  </Stack>
-                </Grid.Col>
+              <TruckSection
+                form={form}
+                trucks={trucks}
+                selectedTruck={selectedTruck}
+              />
 
-                <Grid.Col span={{ base: 12, sm: 8 }}>
-                  <Stack gap="sm">
-                    <Autocomplete
-                      label="Ruta"
-                      placeholder="Select Existing Route"
-                      styles={inputStyles}
-                      data={selectedClient?.routes.map(route => route.route)}
-                      value={ruta}
-                      onChange={(value) => {
-                        setRuta(value);
-                        if (value) clearError("ruta");
-                      }}
-                      error={errors.ruta}
-                      disabled={!selectedClient}
-                    />
-                  </Stack>
-                </Grid.Col>
-              </Grid>
+              <PersonnelSection
+                form={form}
+                drivers={drivers}
+                helpers={helpers}
+              />
 
-              <Divider m="xl" label="LOCATION DETAILS" />
-
-              <Grid gap="sm" mb="sm">
-                {/* Left Side Column */}
-                <Grid.Col span={{ base: 12, sm: 6 }}>
-                  <Stack gap="sm">
-                    {/* Row 1: Pickup Location */}
-                    <LocationSearch
-                      label="Pickup Location"
-                      placeholder="Search pickup address..."
-                      value={pickupLocation}
-                      onChange={(val) => {
-                        setPickupLocation(val);
-                        if (val.trim()) clearError("pickupLocation");
-                      }}
-                      error={errors.pickupLocation}
-                      leftSection={
-                        <IconMapPin
-                          size={13}
-                          color="var(--mantine-color-green-6)"
-                        />
-                      }
-                    />
-
-                    {/* Row 2: DR# and No. of Drops */}
-                    <Grid gap="sm">
-                      <Grid.Col span={6}>
-                        <TextInput
-                          label="Booking / DR#"
-                          placeholder="Enter booking or DR number"
-                          styles={inputStyles}
-                          value={bookingDr}
-                          onChange={(e) => {
-                            setBookingDr(e.currentTarget.value);
-                            if (e.currentTarget.value.trim()) clearError("bookingDr");
-                          }}
-                          tt="capitalize"
-                          error={errors.bookingDr}
-                        />
-                      </Grid.Col>
-
-                      <Grid.Col span={6}>
-                        <NumberInput
-                          label="No. of Drops"
-                          placeholder="Enter number of drops"
-                          min={1}
-                          styles={inputStyles}
-                          value={noOfDrops}
-                          onChange={(val) => {
-                            setNoOfDrops(val);
-                            if (val && Number(val) >= 1) clearError("noOfDrops");
-                          }}
-                          error={errors.noOfDrops}
-                        />
-                      </Grid.Col>
-                    </Grid>
-
-                    {/* Row 3: Pickup Date and Pickup Time */}
-                    <Grid gap="sm">
-                      <Grid.Col span={6}>
-                        <Popover position="bottom-start" shadow="md" radius="md" withinPortal>
-                          <Popover.Target>
-                            <TextInput
-                              label="Pickup Date"
-                              placeholder="Select date"
-                              readOnly
-                              value={formatDate(pickupDate)}
-                              rightSection={
-                                <IconCalendar
-                                  size={14}
-                                  color="var(--mantine-color-gray-5)"
-                                />
-                              }
-                              styles={inputStyles}
-                              error={errors.pickupDate}
-                              style={{ cursor: "pointer" }}
-                            />
-                          </Popover.Target>
-                          <Popover.Dropdown p="sm">
-                            <DatePicker value={pickupDate} onChange={setPickupDate} />
-                          </Popover.Dropdown>
-                        </Popover>
-                      </Grid.Col>
-
-                      <Grid.Col span={6}>
-                        <TimePickerInput
-                          label="Pick up time"
-                          value={pickupTime}
-                          onChange={setPickupTime}
-                          error={errors.pickupTime}
-                        />
-                      </Grid.Col>
-                    </Grid>
-                  </Stack>
-                </Grid.Col>
-
-                {/* Right Side Column: Drop-off Points */}
-                <Grid.Col span={{ base: 12, sm: 6 }}>
-                  <Box>
-                    <Stack gap={6}>
-                      {dropOffs.map((drop, index) => (
-                        <Paper key={drop.id} withBorder radius="sm" p="xs">
-                          <LocationSearch
-                            label={`Drop ${index + 1}`}
-                            placeholder="Search drop-off address..."
-                            value={drop.location}
-                            onChange={(val) => {
-                              updateDropOff(drop.id, "location", val);
-                              if (val.trim()) clearError("dropOffs");
-                            }}
-                            leftSection={
-                              <IconMapPin
-                                size={11}
-                                color="var(--mantine-color-red-5)"
-                              />
-                            }
-                            rightAction={
-                              <Group gap={4}>
-                                {index === 0 && (
-                                  <Button
-                                    size="sm"
-                                    variant="light"
-                                    color="blue"
-                                    leftSection={<IconPlus size={12} />}
-                                    styles={{
-                                      root: { height: 18, padding: "0 6px" },
-                                      label: {
-                                        fontSize: "10px",
-                                        fontWeight: 700,
-                                      },
-                                    }}
-                                    onClick={addDropOff}
-                                  >
-                                    Add Drop-off Points
-                                  </Button>
-                                )}
-                                {dropOffs.length > 1 && (
-                                  <ActionIcon
-                                    variant="subtle"
-                                    color="red"
-                                    size="xs"
-                                    onClick={() => removeDropOff(drop.id)}
-                                  >
-                                    <IconX size={11} />
-                                  </ActionIcon>
-                                )}
-                              </Group>
-                            }
-                          />
-                        </Paper>
-                      ))}
-                    </Stack>
-
-                    {errors.dropOffs && (
-                      <Text style={{ fontSize: "11px" }} c="red" mt={4}>
-                        {errors.dropOffs}
-                      </Text>
-                    )}
-                  </Box>
-                </Grid.Col>
-              </Grid>
-
-
-              <Divider m="xl" label="TRUCK DETAILS" />
-
-
-              <SimpleGrid cols={{ base: 1, sm: 2, md: 4 }} spacing="sm" mb="sm">
-                <Select
-                  label="Plate No."
-                  placeholder="Enter plate number..."
-                  styles={inputStyles}
-                  data={trucks.map((truck) => truck.plateNumber)}
-                  value={selectedTruck?.plateNumber || null}
-                  clearable
-                  allowDeselect={false}
-                  onChange={(val) => {
-                    const truck = trucks.find(t => t.plateNumber === val) ?? null;
-                    setSeletectedTruck(truck);
-                    setTruckerRate(truck?.rate ?? "");
-                  }}
-                  error={errors.plateNo}
-                  searchable
-                  nothingFoundMessage="No plates found"
-                  maxDropdownHeight={160}
-                />
-
-                <TextInput
-                  label="Trucker"
-                  styles={inputStyles}
-                  value={selectedTruck?.unitType || ""}
-                  disabled={!selectedTruck}
-                  readOnly
-                  error={errors.truckerName}
-                />
-
-                <TextInput
-                  label="Fleet Type"
-                  styles={inputStyles}
-                  value={selectedTruck?.fleetType || ""}
-                  disabled={!selectedTruck}
-                  readOnly
-                  error={errors.unit}
-                />
-
-                <TextInput
-                  label="Trucker's Rate (₱)"
-                  styles={inputStyles}
-                  leftSection={"₱"}
-                  value={truckerRate}
-                  onChange={(e) => {
-                    setTruckerRate(e.currentTarget.value);
-                    clearError("truckerRate");
-                  }}
-                  disabled={!selectedTruck}
-                  error={errors.truckerRate}
-                />
-              </SimpleGrid>
-
-
-              <Divider m="xl" label="PERSONNEL" />
-
-
-              <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm" mb="md">
-                <Select
-                  label="Driver"
-                  placeholder="Search or add driver"
-                  data={drivers.map((driver) => driver.driverName)}
-                  value={selectedDriver?.driverName || ""}
-                  onChange={(val) => {
-                    const driver = drivers.find(driver => driver.driverName == val);
-                    setSelectedDriver(driver || null);
-                  }}
-                  styles={inputStyles}
-                  error={errors.driver}
-                  searchable
-                  clearable
-                />
-
-                <Stack gap={4}>
-                  <Select
-                    label="Helper/s"
-                    placeholder="Add helper"
-                    searchValue={helperSearch}
-                    allowDeselect={false}
-                    onSearchChange={setHelperSearch}
-                    data={helpers
-                      .filter((helper) => !selectedHelpers.some((sh) => sh.id === helper.id))
-                      .map((helper) => helper.helperName)
-                    }
-                    value={""}
-                    onChange={(val) => {
-                      const helper = helpers.find((h) => h.helperName === val);
-                      if (helper) {
-                        addHelper(helper);
-                        setTimeout(() => {
-                          setHelperSearch('');
-                        }, 0);
-                      }
-                    }}
-                    styles={inputStyles}
-                    searchable
-                    maxDropdownHeight={160}
-                  />
-
-                  <Box
-                    p="xs"
-                    style={{
-                      border: "1px dashed var(--mantine-color-gray-3)",
-                      borderRadius: "var(--mantine-radius-sm)",
-                      minHeight: 36,
-                    }}
-                  >
-                    {selectedHelpers.length === 0 ? (
-                      <Text style={{ fontSize: "10px" }} c="dimmed" ta="center">
-                        No helpers added
-                      </Text>
-                    ) : (
-                      <Group gap="xs">
-                        {selectedHelpers.map((h) => (
-                          <Badge
-                            key={h.id}
-                            variant="light"
-                            color="blue"
-                            radius="sm"
-                            rightSection={
-                              <IconX
-                                size={10}
-                                style={{ cursor: "pointer" }}
-                                onClick={() => removeHelper(h.id)}
-                              />
-                            }
-                            styles={{ label: { fontSize: "10px" } }}
-                          >
-                            {h.helperName}
-                          </Badge>
-                        ))}
-                      </Group>
-                    )}
-                  </Box>
-
-                  {selectedHelpers.length > 0 && (
-                    <Text style={{ fontSize: "9px" }} c="dimmed" ta="right">
-                      {selectedHelpers.length} helper
-                      {selectedHelpers.length > 1 ? "s" : ""} added
-                    </Text>
-                  )}
-                </Stack>
-              </SimpleGrid>
-
+              <Divider my="md" />
 
               <Group flex={1}>
                 <Button
@@ -771,8 +267,8 @@ export default function DispatchPage() {
                 <Text
                   component="div"
                   ml="auto"
-                  fz={inputStyles?.label?.fontSize ?? "11px"}
-                  fw={inputStyles?.label?.fontWeight ?? 600}
+                  fz="10px"
+                  fw={700}
                   c="dimmed"
                 >
                   Booked by: {" "}

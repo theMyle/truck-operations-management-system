@@ -1,20 +1,56 @@
 import { Modal, Group, ScrollArea, Stack, Box, Paper, Divider, Button, Text, Table } from "@mantine/core";
 import { IconEye, IconEdit, IconCheck } from "@tabler/icons-react";
+import { FormValues } from "@/types/dispatch";
+import { Truck, Helper } from "@/lib/db/schema";
 
-/* ── Review Modal ── */
 export function ReviewModal({
   opened,
   onClose,
   onConfirm,
   onEdit,
-  data,
+  values,
+  selectedTruck,
 }: {
   opened: boolean;
   onClose: () => void;
   onConfirm: () => void;
   onEdit: () => void;
-  data: Record<string, string>;
+  values: FormValues;
+  selectedTruck: Truck | null;
 }) {
+  const formatDate = (date: Date | null): string => {
+    if (!date) return "";
+    return new Date(date).toLocaleDateString("en-US", {
+      month: "long",
+      day: "numeric",
+      year: "numeric",
+    });
+  };
+
+  const getDropOffsString = () => {
+    return values.dropOffs
+      .filter((d) => d.location)
+      .map(
+        (d, i) =>
+          `Drop ${i + 1}: ${d.location}${d.contactPerson ? ` (${d.contactPerson}` : ""}${d.contactNo ? ` – ${d.contactNo})` : d.contactPerson ? ")" : ""}`,
+      )
+      .join("\n");
+  };
+
+  const displayData: Record<string, string> = {
+    client: values.clientName,
+    ruta: values.ruta,
+    bookingDr: values.bookingDr,
+    pickupLocation: values.pickupLocation,
+    dropOffs: getDropOffsString(),
+    noOfDrops: values.noOfDrops?.toString() || "",
+    unit: selectedTruck?.fleetType || "",
+    plateNo: values.plateNo,
+    driver: values.driverName,
+    helper: values.helpers.map((h: Helper) => h.helperName).join(", "),
+    pickupDate: formatDate(values.pickupDate as Date),
+  };
+
   const sections = [
     {
       title: "Trip Booking Details",
@@ -58,8 +94,7 @@ export function ReviewModal({
         </Text>
 
         {sections.map((section) => {
-          // Only render section if at least one field has a value
-          const hasValues = section.rows.some((r) => data[r.key]);
+          const hasValues = section.rows.some((r) => displayData[r.key]);
           if (!hasValues) return null;
 
           return (
@@ -104,13 +139,14 @@ export function ReviewModal({
                         <Table.Td
                           style={{
                             fontWeight: 700,
+                            whiteSpace: "pre-wrap",
                             color:
-                              data[row.key] && data[row.key]
+                              displayData[row.key]
                                 ? "var(--mantine-color-gray-9)"
                                 : "var(--mantine-color-gray-4)",
                           }}
                         >
-                          {data[row.key] || "—"}
+                          {displayData[row.key] || "—"}
                         </Table.Td>
                       </Table.Tr>
                     ))}

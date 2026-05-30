@@ -12,9 +12,9 @@ export function TimePickerInput({
   error,
 }: {
   label?: string;
-  value: string;
-  onChange: (val: string) => void;
-  error?: string;
+  value?: string;
+  onChange?: (val: string) => void;
+  error?: React.ReactNode;
 }) {
   const ref = useRef<HTMLInputElement>(null);
 
@@ -27,8 +27,8 @@ export function TimePickerInput({
       ref={ref}
       label={label ?? "Time"}
       placeholder="--:-- --"
-      value={value}
-      onChange={(e) => onChange(e.currentTarget.value)}
+      value={value ?? ""}
+      onChange={(e) => onChange?.(e.currentTarget.value)}
       onClick={handleOpen}
       rightSection={
         value ? (
@@ -38,7 +38,7 @@ export function TimePickerInput({
               variant="subtle"
               color="red"
               onClick={() => {
-                onChange("");
+                onChange?.("");
                 ref.current?.focus();
               }}
             >
