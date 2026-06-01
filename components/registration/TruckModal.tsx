@@ -1,7 +1,15 @@
 "use client";
 
 import { useEffect } from "react";
-import { Modal, TextInput, Button, Stack, Group, Select } from "@mantine/core";
+import {
+  Modal,
+  TextInput,
+  Button,
+  Stack,
+  Group,
+  Select,
+  Switch,
+} from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { useAction } from "next-safe-action/hooks";
 import { createTruck, updateTruck } from "@/actions/registration";
@@ -30,10 +38,16 @@ export function TruckModal({ opened, onClose, truck }: Props) {
       fleetType: "",
       unitType: "",
       rate: "",
-      status: "available" as "available" | "on trip" | "maintenance" | "unavailable",
+      isSubcon: false,
+      status: "available" as
+        | "available"
+        | "on trip"
+        | "maintenance"
+        | "unavailable",
     },
     validate: {
-      plateNumber: (v) => (v.trim().length < 1 ? "Plate number is required" : null),
+      plateNumber: (v) =>
+        v.trim().length < 1 ? "Plate number is required" : null,
     },
   });
 
@@ -45,6 +59,7 @@ export function TruckModal({ opened, onClose, truck }: Props) {
           fleetType: truck.fleetType || "",
           unitType: truck.unitType || "",
           rate: truck.rate || "",
+          isSubcon: truck.isSubcon || false,
           status: truck.status,
         });
       } else {
@@ -127,6 +142,11 @@ export function TruckModal({ opened, onClose, truck }: Props) {
             {...form.getInputProps("rate")}
           />
 
+          <Switch
+            id="input-truck-is-subcon"
+            label="Is Subcontractor?"
+            {...form.getInputProps("isSubcon", { type: "checkbox" })} // update here too
+          />
           {isEditMode && (
             <Select
               label="Status"

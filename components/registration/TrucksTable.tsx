@@ -37,7 +37,8 @@ export function TrucksTable({ data }: Props) {
     (t) =>
       t.plateNumber.toLowerCase().includes(search.toLowerCase()) ||
       t.fleetType?.toLowerCase().includes(search.toLowerCase()) ||
-      t.unitType?.toLowerCase().includes(search.toLowerCase())
+      t.unitType?.toLowerCase().includes(search.toLowerCase()) ||
+      t.isSubcon?.toString().includes(search.toLowerCase()),
   );
   const paged = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
@@ -153,6 +154,20 @@ export function TrucksTable({ data }: Props) {
               ),
             },
             {
+              accessor: "isSubcon",
+              title: "Subcon",
+              render: (row) =>
+                row.isSubcon ? (
+                  <Badge size="sm" color="blue">
+                    Yes
+                  </Badge>
+                ) : (
+                  <Badge size="sm" color="gray">
+                    No
+                  </Badge>
+                ),
+            },
+            {
               accessor: "fleetType",
               title: "Fleet Type",
             },
@@ -166,9 +181,9 @@ export function TrucksTable({ data }: Props) {
               render: (row) =>
                 row.rate
                   ? `₱ ${Number(row.rate).toLocaleString(undefined, {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2,
-                  })}`
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    })}`
                   : "-",
             },
             {
