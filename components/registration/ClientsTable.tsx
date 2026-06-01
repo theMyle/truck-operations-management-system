@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Box, Text } from "@mantine/core";
+import { Badge, Box, Text } from "@mantine/core";
 import { IconUsers } from "@tabler/icons-react";
 import { TableRowActions } from "../TableRowActions";
 import { DataTable } from "mantine-datatable";
@@ -27,7 +27,7 @@ export function ClientsTable({ data }: Props) {
   const [page, setPage] = useState(1);
 
   const filtered = data.filter((c) =>
-    c.clientName.toLowerCase().includes(search.toLowerCase())
+    c.clientName.toLowerCase().includes(search.toLowerCase()),
   );
   const paged = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
@@ -37,8 +37,8 @@ export function ClientsTable({ data }: Props) {
       centered: true,
       children: (
         <Text size="sm">
-          Are you sure you want to delete <b>{client.clientName}</b>? This action
-          cannot be undone.
+          Are you sure you want to delete <b>{client.clientName}</b>? This
+          action cannot be undone.
         </Text>
       ),
       labels: { confirm: "Delete", cancel: "Cancel" },
@@ -142,16 +142,30 @@ export function ClientsTable({ data }: Props) {
               ),
             },
             {
+              accessor: "hasFixedRoutes",
+              title: "Fixed Routes",
+              render: (row) =>
+                row.hasFixedRoutes ? (
+                  <Badge size="sm" color="blue">
+                    Yes
+                  </Badge>
+                ) : (
+                  <Badge size="sm" color="gray">
+                    No
+                  </Badge>
+                ),
+            },
+            {
               accessor: "rate",
               title: "Client Rate",
               render: (row) =>
                 row.rate
                   ? `₱ ${Number(row.rate).toLocaleString(undefined, {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2,
-                  })}`
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    })}`
                   : "-",
-            }
+            },
           ]}
         />
       </Box>
