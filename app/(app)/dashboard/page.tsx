@@ -10,19 +10,16 @@ import { LiveFleetTable } from "@/components/dashboard/LiveFleetTable";
 import { useState } from "react";
 
 export default function DashboardPage() {
-  // Use a single state variable for both the tooltip text and the collapse visibility
   const [isFleetTableOpen, setIsFleetTableOpen] = useState(false);
+  const [activeFleetStatus, setActiveFleetStatus] = useState<string | null>(
+    null,
+  );
+  const [fleetSearch, setFleetSearch] = useState("");
 
   const incomeStats = [
     { label: "Daily Income", value: "P 100,000" },
     { label: "Weekly Income", value: "P 700,000" },
     { label: "Monthly Income", value: "P 3,200,000" },
-  ];
-
-  const fleetStatus = [
-    { label: "Available", count: 1, color: "green" },
-    { label: "On Trip", count: 4, color: "blue" },
-    { label: "Maintenance", count: 1, color: "red" },
   ];
 
   const dailyTrips = [
@@ -92,6 +89,53 @@ export default function DashboardPage() {
     { plate: "CABCDEF7", status: "On Trip", color: "blue" },
   ];
 
+  const fleetStatus = [
+    { label: "Available", color: "green" },
+    { label: "On Trip", color: "blue" },
+    { label: "Maintenance", color: "red" },
+  ].map((status) => ({
+    ...status,
+    count: truckList.filter((truck) => truck.status === status.label).length,
+  }));
+
+  const fleetSearchSuggestions = Array.from(
+    new Set(
+      truckList.flatMap((truck) => [
+        truck.plate,
+        truck.status,
+        `${truck.plate} - ${truck.status}`,
+      ]),
+    ),
+  ).sort();
+
+  const filteredTruckList = truckList.filter((truck) => {
+    const searchQuery = fleetSearch.trim().toLowerCase();
+    const matchesStatus =
+      !activeFleetStatus || truck.status === activeFleetStatus;
+    const matchesSearch =
+      !searchQuery ||
+      `${truck.plate} ${truck.status} ${truck.plate} - ${truck.status}`
+        .toLowerCase()
+        .includes(searchQuery);
+
+    return matchesStatus && matchesSearch;
+  });
+
+  const handleFleetStatusClick = (status: string) => {
+    setIsFleetTableOpen(true);
+    setActiveFleetStatus((current) => (current === status ? null : status));
+  };
+
+  const handleFleetCardClick = () => {
+    if (isFleetTableOpen) {
+      setIsFleetTableOpen(false);
+      setActiveFleetStatus(null);
+      return;
+    }
+
+    setIsFleetTableOpen(true);
+  };
+
   return (
     <Flex gap="md" direction={{ base: "column", lg: "row" }} align="flex-start">
       <Stack style={{ flex: 7.5 }} gap="md" w="100%">
@@ -101,13 +145,14 @@ export default function DashboardPage() {
           direction={{ base: "column", sm: "row" }}
         >
           <IncomeStats stats={incomeStats} />
-          
+
           <FleetStatusOverview
             statusData={fleetStatus}
-            onClick={() => setIsFleetTableOpen((prev) => !prev)}
+            onClick={handleFleetCardClick}
             active={isFleetTableOpen}
-          
             isOpen={isFleetTableOpen}
+            activeStatus={activeFleetStatus}
+            onStatusClick={handleFleetStatusClick}
           />
         </Flex>
 
@@ -131,7 +176,14 @@ export default function DashboardPage() {
         expanded={isFleetTableOpen}
         style={{ flex: isFleetTableOpen ? 2.5 : 0 }}
       >
-        <LiveFleetTable trucks={truckList} />
+        <LiveFleetTable
+          trucks={filteredTruckList}
+          totalCount={truckList.length}
+          activeStatus={activeFleetStatus}
+          searchValue={fleetSearch}
+          searchData={fleetSearchSuggestions}
+          onSearchChange={setFleetSearch}
+        />
       </Collapse>
     </Flex>
   );
