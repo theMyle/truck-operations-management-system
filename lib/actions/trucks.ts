@@ -6,12 +6,17 @@ import { actionClient } from "@/lib/safe-action";
 import { revalidatePath } from "next/cache";
 import z from "zod";
 
+const truckInputSchema = insertTruckSchema.omit({
+    createdAt: true,
+    updatedAt: true,
+});
+
 export const getTruckAction = actionClient.action(async () => {
     return await truckRepository.getAll();
 })
 
 export const updateTruckAction = actionClient
-    .inputSchema(updateTruckSchema.extend({
+    .inputSchema(truckInputSchema.partial().extend({
         plateNumber: z.string().min(1, "Plate number is required for updates")
     }))
     .action(async ({ parsedInput }) => {
@@ -22,7 +27,7 @@ export const updateTruckAction = actionClient
     });
 
 export const createTruckAction = actionClient
-    .inputSchema(insertTruckSchema.required())
+    .inputSchema(truckInputSchema)
     .action(async ({ parsedInput }) => {
         const newTruck = await truckRepository.add(parsedInput);
         revalidatePath("/registration");
