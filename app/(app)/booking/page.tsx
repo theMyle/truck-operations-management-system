@@ -9,9 +9,7 @@ import {
   TextInput,
   Table,
   Badge,
-  ActionIcon,
   ScrollArea,
-  Tooltip,
   Select,
   Pagination,
   Button,
@@ -20,12 +18,9 @@ import { notifications } from "@mantine/notifications";
 import { useRouter } from "next/navigation";
 import React, { useState, useMemo, useEffect } from "react";
 import {
-  IconPlus,
   IconTrash,
-  IconEye,
   IconSearch,
   IconClipboardList,
-  IconEdit,
   IconDownload,
   IconFileTypeDoc,
   IconFileTypeJpg,

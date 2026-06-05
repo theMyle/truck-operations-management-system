@@ -9,7 +9,7 @@ import { useDisclosure } from "@mantine/hooks";
 import { modals } from "@mantine/modals";
 import { notifications } from "@mantine/notifications";
 import type { Truck } from "@/lib/db/schema/trucks";
-import { deleteTruck } from "@/actions/registration";
+import { deleteTruckAction } from "@/lib/actions/trucks";
 import { TableHeader } from "./TableHeader";
 import { TruckModal } from "./TruckModal";
 
@@ -37,7 +37,8 @@ export function TrucksTable({ data }: Props) {
     (t) =>
       t.plateNumber.toLowerCase().includes(search.toLowerCase()) ||
       t.fleetType?.toLowerCase().includes(search.toLowerCase()) ||
-      t.unitType?.toLowerCase().includes(search.toLowerCase())
+      t.unitType?.toLowerCase().includes(search.toLowerCase()) ||
+      t.isSubcon?.toString().includes(search.toLowerCase()),
   );
   const paged = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
@@ -54,7 +55,7 @@ export function TrucksTable({ data }: Props) {
       labels: { confirm: "Delete", cancel: "Cancel" },
       confirmProps: { color: "red" },
       onConfirm: async () => {
-        const result = await deleteTruck({ plateNumber: truck.plateNumber });
+        const result = await deleteTruckAction({ plateNumber: truck.plateNumber });
         if (result?.validationErrors || result?.serverError) {
           notifications.show({
             title: "Error",
@@ -74,8 +75,9 @@ export function TrucksTable({ data }: Props) {
 
   return (
     <>
-      <TruckModal opened={addOpened} onClose={closeAdd} />
+      <TruckModal key={`truck-add-${addOpened}`} opened={addOpened} onClose={closeAdd} />
       <TruckModal
+        key={`truck-edit-${editTruck?.plateNumber ?? "none"}-${!!editTruck}`}
         opened={!!editTruck}
         onClose={() => setEditTruck(null)}
         truck={editTruck}
@@ -151,6 +153,20 @@ export function TrucksTable({ data }: Props) {
                   {row.plateNumber}
                 </Text>
               ),
+            },
+            {
+              accessor: "isSubcon",
+              title: "Subcon",
+              render: (row) =>
+                row.isSubcon ? (
+                  <Badge size="sm" color="blue">
+                    Yes
+                  </Badge>
+                ) : (
+                  <Badge size="sm" color="gray">
+                    No
+                  </Badge>
+                ),
             },
             {
               accessor: "fleetType",

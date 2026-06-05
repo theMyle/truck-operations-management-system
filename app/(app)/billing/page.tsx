@@ -517,7 +517,7 @@ export default function BillingModule() {
 
           {/* Summary Cards */}
           {activeFilters && (
-            <SimpleGrid cols={4} spacing="sm">
+            <SimpleGrid cols={3} spacing="sm">
               <SummaryCard
                 label="Total Trips"
                 value={billingRecords.length}
@@ -527,11 +527,6 @@ export default function BillingModule() {
                 label="Total Amount"
                 value={`₱${stats.totalRate.toLocaleString()}`}
                 sub="billable rate"
-              />
-              <SummaryCard
-                label="Total Drops"
-                value={stats.totalDrops}
-                sub="delivery points"
               />
               <SummaryCard
                 label="PODs on File"

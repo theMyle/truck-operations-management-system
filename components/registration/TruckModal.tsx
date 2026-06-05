@@ -1,10 +1,17 @@
 "use client";
 
-import { useEffect } from "react";
-import { Modal, TextInput, Button, Stack, Group, Select } from "@mantine/core";
+import {
+  Modal,
+  TextInput,
+  Button,
+  Stack,
+  Group,
+  Select,
+  Switch,
+} from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { useAction } from "next-safe-action/hooks";
-import { createTruck, updateTruck } from "@/actions/registration";
+import { createTruckAction, updateTruckAction } from "@/lib/actions/trucks";
 import { notifications } from "@mantine/notifications";
 import type { Truck } from "@/lib/db/schema/trucks";
 
@@ -26,34 +33,24 @@ export function TruckModal({ opened, onClose, truck }: Props) {
 
   const form = useForm({
     initialValues: {
-      plateNumber: "",
-      fleetType: "",
-      unitType: "",
-      rate: "",
-      status: "available" as "available" | "on trip" | "maintenance" | "unavailable",
+      plateNumber: truck?.plateNumber ?? "",
+      fleetType: truck?.fleetType ?? "",
+      unitType: truck?.unitType ?? "",
+      rate: truck?.rate ?? "",
+      isSubcon: truck?.isSubcon ?? false,
+      status: "available" as
+        | "available"
+        | "on trip"
+        | "maintenance"
+        | "unavailable",
     },
     validate: {
-      plateNumber: (v) => (v.trim().length < 1 ? "Plate number is required" : null),
+      plateNumber: (v) =>
+        v.trim().length < 1 ? "Plate number is required" : null,
     },
   });
 
-  useEffect(() => {
-    if (opened) {
-      if (truck) {
-        form.setValues({
-          plateNumber: truck.plateNumber,
-          fleetType: truck.fleetType || "",
-          unitType: truck.unitType || "",
-          rate: truck.rate || "",
-          status: truck.status,
-        });
-      } else {
-        form.reset();
-      }
-    }
-  }, [opened, truck]);
-
-  const createAction = useAction(createTruck, {
+  const createAction = useAction(createTruckAction, {
     onSuccess: () => {
       notifications.show({ message: "Truck added!", color: "green" });
       form.reset();
@@ -64,7 +61,7 @@ export function TruckModal({ opened, onClose, truck }: Props) {
     },
   });
 
-  const updateAction = useAction(updateTruck, {
+  const updateAction = useAction(updateTruckAction, {
     onSuccess: () => {
       notifications.show({ message: "Truck updated!", color: "green" });
       onClose();
@@ -127,6 +124,11 @@ export function TruckModal({ opened, onClose, truck }: Props) {
             {...form.getInputProps("rate")}
           />
 
+          <Switch
+            id="input-truck-is-subcon"
+            label="Is Subcontractor?"
+            {...form.getInputProps("isSubcon", { type: "checkbox" })}
+          />
           {isEditMode && (
             <Select
               label="Status"

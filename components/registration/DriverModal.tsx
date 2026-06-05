@@ -1,13 +1,23 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Modal, TextInput, Button, Stack, Group, FileInput, SimpleGrid, Title, Image } from "@mantine/core";
+import { useEffect, useRef, useState } from "react";
+import {
+  Button,
+  FileInput,
+  Group,
+  Image,
+  Modal,
+  SimpleGrid,
+  Stack,
+  TextInput,
+  Title,
+} from "@mantine/core";
 import { useForm } from "@mantine/form";
-import { useAction } from "next-safe-action/hooks";
-import { createDriver, updateDriver } from "@/actions/registration";
 import { notifications } from "@mantine/notifications";
-import { uploadFile, replaceFile } from "@/actions/file-upload";
+import { useAction } from "next-safe-action/hooks";
 import { IconUpload } from "@tabler/icons-react";
+import { createDriverAction, updateDriverAction } from "@/lib/actions/drivers";
+import { replaceFile, uploadFile } from "@/lib/actions/file-upload";
 import type { Driver } from "@/lib/db/schema/drivers";
 
 interface Props {
@@ -18,75 +28,43 @@ interface Props {
 
 export function DriverModal({ opened, onClose, driver }: Props) {
   const isEditMode = !!driver;
+  const frontPreviewRef = useRef<string | null>(null);
+  const backPreviewRef = useRef<string | null>(null);
 
   const form = useForm({
-    initialValues: { driverName: "", contactNumber: "", emergencyContact: "", address: "" },
+    initialValues: {
+      driverName: driver?.driverName ?? "",
+      contactNumber: driver?.contactNumber ?? "",
+      emergencyContact: driver?.emergencyContact ?? "",
+      address: driver?.address ?? "",
+    },
     validate: {
-      driverName: (v) => (v.trim().length < 1 ? "Driver name is required" : null),
-      address: (v) => (v.trim().length < 1 ? "Address is required" : null),
+      driverName: (value) => (value.trim().length < 1 ? "Driver name is required" : null),
+      address: (value) => (value.trim().length < 1 ? "Address is required" : null),
     },
   });
 
   const [idFront, setIdFront] = useState<File | null>(null);
   const [idBack, setIdBack] = useState<File | null>(null);
+  const [frontPreview, setFrontPreview] = useState<string | null>(driver?.idFrontLink ?? null);
+  const [backPreview, setBackPreview] = useState<string | null>(driver?.idBackLink ?? null);
   const [isUploading, setIsUploading] = useState(false);
-  const [frontPreview, setFrontPreview] = useState<string | null>(null);
-  const [backPreview, setBackPreview] = useState<string | null>(null);
 
   useEffect(() => {
-    if (opened) {
-      if (driver) {
-        form.setValues({
-          driverName: driver.driverName,
-          contactNumber: driver.contactNumber || "",
-          emergencyContact: driver.emergencyContact || "",
-          address: driver.address || "",
-        });
-        setFrontPreview(driver.idFrontLink || null);
-        setBackPreview(driver.idBackLink || null);
-      } else {
-        form.reset();
-        setFrontPreview(null);
-        setBackPreview(null);
+    return () => {
+      if (frontPreviewRef.current?.startsWith("blob:")) {
+        URL.revokeObjectURL(frontPreviewRef.current);
       }
-      setIdFront(null);
-      setIdBack(null);
-    }
-  }, [opened, driver]);
+      if (backPreviewRef.current?.startsWith("blob:")) {
+        URL.revokeObjectURL(backPreviewRef.current);
+      }
+    };
+  }, []);
 
-
-  useEffect(() => {
-    if (idFront) {
-      const url = URL.createObjectURL(idFront);
-      setFrontPreview(url);
-      return () => URL.revokeObjectURL(url);
-    } else if (isEditMode && driver?.idFrontLink) {
-      setFrontPreview(driver.idFrontLink);
-    } else {
-      setFrontPreview(null);
-    }
-  }, [idFront, driver, isEditMode]);
-
-
-  useEffect(() => {
-    if (idBack) {
-      const url = URL.createObjectURL(idBack);
-      setBackPreview(url);
-      return () => URL.revokeObjectURL(url);
-    } else if (isEditMode && driver?.idBackLink) {
-      setBackPreview(driver.idBackLink);
-    } else {
-      setBackPreview(null);
-    }
-  }, [idBack, driver, isEditMode]);
-
-
-  const createAction = useAction(createDriver, {
+  const createAction = useAction(createDriverAction, {
     onSuccess: () => {
       notifications.show({ message: "Driver added!", color: "green" });
       form.reset();
-      setIdFront(null);
-      setIdBack(null);
       onClose();
     },
     onError: () => {
@@ -94,8 +72,7 @@ export function DriverModal({ opened, onClose, driver }: Props) {
     },
   });
 
-
-  const updateAction = useAction(updateDriver, {
+  const updateAction = useAction(updateDriverAction, {
     onSuccess: () => {
       notifications.show({ message: "Driver updated!", color: "green" });
       onClose();
@@ -105,11 +82,44 @@ export function DriverModal({ opened, onClose, driver }: Props) {
     },
   });
 
+  const setFrontIdFile = (file: File | null) => {
+    if (frontPreviewRef.current?.startsWith("blob:")) {
+      URL.revokeObjectURL(frontPreviewRef.current);
+      frontPreviewRef.current = null;
+    }
+
+    setIdFront(file);
+
+    if (file) {
+      const url = URL.createObjectURL(file);
+      frontPreviewRef.current = url;
+      setFrontPreview(url);
+    } else {
+      setFrontPreview(driver?.idFrontLink ?? null);
+    }
+  };
+
+  const setBackIdFile = (file: File | null) => {
+    if (backPreviewRef.current?.startsWith("blob:")) {
+      URL.revokeObjectURL(backPreviewRef.current);
+      backPreviewRef.current = null;
+    }
+
+    setIdBack(file);
+
+    if (file) {
+      const url = URL.createObjectURL(file);
+      backPreviewRef.current = url;
+      setBackPreview(url);
+    } else {
+      setBackPreview(driver?.idBackLink ?? null);
+    }
+  };
 
   const handleSubmit = async (values: typeof form.values) => {
     setIsUploading(true);
 
-    const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+    const MAX_FILE_SIZE = 10 * 1024 * 1024;
     if ((idFront && idFront.size > MAX_FILE_SIZE) || (idBack && idBack.size > MAX_FILE_SIZE)) {
       notifications.show({
         title: "File Too Large",
@@ -121,36 +131,30 @@ export function DriverModal({ opened, onClose, driver }: Props) {
     }
 
     try {
-      let idFrontLink = isEditMode ? (driver?.idFrontLink || undefined) : undefined;
-      let idBackLink = isEditMode ? (driver?.idBackLink || undefined) : undefined;
+      let idFrontLink = driver?.idFrontLink ?? undefined;
+      let idBackLink = driver?.idBackLink ?? undefined;
 
-      // Handle Front ID upload/replace
       if (idFront) {
         const fd = new FormData();
         fd.append("file", idFront);
         fd.append("folder", "drivers/front-id");
-        let res;
-        if (isEditMode && driver?.idFrontLink) {
-          fd.append("oldUrl", driver.idFrontLink);
-          res = await replaceFile(fd);
-        } else {
-          res = await uploadFile(fd);
-        }
+
+        const res = driver?.idFrontLink
+          ? await (fd.append("oldUrl", driver.idFrontLink), replaceFile(fd))
+          : await uploadFile(fd);
+
         if (res.url) idFrontLink = res.url;
       }
 
-      // Handle Back ID upload/replace
       if (idBack) {
         const fd = new FormData();
         fd.append("file", idBack);
         fd.append("folder", "drivers/back-id");
-        let res;
-        if (isEditMode && driver?.idBackLink) {
-          fd.append("oldUrl", driver.idBackLink);
-          res = await replaceFile(fd);
-        } else {
-          res = await uploadFile(fd);
-        }
+
+        const res = driver?.idBackLink
+          ? await (fd.append("oldUrl", driver.idBackLink), replaceFile(fd))
+          : await uploadFile(fd);
+
         if (res.url) idBackLink = res.url;
       }
 
@@ -159,7 +163,7 @@ export function DriverModal({ opened, onClose, driver }: Props) {
       } else {
         createAction.execute({ ...values, idFrontLink, idBackLink });
       }
-    } catch (err) {
+    } catch {
       notifications.show({ message: "Failed to upload ID images.", color: "red" });
     } finally {
       setIsUploading(false);
@@ -179,7 +183,9 @@ export function DriverModal({ opened, onClose, driver }: Props) {
       <form onSubmit={form.onSubmit(handleSubmit)}>
         <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="lg">
           <Stack gap="sm">
-            <Title order={6} c="dimmed" tt="uppercase">Personal Details</Title>
+            <Title order={6} c="dimmed" tt="uppercase">
+              Personal Details
+            </Title>
             <TextInput
               id="input-driver-name"
               label="Driver Name"
@@ -204,23 +210,19 @@ export function DriverModal({ opened, onClose, driver }: Props) {
           </Stack>
 
           <Stack gap="sm">
-            <Title order={6} c="dimmed" tt="uppercase">ID Documents</Title>
+            <Title order={6} c="dimmed" tt="uppercase">
+              ID Documents
+            </Title>
             <FileInput
               label="Front ID"
               placeholder={isEditMode ? "Upload new front ID" : "Upload front of ID"}
               accept="image/png,image/jpeg,image/webp"
               leftSection={<IconUpload size={16} />}
               value={idFront}
-              onChange={setIdFront}
+              onChange={setFrontIdFile}
             />
             {frontPreview && (
-              <Image
-                src={frontPreview}
-                alt="Front ID preview"
-                h={100}
-                fit="contain"
-                radius="md"
-              />
+              <Image src={frontPreview} alt="Front ID preview" h={100} fit="contain" radius="md" />
             )}
 
             <FileInput
@@ -229,16 +231,10 @@ export function DriverModal({ opened, onClose, driver }: Props) {
               accept="image/png,image/jpeg,image/webp"
               leftSection={<IconUpload size={16} />}
               value={idBack}
-              onChange={setIdBack}
+              onChange={setBackIdFile}
             />
             {backPreview && (
-              <Image
-                src={backPreview}
-                alt="Back ID preview"
-                h={100}
-                fit="contain"
-                radius="md"
-              />
+              <Image src={backPreview} alt="Back ID preview" h={100} fit="contain" radius="md" />
             )}
           </Stack>
         </SimpleGrid>

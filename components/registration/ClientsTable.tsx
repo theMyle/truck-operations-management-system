@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Box, Text } from "@mantine/core";
+import { Badge, Box, Text } from "@mantine/core";
 import { IconUsers } from "@tabler/icons-react";
 import { TableRowActions } from "../TableRowActions";
 import { DataTable } from "mantine-datatable";
@@ -9,7 +9,7 @@ import { useDisclosure } from "@mantine/hooks";
 import { modals } from "@mantine/modals";
 import { notifications } from "@mantine/notifications";
 import type { Client } from "@/lib/db/schema/clients";
-import { deleteClient } from "@/actions/registration";
+import { deleteClientAction } from "@/lib/actions/clients";
 import { TableHeader } from "./TableHeader";
 import { ClientModal } from "./ClientModal";
 
@@ -27,7 +27,7 @@ export function ClientsTable({ data }: Props) {
   const [page, setPage] = useState(1);
 
   const filtered = data.filter((c) =>
-    c.clientName.toLowerCase().includes(search.toLowerCase())
+    c.clientName.toLowerCase().includes(search.toLowerCase()),
   );
   const paged = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
@@ -37,14 +37,14 @@ export function ClientsTable({ data }: Props) {
       centered: true,
       children: (
         <Text size="sm">
-          Are you sure you want to delete <b>{client.clientName}</b>? This action
-          cannot be undone.
+          Are you sure you want to delete <b>{client.clientName}</b>? This
+          action cannot be undone.
         </Text>
       ),
       labels: { confirm: "Delete", cancel: "Cancel" },
       confirmProps: { color: "red" },
       onConfirm: async () => {
-        const result = await deleteClient({ id: client.id });
+        const result = await deleteClientAction({ id: client.id });
         if (result?.validationErrors || result?.serverError) {
           notifications.show({
             title: "Error",
@@ -64,8 +64,9 @@ export function ClientsTable({ data }: Props) {
 
   return (
     <>
-      <ClientModal opened={addOpened} onClose={closeAdd} />
+      <ClientModal key={`client-add-${addOpened}`} opened={addOpened} onClose={closeAdd} />
       <ClientModal
+        key={`client-edit-${editClient?.id ?? "none"}-${!!editClient}`}
         opened={!!editClient}
         onClose={() => setEditClient(null)}
         client={editClient}
@@ -142,6 +143,20 @@ export function ClientsTable({ data }: Props) {
               ),
             },
             {
+              accessor: "hasFixedRoutes",
+              title: "Fixed Routes",
+              render: (row) =>
+                row.hasFixedRoutes ? (
+                  <Badge size="sm" color="blue">
+                    Yes
+                  </Badge>
+                ) : (
+                  <Badge size="sm" color="gray">
+                    No
+                  </Badge>
+                ),
+            },
+            {
               accessor: "rate",
               title: "Client Rate",
               render: (row) =>
@@ -151,7 +166,7 @@ export function ClientsTable({ data }: Props) {
                     maximumFractionDigits: 2,
                   })}`
                   : "-",
-            }
+            },
           ]}
         />
       </Box>

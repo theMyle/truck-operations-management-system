@@ -1,13 +1,23 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Modal, TextInput, Button, Stack, Group, FileInput, SimpleGrid, Title, Image } from "@mantine/core";
+import { useEffect, useRef, useState } from "react";
+import {
+  Button,
+  FileInput,
+  Group,
+  Image,
+  Modal,
+  SimpleGrid,
+  Stack,
+  TextInput,
+  Title,
+} from "@mantine/core";
 import { useForm } from "@mantine/form";
-import { useAction } from "next-safe-action/hooks";
-import { createHelper, updateHelper } from "@/actions/registration";
 import { notifications } from "@mantine/notifications";
-import { uploadFile, replaceFile } from "@/actions/file-upload";
+import { useAction } from "next-safe-action/hooks";
 import { IconUpload } from "@tabler/icons-react";
+import { createHelperAction, updateHelperAction } from "@/lib/actions/helpers";
+import { replaceFile, uploadFile } from "@/lib/actions/file-upload";
 import type { Helper } from "@/lib/db/schema/helpers";
 
 interface Props {
@@ -18,75 +28,43 @@ interface Props {
 
 export function HelperModal({ opened, onClose, helper }: Props) {
   const isEditMode = !!helper;
+  const frontPreviewRef = useRef<string | null>(null);
+  const backPreviewRef = useRef<string | null>(null);
 
   const form = useForm({
-    initialValues: { helperName: "", contactNumber: "", emergencyContact: "", address: "" },
+    initialValues: {
+      helperName: helper?.helperName ?? "",
+      contactNumber: helper?.contactNumber ?? "",
+      emergencyContact: helper?.emergencyContact ?? "",
+      address: helper?.address ?? "",
+    },
     validate: {
-      helperName: (v) => (v.trim().length < 1 ? "Helper name is required" : null),
-      address: (v) => (v.trim().length < 1 ? "Address is required" : null),
+      helperName: (value) => (value.trim().length < 1 ? "Helper name is required" : null),
+      address: (value) => (value.trim().length < 1 ? "Address is required" : null),
     },
   });
 
   const [idFront, setIdFront] = useState<File | null>(null);
   const [idBack, setIdBack] = useState<File | null>(null);
+  const [frontPreview, setFrontPreview] = useState<string | null>(helper?.idFrontLink ?? null);
+  const [backPreview, setBackPreview] = useState<string | null>(helper?.idBackLink ?? null);
   const [isUploading, setIsUploading] = useState(false);
-  const [frontPreview, setFrontPreview] = useState<string | null>(null);
-  const [backPreview, setBackPreview] = useState<string | null>(null);
 
-  // Sync state when modal opens or helper changes
   useEffect(() => {
-    if (opened) {
-      if (helper) {
-        form.setValues({
-          helperName: helper.helperName,
-          contactNumber: helper.contactNumber || "",
-          emergencyContact: helper.emergencyContact || "",
-          address: helper.address || "",
-        });
-        setFrontPreview(helper.idFrontLink || null);
-        setBackPreview(helper.idBackLink || null);
-      } else {
-        form.reset();
-        setFrontPreview(null);
-        setBackPreview(null);
+    return () => {
+      if (frontPreviewRef.current?.startsWith("blob:")) {
+        URL.revokeObjectURL(frontPreviewRef.current);
       }
-      setIdFront(null);
-      setIdBack(null);
-    }
-  }, [opened, helper]);
+      if (backPreviewRef.current?.startsWith("blob:")) {
+        URL.revokeObjectURL(backPreviewRef.current);
+      }
+    };
+  }, []);
 
-  // Handle local file preview for Front ID
-  useEffect(() => {
-    if (idFront) {
-      const url = URL.createObjectURL(idFront);
-      setFrontPreview(url);
-      return () => URL.revokeObjectURL(url);
-    } else if (isEditMode && helper?.idFrontLink) {
-      setFrontPreview(helper.idFrontLink);
-    } else {
-      setFrontPreview(null);
-    }
-  }, [idFront, helper, isEditMode]);
-
-  // Handle local file preview for Back ID
-  useEffect(() => {
-    if (idBack) {
-      const url = URL.createObjectURL(idBack);
-      setBackPreview(url);
-      return () => URL.revokeObjectURL(url);
-    } else if (isEditMode && helper?.idBackLink) {
-      setBackPreview(helper.idBackLink);
-    } else {
-      setBackPreview(null);
-    }
-  }, [idBack, helper, isEditMode]);
-
-  const createAction = useAction(createHelper, {
+  const createAction = useAction(createHelperAction, {
     onSuccess: () => {
       notifications.show({ message: "Helper added!", color: "green" });
       form.reset();
-      setIdFront(null);
-      setIdBack(null);
       onClose();
     },
     onError: () => {
@@ -94,7 +72,7 @@ export function HelperModal({ opened, onClose, helper }: Props) {
     },
   });
 
-  const updateAction = useAction(updateHelper, {
+  const updateAction = useAction(updateHelperAction, {
     onSuccess: () => {
       notifications.show({ message: "Helper updated!", color: "green" });
       onClose();
@@ -104,10 +82,44 @@ export function HelperModal({ opened, onClose, helper }: Props) {
     },
   });
 
+  const setFrontIdFile = (file: File | null) => {
+    if (frontPreviewRef.current?.startsWith("blob:")) {
+      URL.revokeObjectURL(frontPreviewRef.current);
+      frontPreviewRef.current = null;
+    }
+
+    setIdFront(file);
+
+    if (file) {
+      const url = URL.createObjectURL(file);
+      frontPreviewRef.current = url;
+      setFrontPreview(url);
+    } else {
+      setFrontPreview(helper?.idFrontLink ?? null);
+    }
+  };
+
+  const setBackIdFile = (file: File | null) => {
+    if (backPreviewRef.current?.startsWith("blob:")) {
+      URL.revokeObjectURL(backPreviewRef.current);
+      backPreviewRef.current = null;
+    }
+
+    setIdBack(file);
+
+    if (file) {
+      const url = URL.createObjectURL(file);
+      backPreviewRef.current = url;
+      setBackPreview(url);
+    } else {
+      setBackPreview(helper?.idBackLink ?? null);
+    }
+  };
+
   const handleSubmit = async (values: typeof form.values) => {
     setIsUploading(true);
 
-    const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+    const MAX_FILE_SIZE = 10 * 1024 * 1024;
     if ((idFront && idFront.size > MAX_FILE_SIZE) || (idBack && idBack.size > MAX_FILE_SIZE)) {
       notifications.show({
         title: "File Too Large",
@@ -119,36 +131,30 @@ export function HelperModal({ opened, onClose, helper }: Props) {
     }
 
     try {
-      let idFrontLink = isEditMode ? (helper?.idFrontLink || undefined) : undefined;
-      let idBackLink = isEditMode ? (helper?.idBackLink || undefined) : undefined;
+      let idFrontLink = helper?.idFrontLink ?? undefined;
+      let idBackLink = helper?.idBackLink ?? undefined;
 
-      // Handle Front ID upload/replace
       if (idFront) {
         const fd = new FormData();
         fd.append("file", idFront);
         fd.append("folder", "helpers/front-id");
-        let res;
-        if (isEditMode && helper?.idFrontLink) {
-          fd.append("oldUrl", helper.idFrontLink);
-          res = await replaceFile(fd);
-        } else {
-          res = await uploadFile(fd);
-        }
+
+        const res = helper?.idFrontLink
+          ? await (fd.append("oldUrl", helper.idFrontLink), replaceFile(fd))
+          : await uploadFile(fd);
+
         if (res.url) idFrontLink = res.url;
       }
 
-      // Handle Back ID upload/replace
       if (idBack) {
         const fd = new FormData();
         fd.append("file", idBack);
         fd.append("folder", "helpers/back-id");
-        let res;
-        if (isEditMode && helper?.idBackLink) {
-          fd.append("oldUrl", helper.idBackLink);
-          res = await replaceFile(fd);
-        } else {
-          res = await uploadFile(fd);
-        }
+
+        const res = helper?.idBackLink
+          ? await (fd.append("oldUrl", helper.idBackLink), replaceFile(fd))
+          : await uploadFile(fd);
+
         if (res.url) idBackLink = res.url;
       }
 
@@ -157,7 +163,7 @@ export function HelperModal({ opened, onClose, helper }: Props) {
       } else {
         createAction.execute({ ...values, idFrontLink, idBackLink });
       }
-    } catch (err) {
+    } catch {
       notifications.show({ message: "Failed to upload ID images.", color: "red" });
     } finally {
       setIsUploading(false);
@@ -177,7 +183,9 @@ export function HelperModal({ opened, onClose, helper }: Props) {
       <form onSubmit={form.onSubmit(handleSubmit)}>
         <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="lg">
           <Stack gap="sm">
-            <Title order={6} c="dimmed" tt="uppercase">Personal Details</Title>
+            <Title order={6} c="dimmed" tt="uppercase">
+              Personal Details
+            </Title>
             <TextInput
               id="input-helper-name"
               label="Helper Name"
@@ -202,23 +210,19 @@ export function HelperModal({ opened, onClose, helper }: Props) {
           </Stack>
 
           <Stack gap="sm">
-            <Title order={6} c="dimmed" tt="uppercase">ID Documents</Title>
+            <Title order={6} c="dimmed" tt="uppercase">
+              ID Documents
+            </Title>
             <FileInput
               label="Front ID"
               placeholder={isEditMode ? "Upload new front ID" : "Upload front of ID"}
               accept="image/png,image/jpeg,image/webp"
               leftSection={<IconUpload size={16} />}
               value={idFront}
-              onChange={setIdFront}
+              onChange={setFrontIdFile}
             />
             {frontPreview && (
-              <Image
-                src={frontPreview}
-                alt="Front ID preview"
-                h={100}
-                fit="contain"
-                radius="md"
-              />
+              <Image src={frontPreview} alt="Front ID preview" h={100} fit="contain" radius="md" />
             )}
 
             <FileInput
@@ -227,16 +231,10 @@ export function HelperModal({ opened, onClose, helper }: Props) {
               accept="image/png,image/jpeg,image/webp"
               leftSection={<IconUpload size={16} />}
               value={idBack}
-              onChange={setIdBack}
+              onChange={setBackIdFile}
             />
             {backPreview && (
-              <Image
-                src={backPreview}
-                alt="Back ID preview"
-                h={100}
-                fit="contain"
-                radius="md"
-              />
+              <Image src={backPreview} alt="Back ID preview" h={100} fit="contain" radius="md" />
             )}
           </Stack>
         </SimpleGrid>

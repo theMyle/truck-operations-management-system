@@ -1,37 +1,38 @@
-import { relations } from "drizzle-orm";
-import { pgTable, text, timestamp, decimal, uuid } from "drizzle-orm/pg-core";
+import { relations, } from "drizzle-orm";
+import { pgTable, text, timestamp, decimal, uuid, boolean } from "drizzle-orm/pg-core";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { z } from "zod";
 
 export const clients = pgTable("clients", {
-    id: uuid("id").primaryKey().defaultRandom(),
-    rate: decimal("client_rate", { precision: 10, scale: 2 }),
-    clientName: text("client_name").notNull(),
-    createdAt: timestamp("created_at").notNull().defaultNow(),
-    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  id: uuid("id").primaryKey().defaultRandom(),
+  rate: decimal("client_rate", { precision: 10, scale: 2 }),
+  clientName: text("client_name").notNull(),
+  hasFixedRoutes: boolean("has_fixed_routes").notNull().default(false),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
 export const clientRoutes = pgTable("client_routes", {
-    id: uuid("id").primaryKey().defaultRandom(),
+  id: uuid("id").primaryKey().defaultRandom(),
 
-    clientId: uuid("client_id")
-        .notNull()
-        .references(() => clients.id, { onDelete: "cascade" }),
+  clientId: uuid("client_id")
+    .notNull()
+    .references(() => clients.id, { onDelete: "cascade" }),
 
-    route: text("route").notNull(),
-    createdAt: timestamp("created_at").notNull().defaultNow(),
-    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  route: text("route").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
 export const clientsRelations = relations(clients, ({ many }) => ({
-    routes: many(clientRoutes)
+  routes: many(clientRoutes),
 }));
 
 export const clientRoutesRelations = relations(clientRoutes, ({ one }) => ({
-    client: one(clients, {
-        fields: [clientRoutes.clientId],
-        references: [clients.id],
-    }),
+  client: one(clients, {
+    fields: [clientRoutes.clientId],
+    references: [clients.id],
+  }),
 }));
 
 export const insertClientSchema = createInsertSchema(clients);
@@ -47,5 +48,5 @@ export type ClientRoute = z.infer<typeof selectClientRouteSchema>;
 export type NewClientRoute = z.infer<typeof insertClientRouteSchema>;
 
 export type ClientWithRoutes = Client & {
-    routes: ClientRoute[];
+  routes: ClientRoute[];
 };

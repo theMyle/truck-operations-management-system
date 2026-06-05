@@ -52,7 +52,7 @@ export default function DispatchPage() {
 
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [helpers, setHelpers] = useState<Helper[]>([]);
-  const [clients, setClients] = useState<ClientWithRoutes[]>([]);
+  const [clients, setClients] = useState<Client[]>([]);
   const [trucks, setTrucks] = useState<Truck[]>([]);
 
   const [reviewOpened, setReviewOpened] = useState(false);
