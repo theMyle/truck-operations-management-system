@@ -16,8 +16,8 @@ import { useForm } from "@mantine/form";
 import { notifications } from "@mantine/notifications";
 import { useAction } from "next-safe-action/hooks";
 import { IconUpload } from "@tabler/icons-react";
-import { createDriverAction, updateDriverAction } from "@/actions/drivers";
-import { replaceFile, uploadFile } from "@/actions/file-upload";
+import { createDriverAction, updateDriverAction } from "@/lib/actions/drivers";
+import { replaceFile, uploadFile } from "@/lib/actions/file-upload";
 import type { Driver } from "@/lib/db/schema/drivers";
 
 interface Props {

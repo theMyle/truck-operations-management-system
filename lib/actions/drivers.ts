@@ -1,6 +1,6 @@
 "use server";
 
-import { deleteFileFromUrl } from "@/actions/file-upload";
+import { deleteFileFromUrl } from "@/lib/actions/file-upload";
 import { insertDriverSchema } from "@/lib/db/schema";
 import { driverRepository } from "@/lib/repositories/driver.repository";
 import { actionClient } from "@/lib/safe-action";

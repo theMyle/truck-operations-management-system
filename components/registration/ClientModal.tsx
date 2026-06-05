@@ -3,7 +3,7 @@
 import { Modal, TextInput, Button, Stack, Group, Switch } from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { useAction } from "next-safe-action/hooks";
-import { createClientAction, updateClientAction } from "@/actions/clients";
+import { createClientAction, updateClientAction } from "@/lib/actions/clients";
 import { notifications } from "@mantine/notifications";
 import type { Client } from "@/lib/db/schema/clients";
 

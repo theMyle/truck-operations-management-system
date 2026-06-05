@@ -11,7 +11,7 @@ import {
 } from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { useAction } from "next-safe-action/hooks";
-import { createTruckAction, updateTruckAction } from "@/actions/trucks";
+import { createTruckAction, updateTruckAction } from "@/lib/actions/trucks";
 import { notifications } from "@mantine/notifications";
 import type { Truck } from "@/lib/db/schema/trucks";
 

@@ -9,7 +9,7 @@ import { useDisclosure } from "@mantine/hooks";
 import { modals } from "@mantine/modals";
 import { notifications } from "@mantine/notifications";
 import type { Driver } from "@/lib/db/schema/drivers";
-import { deleteDriverAction } from "@/actions/drivers";
+import { deleteDriverAction } from "@/lib/actions/drivers";
 import { TableHeader } from "./TableHeader";
 import { DriverModal } from "./DriverModal";
 import { ViewDriverModal } from "./ViewDriverModal";

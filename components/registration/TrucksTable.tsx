@@ -9,7 +9,7 @@ import { useDisclosure } from "@mantine/hooks";
 import { modals } from "@mantine/modals";
 import { notifications } from "@mantine/notifications";
 import type { Truck } from "@/lib/db/schema/trucks";
-import { deleteTruckAction } from "@/actions/trucks";
+import { deleteTruckAction } from "@/lib/actions/trucks";
 import { TableHeader } from "./TableHeader";
 import { TruckModal } from "./TruckModal";
 

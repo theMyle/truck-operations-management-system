@@ -1,6 +1,6 @@
 "use server";
 
-import { deleteFileFromUrl } from "@/actions/file-upload";
+import { deleteFileFromUrl } from "@/lib/actions/file-upload";
 import { insertHelperSchema } from "@/lib/db/schema";
 import { helperRepository } from "@/lib/repositories/helper.repository";
 import { actionClient } from "@/lib/safe-action";

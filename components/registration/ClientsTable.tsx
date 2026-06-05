@@ -9,7 +9,7 @@ import { useDisclosure } from "@mantine/hooks";
 import { modals } from "@mantine/modals";
 import { notifications } from "@mantine/notifications";
 import type { Client } from "@/lib/db/schema/clients";
-import { deleteClientAction } from "@/actions/clients";
+import { deleteClientAction } from "@/lib/actions/clients";
 import { TableHeader } from "./TableHeader";
 import { ClientModal } from "./ClientModal";
 

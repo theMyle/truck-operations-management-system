@@ -9,7 +9,7 @@ import { useDisclosure } from "@mantine/hooks";
 import { modals } from "@mantine/modals";
 import { notifications } from "@mantine/notifications";
 import type { Helper } from "@/lib/db/schema/helpers";
-import { deleteHelperAction } from "@/actions/helpers";
+import { deleteHelperAction } from "@/lib/actions/helpers";
 import { TableHeader } from "./TableHeader";
 import { HelperModal } from "./HelperModal";
 import { ViewHelperModal } from "./ViewHelperModal";

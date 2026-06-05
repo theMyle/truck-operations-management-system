@@ -39,10 +39,10 @@ import { CardHeader } from "@/components/dispatch/CardHeader";
 import { ReviewModal } from "@/components/dispatch/ReviewModal";
 import { TimePickerInput } from "@/components/dispatch/TimePickerInput";
 import { Client, Driver, Helper, Truck } from "@/lib/db/schema";
-import { getTruckAction } from "@/actions/trucks";
-import { getClientAction } from "@/actions/clients";
-import { getDriverAction } from "@/actions/drivers";
-import { getHelperAction } from "@/actions/helpers";
+import { getTruckAction } from "@/lib/actions/trucks";
+import { getClientAction } from "@/lib/actions/clients";
+import { getDriverAction } from "@/lib/actions/drivers";
+import { getHelperAction } from "@/lib/actions/helpers";
 
 interface DropOff {
   id: number;

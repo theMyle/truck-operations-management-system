@@ -16,8 +16,8 @@ import { useForm } from "@mantine/form";
 import { notifications } from "@mantine/notifications";
 import { useAction } from "next-safe-action/hooks";
 import { IconUpload } from "@tabler/icons-react";
-import { createHelperAction, updateHelperAction } from "@/actions/helpers";
-import { replaceFile, uploadFile } from "@/actions/file-upload";
+import { createHelperAction, updateHelperAction } from "@/lib/actions/helpers";
+import { replaceFile, uploadFile } from "@/lib/actions/file-upload";
 import type { Helper } from "@/lib/db/schema/helpers";
 
 interface Props {
