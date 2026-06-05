@@ -28,8 +28,11 @@ export const trucks = pgTable("trucks", {
 });
 
 // Zod schemas for validation
-export const insertTruckSchema = createInsertSchema(trucks);
 export const selectTruckSchema = createSelectSchema(trucks);
-
 export type Truck = z.infer<typeof selectTruckSchema>;
+
+export const insertTruckSchema = createInsertSchema(trucks);
 export type NewTruck = z.infer<typeof insertTruckSchema>;
+
+export const updateTruckSchema = insertTruckSchema.partial();
+export type UpdateTruck = z.infer<typeof updateTruckSchema>;

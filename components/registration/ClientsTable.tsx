@@ -9,7 +9,7 @@ import { useDisclosure } from "@mantine/hooks";
 import { modals } from "@mantine/modals";
 import { notifications } from "@mantine/notifications";
 import type { Client } from "@/lib/db/schema/clients";
-import { deleteClient } from "@/actions/registration";
+import { deleteClientAction } from "@/lib/actions/clients";
 import { TableHeader } from "./TableHeader";
 import { ClientModal } from "./ClientModal";
 
@@ -44,7 +44,7 @@ export function ClientsTable({ data }: Props) {
       labels: { confirm: "Delete", cancel: "Cancel" },
       confirmProps: { color: "red" },
       onConfirm: async () => {
-        const result = await deleteClient({ id: client.id });
+        const result = await deleteClientAction({ id: client.id });
         if (result?.validationErrors || result?.serverError) {
           notifications.show({
             title: "Error",
@@ -64,8 +64,9 @@ export function ClientsTable({ data }: Props) {
 
   return (
     <>
-      <ClientModal opened={addOpened} onClose={closeAdd} />
+      <ClientModal key={`client-add-${addOpened}`} opened={addOpened} onClose={closeAdd} />
       <ClientModal
+        key={`client-edit-${editClient?.id ?? "none"}-${!!editClient}`}
         opened={!!editClient}
         onClose={() => setEditClient(null)}
         client={editClient}
@@ -161,9 +162,9 @@ export function ClientsTable({ data }: Props) {
               render: (row) =>
                 row.rate
                   ? `₱ ${Number(row.rate).toLocaleString(undefined, {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2,
-                    })}`
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}`
                   : "-",
             },
           ]}
