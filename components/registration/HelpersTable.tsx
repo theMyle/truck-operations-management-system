@@ -2,14 +2,14 @@
 
 import { useState } from "react";
 import { Box, Text } from "@mantine/core";
-import { IconHelmet, IconEye } from "@tabler/icons-react";
+import { IconHelmet } from "@tabler/icons-react";
 import { TableRowActions } from "../TableRowActions";
 import { DataTable } from "mantine-datatable";
 import { useDisclosure } from "@mantine/hooks";
 import { modals } from "@mantine/modals";
 import { notifications } from "@mantine/notifications";
 import type { Helper } from "@/lib/db/schema/helpers";
-import { deleteHelper } from "@/actions/registration";
+import { deleteHelperAction } from "@/actions/helpers";
 import { TableHeader } from "./TableHeader";
 import { HelperModal } from "./HelperModal";
 import { ViewHelperModal } from "./ViewHelperModal";
@@ -46,7 +46,7 @@ export function HelpersTable({ data }: Props) {
       labels: { confirm: "Delete", cancel: "Cancel" },
       confirmProps: { color: "red" },
       onConfirm: async () => {
-        const result = await deleteHelper({ id: helper.id });
+        const result = await deleteHelperAction({ id: helper.id });
         if (result?.validationErrors || result?.serverError) {
           notifications.show({
             title: "Error",
@@ -66,8 +66,9 @@ export function HelpersTable({ data }: Props) {
 
   return (
     <>
-      <HelperModal opened={addOpened} onClose={closeAdd} />
+      <HelperModal key={`helper-add-${addOpened}`} opened={addOpened} onClose={closeAdd} />
       <HelperModal
+        key={`helper-edit-${editHelper?.id ?? "none"}-${!!editHelper}`}
         opened={!!editHelper}
         onClose={() => setEditHelper(null)}
         helper={editHelper}

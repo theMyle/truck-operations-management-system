@@ -1,3 +1,5 @@
+"use server";
+
 import { insertTruckSchema, updateTruckSchema } from "@/lib/db/schema";
 import { truckRepository } from "@/lib/repositories/truck.repository";
 import { actionClient } from "@/lib/safe-action";

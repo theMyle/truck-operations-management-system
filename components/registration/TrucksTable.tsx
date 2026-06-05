@@ -9,7 +9,7 @@ import { useDisclosure } from "@mantine/hooks";
 import { modals } from "@mantine/modals";
 import { notifications } from "@mantine/notifications";
 import type { Truck } from "@/lib/db/schema/trucks";
-import { deleteTruck } from "@/actions/registration";
+import { deleteTruckAction } from "@/actions/trucks";
 import { TableHeader } from "./TableHeader";
 import { TruckModal } from "./TruckModal";
 
@@ -55,7 +55,7 @@ export function TrucksTable({ data }: Props) {
       labels: { confirm: "Delete", cancel: "Cancel" },
       confirmProps: { color: "red" },
       onConfirm: async () => {
-        const result = await deleteTruck({ plateNumber: truck.plateNumber });
+        const result = await deleteTruckAction({ plateNumber: truck.plateNumber });
         if (result?.validationErrors || result?.serverError) {
           notifications.show({
             title: "Error",
@@ -75,8 +75,9 @@ export function TrucksTable({ data }: Props) {
 
   return (
     <>
-      <TruckModal opened={addOpened} onClose={closeAdd} />
+      <TruckModal key={`truck-add-${addOpened}`} opened={addOpened} onClose={closeAdd} />
       <TruckModal
+        key={`truck-edit-${editTruck?.plateNumber ?? "none"}-${!!editTruck}`}
         opened={!!editTruck}
         onClose={() => setEditTruck(null)}
         truck={editTruck}
@@ -181,9 +182,9 @@ export function TrucksTable({ data }: Props) {
               render: (row) =>
                 row.rate
                   ? `₱ ${Number(row.rate).toLocaleString(undefined, {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2,
-                    })}`
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}`
                   : "-",
             },
             {

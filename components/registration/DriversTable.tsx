@@ -2,14 +2,14 @@
 
 import { useState } from "react";
 import { Box, Text } from "@mantine/core";
-import { IconUser, IconEye } from "@tabler/icons-react";
+import { IconUser } from "@tabler/icons-react";
 import { TableRowActions } from "../TableRowActions";
 import { DataTable } from "mantine-datatable";
 import { useDisclosure } from "@mantine/hooks";
 import { modals } from "@mantine/modals";
 import { notifications } from "@mantine/notifications";
 import type { Driver } from "@/lib/db/schema/drivers";
-import { deleteDriver } from "@/actions/registration";
+import { deleteDriverAction } from "@/actions/drivers";
 import { TableHeader } from "./TableHeader";
 import { DriverModal } from "./DriverModal";
 import { ViewDriverModal } from "./ViewDriverModal";
@@ -46,7 +46,7 @@ export function DriversTable({ data }: Props) {
       labels: { confirm: "Delete", cancel: "Cancel" },
       confirmProps: { color: "red" },
       onConfirm: async () => {
-        const result = await deleteDriver({ id: driver.id });
+        const result = await deleteDriverAction({ id: driver.id });
         if (result?.validationErrors || result?.serverError) {
           notifications.show({
             title: "Error",
@@ -66,8 +66,9 @@ export function DriversTable({ data }: Props) {
 
   return (
     <>
-      <DriverModal opened={addOpened} onClose={closeAdd} />
+      <DriverModal key={`driver-add-${addOpened}`} opened={addOpened} onClose={closeAdd} />
       <DriverModal
+        key={`driver-edit-${editDriver?.id ?? "none"}-${!!editDriver}`}
         opened={!!editDriver}
         onClose={() => setEditDriver(null)}
         driver={editDriver}

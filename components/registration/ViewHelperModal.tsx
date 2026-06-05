@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Modal, Stack, Group, SimpleGrid, Title, Text, Image, Paper, Box, ThemeIcon, Divider } from "@mantine/core";
+import { Modal, Stack, Group, SimpleGrid, Text, Image, Paper, Box, ThemeIcon, Divider } from "@mantine/core";
 import { IconHelmet, IconPhone, IconAlertCircle, IconMapPin, IconId, IconEye } from "@tabler/icons-react";
 import type { Helper } from "@/lib/db/schema/helpers";
 

@@ -38,8 +38,11 @@ import { LocationSearch } from "@/components/dispatch/LocationSearch";
 import { CardHeader } from "@/components/dispatch/CardHeader";
 import { ReviewModal } from "@/components/dispatch/ReviewModal";
 import { TimePickerInput } from "@/components/dispatch/TimePickerInput";
-import { getClients, getDrivers, getHelpers, getTrucks } from "@/actions/fetch";
-import { ClientWithRoutes, Driver, Helper, Truck } from "@/lib/db/schema";
+import { Client, Driver, Helper, Truck } from "@/lib/db/schema";
+import { getTruckAction } from "@/actions/trucks";
+import { getClientAction } from "@/actions/clients";
+import { getDriverAction } from "@/actions/drivers";
+import { getHelperAction } from "@/actions/helpers";
 
 interface DropOff {
   id: number;
@@ -54,11 +57,11 @@ export default function DispatchPage() {
 
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [helpers, setHelpers] = useState<Helper[]>([]);
-  const [clients, setClients] = useState<ClientWithRoutes[]>([]);
+  const [clients, setClients] = useState<Client[]>([]);
   const [trucks, setTrucks] = useState<Truck[]>([]);
 
   // client
-  const [selectedClient, setSelectedClient] = useState<ClientWithRoutes | null>(null);
+  const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [clientRate, setClientRate] = useState<string>("");
 
   // truck & trucker
@@ -95,10 +98,10 @@ export default function DispatchPage() {
   useEffect(() => {
     async function fetchDispatchersData() {
       const [trucks, clients, drivers, helpers] = await Promise.all([
-        getTrucks(),
-        getClients(),
-        getDrivers(),
-        getHelpers()
+        getTruckAction(),
+        getClientAction(),
+        getDriverAction(),
+        getHelperAction(),
       ]);
 
       if (trucks.data) setTrucks(trucks.data);
@@ -420,7 +423,6 @@ export default function DispatchPage() {
                       label="Ruta"
                       placeholder="Select Existing Route"
                       styles={inputStyles}
-                      data={selectedClient?.routes.map(route => route.route)}
                       value={ruta}
                       onChange={(value) => {
                         setRuta(value);
