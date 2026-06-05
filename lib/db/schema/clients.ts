@@ -24,7 +24,6 @@ export const clientRoutes = pgTable("client_routes", {
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
-
 export const clientsRelations = relations(clients, ({ many }) => ({
   routes: many(clientRoutes),
 }));

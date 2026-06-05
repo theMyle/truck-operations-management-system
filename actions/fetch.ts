@@ -1,7 +1,7 @@
 "use server"
 
 import { db } from "@/lib/db";
-import { clientRoutes, clients, drivers, helpers, trucks } from "@/lib/db/schema";
+import { clientRoutes, drivers, helpers, trucks } from "@/lib/db/schema";
 import { actionClient } from "@/lib/safe-action";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
