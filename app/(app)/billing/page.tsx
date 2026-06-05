@@ -38,7 +38,6 @@ import {
   IconAdjustmentsHorizontal,
   IconX,
 } from "@tabler/icons-react";
-import Image from "next/image";
 
 import { useDispatch } from "../context/dispatch-context";
 import { DispatchRecord } from "../constant";
@@ -48,6 +47,8 @@ import { SummaryCard } from "@/components/billing/SummaryCard";
 export type BillingRecord = DispatchRecord & {
   tripRate?: string | number;
   podFile?: string | null;
+  podFileUrl?: string | null;
+  podFileType?: string | null;
 };
 
 export interface BillingFilters {
@@ -118,7 +119,7 @@ function PodCell({
   onView,
 }: {
   record: BillingRecord;
-  onView: (file: string) => void;
+  onView: (record: BillingRecord) => void;
 }) {
   if (!record.podFile) {
     return (
@@ -133,7 +134,7 @@ function PodCell({
   return (
     <Box
       component="button"
-      onClick={() => onView(record.podFile!)}
+      onClick={() => onView(record)}
       style={{
         fontSize: "10px",
         fontWeight: 700,
@@ -172,13 +173,19 @@ export default function BillingModule() {
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
   const [fleetFilter, setFleetFilter] = useState<string | null>(null);
   const [page, setPage] = useState(1);
-  const [podPreview, setPodPreview] = useState<string | null>(null);
+  const [podPreview, setPodPreview] = useState<BillingRecord | null>(null);
   const [imgError, setImgError] = useState(false);
+  const podPreviewFile = podPreview?.podFile ?? null;
+  const podPreviewSrc = podPreview?.podFileUrl
+    ? podPreview.podFileUrl
+    : podPreviewFile
+      ? `/uploads/pods/${podPreviewFile}`
+      : "";
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setImgError(false);
-  }, [podPreview]);
+  }, [podPreviewFile, podPreviewSrc]);
 
   useEffect(() => {
     startTransition(() => setPage(1));
@@ -396,7 +403,7 @@ export default function BillingModule() {
           <Group gap={8}>
             <IconFileInvoice size={16} color="var(--mantine-color-blue-6)" />
             <Text fw={700} size="sm">
-              {podPreview}
+              {podPreviewFile}
             </Text>
           </Group>
         }
@@ -414,12 +421,11 @@ export default function BillingModule() {
             </Text>
           </Stack>
         ) : (
-          <Image
-            src={`/uploads/pods/${podPreview}`}
-            alt={podPreview ?? "POD"}
+          <Box
+            component="img"
+            src={podPreviewSrc}
+            alt={podPreviewFile ?? "POD"}
             onError={() => setImgError(true)}
-            width={800}
-            height={600}
             style={{
               maxWidth: "100%",
               maxHeight: "70vh",

@@ -5,6 +5,8 @@ export interface DispatchRecord {
   client: string;
   trucker?: string;
   podFile?: string | null;
+  podFileUrl?: string | null;
+  podFileType?: string | null;
   driver: string;
   helper: string;
   unit: string;

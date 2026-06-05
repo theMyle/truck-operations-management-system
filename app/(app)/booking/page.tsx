@@ -200,6 +200,7 @@ export default function BookingRecordsPage() {
       />
 
       <TripDetailsModal
+        key={tripRecord?.id ?? "trip-details-modal"}
         opened={tripOpened}
         onClose={() => setTripOpened(false)}
         record={tripRecord}

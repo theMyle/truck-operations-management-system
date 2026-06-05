@@ -49,6 +49,7 @@ export interface PodRecord {
   id: number;
   bookingDr: string;
   podFile?: string | null;
+  podFileUrl?: string | null;
 }
 
 export interface DownloadOptions {
@@ -133,7 +134,7 @@ async function downloadClientSide(
   for (let i = 0; i < records.length; i++) {
     const record = records[i];
     const filename = record.podFile!;
-    const url = `${POD_BASE_URL}/${filename}`;
+    const url = record.podFileUrl || `${POD_BASE_URL}/${filename}`;
 
     const response = await fetch(url);
     if (!response.ok) {
