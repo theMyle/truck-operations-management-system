@@ -389,10 +389,10 @@ export function ReviewModal({
                 value={`₱${collectionAmount.toLocaleString("en-PH", { minimumFractionDigits: 2 })}`}
               />
             )}
-            {form.naibalikNaSukli && (
+            {form.cashOnHandReturned && (
               <ReviewRow
                 label="Naibalik na Sukli"
-                value={`₱${Number(form.naibalikNaSukli).toLocaleString("en-PH", { minimumFractionDigits: 2 })} → ${form.kanino || "—"}`}
+                value={`₱${Number(form.cashOnHandReturned).toLocaleString("en-PH", { minimumFractionDigits: 2 })} → ${form.kanino || "—"}`}
               />
             )}
             {form.autoCA && (
