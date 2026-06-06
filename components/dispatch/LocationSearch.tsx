@@ -12,13 +12,13 @@ export function LocationSearch({
 }: {
   label: string;
   placeholder: string;
-  value: string;
-  onChange: (val: string) => void;
-  error?: string;
+  value?: string;
+  onChange?: (val: string) => void;
+  error?: React.ReactNode;
   leftSection?: React.ReactNode;
   rightAction?: React.ReactNode;
 }) {
-  const [query, setQuery] = useState(value);
+  const [query, setQuery] = useState(value ?? "");
   const [suggestions, setSuggestions] = useState<{ display_name: string }[]>(
     [],
   );
@@ -27,7 +27,7 @@ export function LocationSearch({
 
   const search = (q: string) => {
     setQuery(q);
-    onChange(q); // keep parent in sync as user types
+    onChange?.(q); // keep parent in sync as user types
     if (debounceRef.current) clearTimeout(debounceRef.current);
     if (q.trim().length < 3) {
       setSuggestions([]);
@@ -53,7 +53,7 @@ export function LocationSearch({
 
   const select = (display_name: string) => {
     setQuery(display_name);
-    onChange(display_name);
+    onChange?.(display_name);
     setSuggestions([]);
   };
 
