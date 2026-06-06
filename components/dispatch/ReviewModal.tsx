@@ -1,6 +1,6 @@
 import { Modal, Group, ScrollArea, Stack, Box, Paper, Divider, Button, Text, Table } from "@mantine/core";
 import { IconEye, IconEdit, IconCheck } from "@tabler/icons-react";
-import { FormValues } from "@/types/dispatch";
+import { DispatchFormValues } from "@/types/dispatch";
 import { Truck, Helper } from "@/lib/db/schema";
 
 export function ReviewModal({
@@ -15,7 +15,7 @@ export function ReviewModal({
   onClose: () => void;
   onConfirm: () => void;
   onEdit: () => void;
-  values: FormValues;
+  values: DispatchFormValues;
   selectedTruck: Truck | null;
 }) {
   const formatDate = (date: Date | null): string => {

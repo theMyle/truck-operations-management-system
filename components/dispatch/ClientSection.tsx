@@ -3,7 +3,7 @@
 import { Grid, Stack, Select, NumberInput, Autocomplete, Divider } from "@mantine/core";
 import { UseFormReturnType } from "@mantine/form";
 import { Client } from "@/lib/db/schema";
-import { FormValues } from "@/types/dispatch";
+import { DispatchFormValues } from "@/types/dispatch";
 import { inputStyles } from "@/app/(app)/dispatch/page";
 
 export function ClientSection({
@@ -11,7 +11,7 @@ export function ClientSection({
   clients,
   selectedClient,
 }: {
-  form: UseFormReturnType<FormValues>;
+  form: UseFormReturnType<DispatchFormValues>;
   clients: Client[];
   selectedClient: Client | null;
 }) {

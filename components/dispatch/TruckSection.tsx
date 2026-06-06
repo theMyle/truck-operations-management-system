@@ -3,7 +3,7 @@
 import { SimpleGrid, Select, TextInput, Divider } from "@mantine/core";
 import { UseFormReturnType } from "@mantine/form";
 import { Truck } from "@/lib/db/schema";
-import { FormValues } from "@/types/dispatch";
+import { DispatchFormValues } from "@/types/dispatch";
 import { inputStyles } from "@/app/(app)/dispatch/page";
 
 export function TruckSection({
@@ -11,7 +11,7 @@ export function TruckSection({
   trucks,
   selectedTruck,
 }: {
-  form: UseFormReturnType<FormValues>;
+  form: UseFormReturnType<DispatchFormValues>;
   trucks: Truck[];
   selectedTruck: Truck | null;
 }) {

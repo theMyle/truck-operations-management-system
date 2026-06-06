@@ -1,21 +1,20 @@
-import { type DateValue } from "@mantine/dates";
 import { Helper } from "@/lib/db/schema";
 
-export interface DropOff {
+interface DropOff {
   id: number;
   location: string;
   contactPerson: string;
   contactNo: string;
 }
 
-export interface FormValues {
+export interface DispatchFormValues {
   clientName: string;
   clientRate: string;
   ruta: string;
   pickupLocation: string;
   bookingDr: string;
   noOfDrops: string | number;
-  pickupDate: DateValue | null;
+  pickupDate: Date | null;
   pickupTime: string;
   dropOffs: DropOff[];
   plateNo: string;

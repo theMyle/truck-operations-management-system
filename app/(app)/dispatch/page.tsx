@@ -29,7 +29,7 @@ import { LocationSection } from "@/components/dispatch/LocationSection";
 import { TruckSection } from "@/components/dispatch/TruckSection";
 import { PersonnelSection } from "@/components/dispatch/PersonnelSection";
 
-import { DropOff, FormValues } from "@/types/dispatch";
+import { DispatchFormValues } from "@/types/dispatch";
 import { getTruckAction } from "@/lib/actions/trucks";
 import { getClientAction } from "@/lib/actions/clients";
 import { getDriverAction } from "@/lib/actions/drivers";
@@ -60,21 +60,23 @@ export default function DispatchPage() {
 
   const [reviewOpened, setReviewOpened] = useState(false);
 
-  const form = useForm<FormValues>({
+  const form = useForm<DispatchFormValues>({
     initialValues: {
       clientName: "",
       clientRate: "",
       ruta: "",
       pickupLocation: "",
       bookingDr: "",
-      noOfDrops: "" as string | number,
-      pickupDate: null as DateValue | null,
+      noOfDrops: "",
+      pickupDate: null,
       pickupTime: "",
-      dropOffs: [{ id: Date.now(), location: "", contactPerson: "", contactNo: "" }] as DropOff[],
+      dropOffs: [
+        { id: Date.now(), location: "", contactPerson: "", contactNo: "" }
+      ],
       plateNo: "",
       truckerRate: "",
       driverName: "",
-      helpers: [] as Helper[],
+      helpers: [],
     },
     validate: {
       clientName: (value) => (!value ? "Client is required" : null),
