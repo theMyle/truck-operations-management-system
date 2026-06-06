@@ -2,7 +2,7 @@
 
 import { Grid, Stack, Select, NumberInput, Autocomplete, Divider } from "@mantine/core";
 import { UseFormReturnType } from "@mantine/form";
-import { ClientWithRoutes } from "@/lib/db/schema";
+import { Client } from "@/lib/db/schema";
 import { FormValues } from "@/types/dispatch";
 import { inputStyles } from "@/app/(app)/dispatch/page";
 
@@ -12,8 +12,8 @@ export function ClientSection({
   selectedClient,
 }: {
   form: UseFormReturnType<FormValues>;
-  clients: ClientWithRoutes[];
-  selectedClient: ClientWithRoutes | null;
+  clients: Client[];
+  selectedClient: Client | null;
 }) {
   return (
     <>
@@ -59,7 +59,7 @@ export function ClientSection({
               label="Ruta"
               placeholder="Select Existing Route"
               styles={inputStyles}
-              data={selectedClient?.routes.map((route) => route.route) || []}
+              // data={selectedClient?.routes.map((route) => route.route) || []}
               disabled={!form.values.clientName}
               {...form.getInputProps("ruta")}
             />

@@ -23,14 +23,17 @@ import {
 import "@mantine/dates/styles.css";
 import { CardHeader } from "@/components/dispatch/CardHeader";
 import { ReviewModal } from "@/components/dispatch/ReviewModal";
-import { getClients, getDrivers, getHelpers, getTrucks } from "@/actions/fetch";
-import { ClientWithRoutes, Driver, Helper, Truck } from "@/lib/db/schema";
+import { Client, Driver, Helper, Truck } from "@/lib/db/schema";
 import { ClientSection } from "@/components/dispatch/ClientSection";
 import { LocationSection } from "@/components/dispatch/LocationSection";
 import { TruckSection } from "@/components/dispatch/TruckSection";
 import { PersonnelSection } from "@/components/dispatch/PersonnelSection";
 
 import { DropOff, FormValues } from "@/types/dispatch";
+import { getTruckAction } from "@/lib/actions/trucks";
+import { getClientAction } from "@/lib/actions/clients";
+import { getDriverAction } from "@/lib/actions/drivers";
+import { getHelperAction } from "@/lib/actions/helpers";
 
 export const inputStyles = {
   label: {
@@ -110,10 +113,10 @@ export default function DispatchPage() {
   useEffect(() => {
     async function fetchDispatchersData() {
       const [trucksRes, clientsRes, driversRes, helpersRes] = await Promise.all([
-        getTrucks(),
-        getClients(),
-        getDrivers(),
-        getHelpers()
+        getTruckAction(),
+        getClientAction(),
+        getDriverAction(),
+        getHelperAction(),
       ]);
 
       if (trucksRes.data) setTrucks(trucksRes.data);
