@@ -213,14 +213,14 @@ function PodUploadField({
           py={5}
           style={{
             borderRadius: 999,
-            background: "var(--mantine-color-violet-0)",
-            border: "1px solid var(--mantine-color-violet-1)",
+            background: "var(--mantine-color-blue-0)",
+            border: "1px solid var(--mantine-color-blue-1)",
           }}
         >
           <Group gap={6} wrap="nowrap" style={{ minWidth: 0 }}>
             <IconFileDescription
               size={13}
-              color="var(--mantine-color-violet-6)"
+              color="var(--mantine-color-blue-6)"
             />
             <Text
               style={{
@@ -239,7 +239,7 @@ function PodUploadField({
             <ActionIcon
               size="sm"
               radius="xl"
-              color="violet"
+              color="blue"
               variant="filled"
               aria-label="Remove POD file"
               onClick={(event) => {

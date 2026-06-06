@@ -210,7 +210,7 @@ export function OdoModal({
           fuelAmount: "",
           fuelPayment: "",
           collectionFromCustomer: "",
-          naibalikNaSukli: "",
+          cashOnHandReturned: "",
           kanino: "",
           autoCA: "",
         }));
@@ -221,7 +221,7 @@ export function OdoModal({
             "rfidLoad",
             "fuelAmount",
             "collectionFromCustomer",
-            "naibalikNaSukli",
+            "cashOnHandReturned",
           ].forEach((k) => delete next[k]);
           return next;
         });
