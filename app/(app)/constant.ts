@@ -1,5 +1,5 @@
 export interface DispatchRecord {
-  id: number;
+  id: number | string;
   date: string;
   pickUpTime?: string;
   client: string;

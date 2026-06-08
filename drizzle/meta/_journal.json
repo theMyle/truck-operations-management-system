@@ -15,6 +15,13 @@
       "when": 1780913929385,
       "tag": "0001_even_goliath",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1780918904214,
+      "tag": "0002_glorious_quentin_quire",
+      "breakpoints": true
     }
   ]
 }

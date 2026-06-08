@@ -9,13 +9,27 @@ import IBookingRepository from "./booking.repository.interface";
 export const makeBookingRepository = (database = db): IBookingRepository => {
     return {
 
-        getAll: function (): Promise<BookingWithRelations[]> {
-            throw new Error("Function not implemented.");
+        getAll: async function (): Promise<BookingWithRelations[]> {
+            const bookings = await database.query.booking.findMany({
+                with: {
+                    drops: true,
+                    helpers: {
+                        with: {
+                            helper: true,
+                        },
+                    },
+                },
+            });
+
+            return bookings.map((b) => ({
+                ...b,
+                helpers: b.helpers.map((h) => h.helper),
+            }));
         },
 
         add: async function (
             bookingData: NewBooking,
-            drops?: NewBookingDrop[],
+            drops?: Omit<NewBookingDrop, "bookingId">[],
             helperIds?: string[]
         ): Promise<BookingWithRelations> {
             return await database.transaction(async (tx) => {
@@ -55,7 +69,11 @@ export const makeBookingRepository = (database = db): IBookingRepository => {
                     where: eq(booking.id, newBooking.id),
                     with: {
                         drops: true,
-                        helpers: true,
+                        helpers: {
+                            with: {
+                                helper: true,
+                            },
+                        },
                     },
                 });
 
@@ -63,8 +81,10 @@ export const makeBookingRepository = (database = db): IBookingRepository => {
                     throw new Error("Failed to retrieve created booking with relations from current schema targets.");
                 }
 
-                console.log("✅ TRANSACTION SUCCESSFUL! Saved Entity:", fullBooking.id);
-                return fullBooking;
+                return {
+                    ...fullBooking,
+                    helpers: fullBooking.helpers.map((h) => h.helper),
+                };
             });
         },
 

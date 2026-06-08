@@ -15,3 +15,13 @@ export const createBookingAction = actionClient
             console.log(error);
         }
     })
+
+export const getAllBookingAction = actionClient
+    .action(async () => {
+        try {
+            const bookings = await bookingRepository.getAll();
+            return bookings;
+        } catch (error) {
+            console.log(error);
+        }
+    });

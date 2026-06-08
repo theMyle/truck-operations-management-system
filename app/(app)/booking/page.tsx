@@ -37,6 +37,7 @@ import { DeleteModal } from "@/components/booking/DeleteModal";
 import { useDispatchExport } from "@/app/hooks/useDispatchExport ";
 import { useDispatchPrint } from "@/app/hooks/useDispatchPrint";
 import { TableRowActions } from "@/components/TableRowActions";
+import { getAllBookingAction } from "@/lib/actions/booking";
 
 /* ── Status badge helper ── */
 const statusColor: Record<DispatchRecord["status"], string> = {
@@ -68,11 +69,9 @@ const COLUMNS = [
 
 export default function BookingRecordsPage() {
   const router = useRouter();
-  const {
-    bookingRecords: records,
-    updateBookingRecord,
-    deleteBookingRecord,
-  } = useDispatch();
+  const { setEditingRecord } = useDispatch();
+  const [records, setRecords] = useState<DispatchRecord[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState("");
 
   const [viewRecord, setViewRecord] = useState<DispatchRecord | null>(null);
@@ -91,7 +90,38 @@ export default function BookingRecordsPage() {
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 10;
 
-  const { setEditingRecord } = useDispatch();
+  useEffect(() => {
+    async function loadBookings() {
+      const res = await getAllBookingAction();
+      if (res?.data) {
+        const mapped = res.data.map((b) => ({
+          id: b.id,
+          date: b.pickupDate,
+          pickUpTime: b.pickupTime,
+          client: b.clientName,
+          trucker: b.trucker,
+          driver: b.driverName,
+          helper: b.helpers.map((h) => h.helperName).join(", ") || "No Helper",
+          unit: b.fleetType,
+          plateNo: b.plateNumber,
+          totalKM: 0,
+          ruta: b.ruta,
+          bookingDr: b.bookingDRNo,
+          pickLocation: b.pickupLocation,
+          dropOffLocation: b.drops.map((d) => d.locationName).join(", ") || "—",
+          noOfDrops: b.numberOfDrops,
+          tripRate: b.clientRate,
+          bookedBy: b.bookedBy,
+          status: (b.deliveryStatus as any) || "Pending",
+          deliveryStatus: b.deliveryStatus || "Pending",
+          tripRemarks: b.tripRemarks || undefined,
+        }));
+        setRecords(mapped);
+      }
+      setIsLoading(false);
+    }
+    loadBookings();
+  }, []);
 
   /* ── Search filter (searches across all string fields) ── */
   const filtered = useMemo(() => {
@@ -133,7 +163,7 @@ export default function BookingRecordsPage() {
 
   const handleDeleteConfirm = () => {
     if (!deleteRecord) return;
-    deleteBookingRecord(deleteRecord.id);
+    setRecords((prev) => prev.filter((r) => r.id !== deleteRecord.id));
     setDeleteOpened(false);
     setDeleteRecord(null);
     notifications.show({
@@ -149,8 +179,17 @@ export default function BookingRecordsPage() {
     setTripOpened(true);
   };
 
-  const handleTripSave = (id: number, details: Partial<DispatchRecord>) => {
-    updateBookingRecord(id, details);
+  const handleTripSave = (id: string | number, details: Partial<DispatchRecord>) => {
+    setRecords((prev) => {
+      const updated = prev.map((r) => (r.id === id ? { ...r, ...details } : r));
+      const completed = updated.find(
+        (r) => r.id === id && r.deliveryStatus === "Completed",
+      );
+      if (completed) {
+        return updated.filter((r) => r.id !== id);
+      }
+      return updated;
+    });
     const isCompleted = details.deliveryStatus === "Completed";
     notifications.show({
       title: isCompleted ? "Trip completed" : "Trip details saved",
@@ -183,6 +222,8 @@ export default function BookingRecordsPage() {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setPage(1);
   }, [search, statusFilter]);
+
+  if (isLoading) return null;
 
   return (
     <>

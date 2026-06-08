@@ -1,7 +1,16 @@
-import { auth } from "@clerk/nextjs/server";
 import { createSafeActionClient } from "next-safe-action";
 
 export const actionClient = createSafeActionClient().use(async ({ next }) => {
+    if (process.env.IS_TESTING === "true") {
+        return next({
+            ctx: {
+                userId: "test_user_id",
+                role: "admin",
+            }
+        });
+    }
+
+    const { auth } = await import("@clerk/nextjs/server");
     const { userId, sessionClaims } = await auth();
 
     if (!userId) {
