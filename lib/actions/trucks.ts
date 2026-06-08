@@ -23,6 +23,7 @@ export const updateTruckAction = actionClient
         const { plateNumber, ...updateData } = parsedInput
         const updated = await truckRepository.update(plateNumber, updateData);
         revalidatePath("/registration");
+        revalidatePath("/dashboard")
         return updated;
     });
 
@@ -31,6 +32,7 @@ export const createTruckAction = actionClient
     .action(async ({ parsedInput }) => {
         const newTruck = await truckRepository.add(parsedInput);
         revalidatePath("/registration");
+        revalidatePath("/dashboard")
         return { success: true, data: newTruck };
     });
 

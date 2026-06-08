@@ -11,7 +11,7 @@ import { z } from "zod";
 
 export const truckStatusEnum = pgEnum("truck_status", [
   "available",
-  "maintenance",
+  "maintenance",  
   "on trip",
   "unavailable",
 ]);
