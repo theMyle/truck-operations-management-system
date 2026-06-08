@@ -6,7 +6,7 @@ export default interface IBookingRepository {
 
     add(
         booking: NewBooking,
-        drops?: NewBookingDrop[],
+        drops?: Omit<NewBookingDrop, "bookingId">[],
         helperIds?: string[]
     ): Promise<BookingWithRelations>,
 

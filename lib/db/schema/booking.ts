@@ -1,4 +1,4 @@
-import { decimal, pgTable, text, uuid, timestamp, date, integer } from "drizzle-orm/pg-core";
+import { decimal, pgTable, text, uuid, timestamp, date, integer, time } from "drizzle-orm/pg-core";
 import { clients } from "./clients";
 import { trucks } from "./trucks";
 import { drivers } from "./drivers";
@@ -16,19 +16,22 @@ export const booking = pgTable("booking", {
     ruta: text('ruta').notNull(),
     clientRate: decimal('clientRate').notNull(),
 
-    pickupDate: date('pickupDate').notNull(),
+    pickupDate: date('pickupDate', { mode: 'string' }).notNull(),
+    pickupTime: text('pickupTime').notNull(),
     pickupLocation: text('pickupLocation').notNull(),
     bookingDRNo: text('bookingDRNo').notNull(),
     numberOfDrops: integer('numberOfDrops').notNull().default(0),
     // drops[] - drops table
 
-    plateNumber: text('plateNumber').references(() => trucks.plateNumber),
-    trucker: text('trucker'),
-    fleetType: text('fleetType'),
-    truckerRate: decimal('truckerRate'),
-    driverId: uuid('driverId').references(() => drivers.id),
-    driverName: text('driverName'),
+    plateNumber: text('plateNumber').notNull().references(() => trucks.plateNumber),
+    trucker: text('trucker').notNull(),
+    fleetType: text('fleetType').notNull(),
+    truckerRate: decimal('truckerRate').notNull(),
+    driverId: uuid('driverId').notNull().references(() => drivers.id),
+    driverName: text('driverName').notNull(),
     // helpers[] - helpers table
+
+    bookedBy: text('bookedBy').notNull(),
 
     // ** Monitoring **
     pickupArrivalTime: timestamp('pickupArrivalTime', {

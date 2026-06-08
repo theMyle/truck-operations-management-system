@@ -5,50 +5,8 @@
     {
       "idx": 0,
       "version": "7",
-      "when": 1780126696812,
-      "tag": "0000_worthless_norman_osborn",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "7",
-      "when": 1780133042394,
-      "tag": "0001_dizzy_gambit",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "7",
-      "when": 1780133156351,
-      "tag": "0002_omniscient_lake",
-      "breakpoints": true
-    },
-    {
-      "idx": 3,
-      "version": "7",
-      "when": 1780318805684,
-      "tag": "0003_wakeful_ares",
-      "breakpoints": true
-    },
-    {
-      "idx": 4,
-      "version": "7",
-      "when": 1780320558544,
-      "tag": "0004_cooing_kate_bishop",
-      "breakpoints": true
-    },
-    {
-      "idx": 5,
-      "version": "7",
-      "when": 1780892837546,
-      "tag": "0005_lethal_white_tiger",
-      "breakpoints": true
-    },
-    {
-      "idx": 6,
-      "version": "7",
-      "when": 1780893324540,
-      "tag": "0006_acoustic_marten_broadcloak",
+      "when": 1780906107138,
+      "tag": "0000_unusual_ogun",
       "breakpoints": true
     }
   ]

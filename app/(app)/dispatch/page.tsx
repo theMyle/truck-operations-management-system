@@ -11,7 +11,6 @@ import {
   ScrollArea,
   Divider,
 } from "@mantine/core";
-import { type DateValue } from "@mantine/dates";
 import { notifications } from "@mantine/notifications";
 import { useState, useEffect } from "react";
 import { useForm } from "@mantine/form";
@@ -34,6 +33,11 @@ import { getTruckAction } from "@/lib/actions/trucks";
 import { getClientAction } from "@/lib/actions/clients";
 import { getDriverAction } from "@/lib/actions/drivers";
 import { getHelperAction } from "@/lib/actions/helpers";
+import { useUser } from "@clerk/nextjs";
+import { toTitleCase } from "@/lib/utils/stringFormat";
+import { createBookingAction } from "@/lib/actions/booking";
+import { CreateBookingInput } from "@/lib/validations/booking";
+import { reschedulePrefetchTask } from "next/dist/client/components/segment-cache/scheduler";
 
 export const inputStyles = {
   label: {
@@ -51,6 +55,9 @@ export const inputStyles = {
 };
 
 export default function DispatchPage() {
+  const { user } = useUser();
+  const userRole = (user?.publicMetadata?.role as string) || "";
+
   const [isLoading, setIsLoading] = useState(true);
 
   const [drivers, setDrivers] = useState<Driver[]>([]);
@@ -132,20 +139,91 @@ export default function DispatchPage() {
   }, []);
 
   const handleOpenReview = () => {
-    const validation = form.validate() as any;
-    if (validation.hasErrors) return;
+    console.log(form.values);
+    form.values.noOfDrops = form.values.dropOffs.length;
+    const validation = form.validate();
+
+    if (validation.hasErrors) {
+      console.log(validation.errors)
+      return
+    };
+
     setReviewOpened(true);
   };
 
-  const handleConfirmSubmit = () => {
+  const handleConfirmSubmit = async () => {
     setReviewOpened(false);
-    notifications.show({
-      title: "Dispatch submitted",
-      message: "The dispatch form was submitted successfully.",
-      color: "green",
-      icon: <IconCheck size={16} />,
+
+    const selectedClient = clients.find((client) =>
+      client.clientName.trim() == form.values.clientName.trim()
+    )!;
+
+    const selectedDriver = drivers.find((driver) =>
+      driver.driverName.trim() == form.values.driverName.trim()
+    )!;
+
+    const selectedTruck = trucks.find((truck) =>
+      truck.plateNumber.trim() == form.values.plateNo.trim()
+    )!;
+
+    const helpers = form.values.helpers.map((helper) => helper.id);
+    const drops = form.values.dropOffs.map((drop) => {
+      return {
+        sequenceNumber: drop.id,
+        locationName: drop.location
+      }
     });
-    form.reset();
+
+    const payload: CreateBookingInput = {
+      bookedBy: userRole,
+      bookingDRNo: form.values.bookingDr,
+      clientId: selectedClient.id,
+      clientName: selectedClient.clientName,
+      clientRate: form.values.clientRate,
+      ruta: form.values.ruta,
+      pickupDate: form.values.pickupDate?.toISOString()!,
+      pickupTime: form.values.pickupTime,
+      pickupLocation: form.values.pickupLocation,
+      driverId: selectedDriver.id,
+      driverName: selectedDriver.driverName,
+      plateNumber: selectedTruck.plateNumber,
+      fleetType: selectedTruck.fleetType!,
+      trucker: selectedTruck.unitType!,
+      truckerRate: form.values.truckerRate,
+      numberOfDrops: form.values.noOfDrops as number,
+      helpers: helpers,
+      drops: drops
+    }
+
+    const result = await createBookingAction(payload);
+
+    if (result.serverError) {
+      console.error("❌ SERVER ERROR DETAILS:", result.serverError);
+      notifications.show({
+        title: "Database Transaction Failed",
+        message: result.serverError,
+        color: "red",
+      });
+      return;
+    }
+
+    if (!result) {
+      notifications.show({
+        title: "Validation Error",
+        message: "Please check your form input fields and try again.",
+        color: "red",
+        icon: <IconX size={16} />,
+      });
+      return;
+    } else {
+      notifications.show({
+        title: "Dispatch submitted",
+        message: "The dispatch form was submitted successfully.",
+        color: "green",
+        icon: <IconCheck size={16} />,
+      });
+      form.reset();
+    }
   };
 
   const handleEditRedirect = () => {
@@ -223,7 +301,6 @@ export default function DispatchPage() {
               <ClientSection
                 form={form}
                 clients={clients}
-                selectedClient={selectedClient}
               />
 
               <LocationSection
@@ -276,7 +353,7 @@ export default function DispatchPage() {
                   fw={700}
                   c="dimmed"
                 >
-                  Booked by: <Badge size="xs" variant="light" color="blue" radius="sm"> Admin </Badge> {/** TODO - user actual username */}
+                  Booked by: <Badge size="xs" variant="light" color="blue" radius="sm"> {toTitleCase(userRole)} </Badge>
                 </Text>
               </Group>
             </Paper>

@@ -9,11 +9,9 @@ import { inputStyles } from "@/app/(app)/dispatch/page";
 export function ClientSection({
   form,
   clients,
-  selectedClient,
 }: {
   form: UseFormReturnType<DispatchFormValues>;
   clients: Client[];
-  selectedClient: Client | null;
 }) {
   return (
     <>

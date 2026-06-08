@@ -1,1 +1,0 @@
-ALTER TABLE "clients" ADD COLUMN "has_fixed_routes" boolean DEFAULT false NOT NULL;

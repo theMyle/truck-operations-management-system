@@ -1,1 +1,0 @@
-ALTER TABLE "trucks" ADD COLUMN "is_subcon" boolean DEFAULT false NOT NULL;

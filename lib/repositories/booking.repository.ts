@@ -29,10 +29,14 @@ export const makeBookingRepository = (database = db): IBookingRepository => {
                         ...drop,
                         bookingId: newBooking.id,
                     }));
-                    await tx
+                    const dropsInsert = await tx
                         .insert(bookingDrops)
                         .values(dropsWithBookingId)
                         .returning();
+
+                    if (!dropsInsert) {
+                        throw new Error("Failed to bulk insert booking drop offs.");
+                    }
                 }
 
                 if (helperIds && helperIds.length > 0) {
@@ -40,10 +44,14 @@ export const makeBookingRepository = (database = db): IBookingRepository => {
                         bookingId: newBooking.id,
                         helperId: helperId,
                     }));
-                    await tx
+                    const helpersInsert = await tx
                         .insert(bookingToHelpers)
                         .values(helperJunctionEntries)
                         .returning();
+
+                    if (!helpersInsert) {
+                        throw new Error("Failed to bulk insert booking helpers.");
+                    }
                 }
 
                 const fullBooking = await tx.query.booking.findFirst({
@@ -57,6 +65,9 @@ export const makeBookingRepository = (database = db): IBookingRepository => {
                 if (!fullBooking) {
                     throw new Error("Failed to retrieve created booking with relations.");
                 }
+
+                console.log("Success!")
+                console.log(fullBooking)
 
                 return fullBooking
             })
