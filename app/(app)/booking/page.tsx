@@ -7,11 +7,9 @@ import {
   Group,
   Paper,
   TextInput,
-  Table,
   Badge,
   ScrollArea,
   Select,
-  Pagination,
   Button,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
@@ -28,6 +26,7 @@ import {
   IconFileTypeXls,
   IconPrinter,
 } from "@tabler/icons-react";
+import { DataTable } from "mantine-datatable";
 import { DispatchRecord } from "../constant";
 
 import { useDispatch } from "../context/dispatch-context";
@@ -41,33 +40,11 @@ import { getAllBookingAction } from "@/lib/actions/booking";
 import { formatTime12Hour } from "@/lib/utils/stringFormat";
 
 /* ── Status badge helper ── */
-const statusColor: Record<DispatchRecord["status"], string> = {
-  Completed: "green",
+const statusColor: Record<string, string> = {
   "In Transit": "blue",
-  Pending: "orange",
+  Completed: "green",
+  Pending: "yellow",
 };
-
-/* ── Table column headers ── */
-const COLUMNS = [
-  { key: "actions", label: "Actions", sticky: true },
-  { key: "id", label: "Booking ID" },
-  { key: "bookingDate", label: "Date Booked" },
-
-  { key: "bookingDRNo", label: "Booking / DR#" },
-  { key: "clientName", label: "Client" },
-  { key: "pickUpDate", label: "Pickup Date" },
-  { key: "pickUpTime", label: "Pickup Time" },
-  { key: "status", label: "Status" },
-  { key: "driverName", label: "Driver" },
-  { key: "trucker", label: "Trucker" },
-  { key: "helper", label: "Helper" },
-  { key: "fleetType", label: "Unit Type" },
-  { key: "plateNo", label: "Plate #" },
-  { key: "ruta", label: "Route" },
-  { key: "pickLocation", label: "Pickup Location" },
-  { key: "dropOffLocation", label: "Drop-off Location" },
-  { key: "bookedBy", label: "Booked By" },
-];
 
 export default function BookingRecordsPage() {
   const router = useRouter();
@@ -207,24 +184,6 @@ export default function BookingRecordsPage() {
         : `Record #${id} updated.`,
       color: isCompleted ? "green" : "blue",
     });
-  };
-
-  const cellStyle: React.CSSProperties = {
-    fontSize: "11px",
-    fontWeight: 600,
-    whiteSpace: "nowrap",
-    padding: "8px 12px",
-  };
-
-  const headerCellStyle: React.CSSProperties = {
-    fontSize: "9px",
-    fontWeight: 800,
-    textTransform: "uppercase",
-    letterSpacing: "0.8px",
-    color: "var(--mantine-color-gray-6)",
-    whiteSpace: "nowrap",
-    padding: "8px 12px",
-    backgroundColor: "var(--mantine-color-gray-0)",
   };
 
   useEffect(() => {
@@ -408,152 +367,168 @@ export default function BookingRecordsPage() {
           </Group>
 
           {/* Table */}
-          <Paper withBorder radius="md" p={0} style={{ overflow: "hidden" }}>
-            <ScrollArea
-              scrollbars="xy"
-              type="always"
-              scrollbarSize={4}
-              mah={500}
-            >
-              <Table
-                striped
-                highlightOnHover
-                withColumnBorders
-                style={{ minWidth: 1800 }}
-              >
-                <Table.Thead>
-                  <Table.Tr>
-                    {/* Actions — fixed width */}
-                    <Table.Th
-                      style={{
-                        ...headerCellStyle,
-                        minWidth: 96,
-                        position: "sticky",
-                        left: 0,
-                        zIndex: 2,
-                        backgroundColor: "var(--mantine-color-gray-1)",
-                        boxShadow: "2px 0 4px rgba(0,0,0,0.06)",
+          <Box style={{ flex: 1 }}>
+            <DataTable
+              height="30rem"
+              withTableBorder={false}
+              borderRadius="md"
+              highlightOnHover
+              noRecordsText="No records found"
+              records={paginated}
+              totalRecords={filtered.length}
+              recordsPerPage={PAGE_SIZE}
+              page={page}
+              onPageChange={setPage}
+              onRowClick={({ record }) => handleRowClick(record)}
+              styles={{
+                header: {
+                  fontSize: "var(--mantine-font-size-xs)",
+                  fontWeight: 700,
+                  textTransform: "uppercase",
+                  letterSpacing: "0.04em",
+                  color: "var(--mantine-color-gray-6)",
+                  background: "var(--mantine-color-gray-0)",
+                },
+                pagination: {
+                  borderTop: "1px solid var(--mantine-color-gray-2)",
+                  background: "var(--mantine-color-gray-0)",
+                  padding: "var(--mantine-spacing-xs) var(--mantine-spacing-md)",
+                },
+              }}
+              columns={[
+                {
+                  accessor: "actions",
+                  title: "Actions",
+                  width: 90,
+                  titleStyle: {
+                    background: "var(--mantine-color-gray-0)",
+                    borderRight: "1px solid var(--mantine-color-gray-2)",
+                  },
+                  cellsStyle: () => ({
+                    background: "white",
+                    borderRight: "1px solid var(--mantine-color-gray-2)",
+                  }),
+                  render: (record) => (
+                    <div onClick={(e) => e.stopPropagation()}>
+                      <TableRowActions
+                        onView={() => handleView(record)}
+                        onEdit={() => handleEdit(record)}
+                        onDelete={() => handleDeleteClick(record)}
+                      />
+                    </div>
+                  ),
+                },
+                {
+                  accessor: "id",
+                  title: "Booking ID",
+                  width: 120,
+                  render: (r) => <Text size="xs" fw={600}>{r.id}</Text>
+                },
+                {
+                  accessor: "bookingDate",
+                  title: "Date Booked",
+                  width: 120,
+                  render: (r) => <Text size="xs" fw={600}>{r.bookingDate || "—"}</Text>
+                },
+                {
+                  accessor: "bookingDRNo",
+                  title: "Booking / DR#",
+                  width: 130,
+                  render: (r) => <Text size="xs" fw={600}>{r.bookingDRNo || "—"}</Text>
+                },
+                {
+                  accessor: "clientName",
+                  title: "Client",
+                  width: 140,
+                  render: (r) => <Text size="xs" fw={600}>{r.clientName || "—"}</Text>
+                },
+                {
+                  accessor: "pickUpDate",
+                  title: "Pickup Date",
+                  width: 120,
+                  render: (r) => <Text size="xs" fw={600}>{r.pickUpDate || "—"}</Text>
+                },
+                {
+                  accessor: "pickUpTime",
+                  title: "Pickup Time",
+                  width: 120,
+                  render: (r) => <Text size="xs" fw={600}>{r.pickUpTime || "—"}</Text>
+                },
+                {
+                  accessor: "status",
+                  title: "Status",
+                  width: 120,
+                  render: (r) => (
+                    <Badge
+                      variant="light"
+                      color={statusColor[r.status]}
+                      radius="md"
+                      styles={{
+                        root: { height: 18 },
+                        label: { fontSize: "9px", fontWeight: 700 },
                       }}
                     >
-                      Actions
-                    </Table.Th>
-                    {COLUMNS.slice(1).map((col) => (
-                      <Table.Th
-                        key={col.key}
-                        style={{ ...headerCellStyle, minWidth: 120 }}
-                      >
-                        {col.label}
-                      </Table.Th>
-                    ))}
-                  </Table.Tr>
-                </Table.Thead>
-                <Table.Tbody>
-                  {filtered.length === 0 ? (
-                    <Table.Tr>
-                      <Table.Td
-                        colSpan={COLUMNS.length}
-                        style={{ textAlign: "center", padding: "32px 0" }}
-                      >
-                        <Stack align="center" gap={6}>
-                          <IconClipboardList
-                            size={28}
-                            color="var(--mantine-color-gray-4)"
-                          />
-                          <Text
-                            style={{ fontSize: "12px" }}
-                            c="dimmed"
-                            fw={500}
-                          >
-                            No records found
-                          </Text>
-                        </Stack>
-                      </Table.Td>
-                    </Table.Tr>
-                  ) : (
-                    paginated.map((record) => (
-                      <Table.Tr
-                        key={record.id}
-                        onClick={() => handleRowClick(record)}
-                        style={{ cursor: "pointer" }}
-                      >
-                        {/* Sticky actions column */}
-                        <Table.Td
-                          style={{
-                            ...cellStyle,
-                            position: "sticky",
-                            left: 0,
-                            zIndex: 1,
-                            backgroundColor: "var(--mantine-color-body)",
-                            boxShadow: "2px 0 4px rgba(0,0,0,0.06)",
-                          }}
-                        >
-                          <TableRowActions
-                            onView={() => handleView(record)}
-                            onEdit={() => handleEdit(record)}
-                            onDelete={() => handleDeleteClick(record)}
-                          />
-                        </Table.Td>
-
-                        {COLUMNS.slice(1).map((col) => {
-                          const val = record[col.key as keyof DispatchRecord];
-                          return (
-                            <Table.Td key={col.key} style={cellStyle}>
-                              {col.key === "status" ? (
-                                <Badge
-                                  variant="light"
-                                  color={statusColor[record.status]}
-                                  radius="md"
-                                  styles={{
-                                    root: { height: 18 },
-                                    label: { fontSize: "9px", fontWeight: 700 },
-                                  }}
-                                >
-                                  {record.status}
-                                </Badge>
-                              ) : (
-                                (val !== undefined && val !== null) ? String(val) : "—"
-                              )}
-                            </Table.Td>
-                          );
-                        })}
-                      </Table.Tr>
-                    ))
-                  )}
-                </Table.Tbody>
-              </Table>
-            </ScrollArea>
-
-            {/* Footer count */}
-            {/* Footer */}
-            <Box
-              px="md"
-              py={8}
-              style={{
-                borderTop: "1px solid var(--mantine-color-gray-2)",
-                backgroundColor: "var(--mantine-color-gray-0)",
-              }}
-            >
-              <Group justify="space-between" align="center">
-                <Text style={{ fontSize: "10px" }} c="dimmed" fw={600}>
-                  Showing{" "}
-                  {Math.min((page - 1) * PAGE_SIZE + 1, filtered.length)} of{" "}
-                  {filtered.length} record
-                  {filtered.length !== 1 ? "s" : ""}
-                  {search ? ` matching "${search}"` : ""}
-                </Text>
-                <Pagination
-                  total={Math.ceil(filtered.length / PAGE_SIZE)}
-                  value={page}
-                  onChange={setPage}
-                  size="xs"
-                  radius="md"
-                  styles={{
-                    control: { fontSize: "10px", height: 24, minWidth: 24 },
-                  }}
-                />
-              </Group>
-            </Box>
-          </Paper>
+                      {r.status}
+                    </Badge>
+                  ),
+                },
+                {
+                  accessor: "driverName",
+                  title: "Driver",
+                  width: 140,
+                  render: (r) => <Text size="xs" fw={600}>{r.driverName || "—"}</Text>
+                },
+                {
+                  accessor: "trucker",
+                  title: "Trucker",
+                  width: 140,
+                  render: (r) => <Text size="xs" fw={600}>{r.trucker || "—"}</Text>
+                },
+                {
+                  accessor: "helper",
+                  title: "Helper",
+                  width: 150,
+                  render: (r) => <Text size="xs" fw={600}>{r.helper || "—"}</Text>
+                },
+                {
+                  accessor: "fleetType",
+                  title: "Unit Type",
+                  width: 120,
+                  render: (r) => <Text size="xs" fw={600}>{r.fleetType || "—"}</Text>
+                },
+                {
+                  accessor: "plateNo",
+                  title: "Plate #",
+                  width: 120,
+                  render: (r) => <Text size="xs" fw={600}>{r.plateNo || "—"}</Text>
+                },
+                {
+                  accessor: "ruta",
+                  title: "Route",
+                  width: 160,
+                  render: (r) => <Text size="xs" fw={600}>{r.ruta || "—"}</Text>
+                },
+                {
+                  accessor: "pickLocation",
+                  title: "Pickup Location",
+                  width: 200,
+                  render: (r) => <Text size="xs" fw={600}>{r.pickLocation || "—"}</Text>
+                },
+                {
+                  accessor: "dropOffLocation",
+                  title: "Drop-off Location",
+                  width: 250,
+                  render: (r) => <Text size="xs" fw={600}>{r.dropOffLocation || "—"}</Text>
+                },
+                {
+                  accessor: "bookedBy",
+                  title: "Booked By",
+                  width: 130,
+                  render: (r) => <Text size="xs" fw={600}>{r.bookedBy || "—"}</Text>
+                },
+              ]}
+            />
+          </Box>
         </Stack>
       </ScrollArea>
     </>
