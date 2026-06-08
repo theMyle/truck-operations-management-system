@@ -50,17 +50,18 @@ const statusColor: Record<DispatchRecord["status"], string> = {
 /* ── Table column headers ── */
 const COLUMNS = [
   { key: "actions", label: "Actions", sticky: true },
-  { key: "id", label: "#" },
-  { key: "date", label: "Date" },
+  { key: "id", label: "Booking ID" },
+  { key: "bookingDate", label: "Date Booked" },
+
+  { key: "bookingDRNo", label: "Booking / DR#" },
+  { key: "clientName", label: "Client" },
+  { key: "pickUpDate", label: "Pickup Date" },
   { key: "pickUpTime", label: "Pickup Time" },
-  { key: "bookingDr", label: "Booking / DR#" },
   { key: "status", label: "Status" },
-  { key: "client", label: "Client" },
-  { key: "driver", label: "Driver" },
+  { key: "driverName", label: "Driver" },
   { key: "trucker", label: "Trucker" },
   { key: "helper", label: "Helper" },
-  { key: "unit", label: "Unit Type" },
-  { key: "totalKM", label: "Total KM" },
+  { key: "fleetType", label: "Unit Type" },
   { key: "plateNo", label: "Plate #" },
   { key: "ruta", label: "Route" },
   { key: "pickLocation", label: "Pickup Location" },
@@ -97,23 +98,30 @@ export default function BookingRecordsPage() {
       if (res?.data) {
         const mapped = res.data.map((b) => ({
           id: b.id,
-          date: b.pickupDate,
+          bookingDate: b.bookingDate,
+          bookingDRNo: b.bookingDRNo,
+          clientName: b.clientName,
+          pickUpDate: b.pickupDate,
           pickUpTime: formatTime12Hour(b.pickupTime),
-          client: b.clientName,
+          driverName: b.driverName,
           trucker: b.trucker,
-          driver: b.driverName,
           helper: b.helpers.map((h) => h.helperName).join(", ") || "No Helper",
-          unit: b.fleetType,
+          fleetType: b.fleetType,
           plateNo: b.plateNumber,
-          totalKM: 0,
           ruta: b.ruta,
-          bookingDr: b.bookingDRNo,
           pickLocation: b.pickupLocation,
           dropOffLocation: b.drops.map((d) => d.locationName).join(", ") || "—",
-          noOfDrops: b.numberOfDrops,
-          tripRate: b.clientRate,
           bookedBy: b.bookedBy,
           status: (b.deliveryStatus as any) || "Pending",
+
+          // legacy compatibility
+          date: b.pickupDate,
+          client: b.clientName,
+          driver: b.driverName,
+          unit: b.fleetType,
+          bookingDr: b.bookingDRNo,
+          noOfDrops: b.numberOfDrops,
+          tripRate: b.clientRate,
           deliveryStatus: b.deliveryStatus || "Pending",
           tripRemarks: b.tripRemarks || undefined,
         }));
@@ -486,51 +494,28 @@ export default function BookingRecordsPage() {
                           />
                         </Table.Td>
 
-                        <Table.Td style={cellStyle}>{record.id}</Table.Td>
-                        <Table.Td style={cellStyle}>{record.date}</Table.Td>
-                        <Table.Td style={cellStyle}>
-                          {record.pickUpTime || "—"}
-                        </Table.Td>
-                        <Table.Td style={cellStyle}>
-                          {record.bookingDr}
-                        </Table.Td>
-                        <Table.Td style={cellStyle}>
-                          <Badge
-                            variant="light"
-                            color={statusColor[record.status]}
-                            radius="md"
-                            styles={{
-                              root: { height: 18 },
-                              label: { fontSize: "9px", fontWeight: 700 },
-                            }}
-                          >
-                            {record.status}
-                          </Badge>
-                        </Table.Td>
-                        <Table.Td style={cellStyle}>{record.client}</Table.Td>
-                        <Table.Td style={cellStyle}>{record.driver}</Table.Td>
-                        <Table.Td style={cellStyle}>{record.trucker}</Table.Td>
-                        <Table.Td style={cellStyle}>{record.helper}</Table.Td>
-                        <Table.Td style={cellStyle}>{record.unit}</Table.Td>
-                        <Table.Td
-                          style={{
-                            ...cellStyle,
-                            color: "var(--mantine-color-blue-7)",
-                          }}
-                        >
-                          {record.totalKM ? `${record.totalKM} km` : "—"}
-                        </Table.Td>
-                        <Table.Td style={cellStyle}>{record.plateNo}</Table.Td>
-                        <Table.Td style={cellStyle}>
-                          {record.pickLocation || "—"}
-                        </Table.Td>
-                        <Table.Td style={cellStyle}>
-                          {record.dropOffLocation || "—"}
-                        </Table.Td>
-                        <Table.Td style={{ ...cellStyle, textAlign: "center" }}>
-                          {record.dropOffLocation || "—"}
-                        </Table.Td>
-                        <Table.Td style={cellStyle}>{record.bookedBy}</Table.Td>
+                        {COLUMNS.slice(1).map((col) => {
+                          const val = record[col.key as keyof DispatchRecord];
+                          return (
+                            <Table.Td key={col.key} style={cellStyle}>
+                              {col.key === "status" ? (
+                                <Badge
+                                  variant="light"
+                                  color={statusColor[record.status]}
+                                  radius="md"
+                                  styles={{
+                                    root: { height: 18 },
+                                    label: { fontSize: "9px", fontWeight: 700 },
+                                  }}
+                                >
+                                  {record.status}
+                                </Badge>
+                              ) : (
+                                (val !== undefined && val !== null) ? String(val) : "—"
+                              )}
+                            </Table.Td>
+                          );
+                        })}
                       </Table.Tr>
                     ))
                   )}
