@@ -8,7 +8,7 @@ interface DropOff {
 }
 
 export interface DispatchFormValues {
-  clientName: string;
+  clientName: string | null;
   clientRate: string;
   ruta: string;
   pickupLocation: string;
@@ -17,8 +17,8 @@ export interface DispatchFormValues {
   pickupDate: Date | null;
   pickupTime: string;
   dropOffs: DropOff[];
-  plateNo: string;
+  plateNo: string | null;
   truckerRate: string;
-  driverName: string;
+  driverName: string | null;
   helpers: Helper[];
 }

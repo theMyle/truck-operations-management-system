@@ -68,7 +68,7 @@ export default function DispatchPage() {
 
   const form = useForm<DispatchFormValues>({
     initialValues: {
-      clientName: "",
+      clientName: null,
       clientRate: "",
       ruta: "",
       pickupLocation: "",
@@ -79,9 +79,9 @@ export default function DispatchPage() {
       dropOffs: [
         { id: Date.now(), location: "", contactPerson: "", contactNo: "" }
       ],
-      plateNo: "",
+      plateNo: null,
       truckerRate: "",
-      driverName: "",
+      driverName: null,
       helpers: [],
     },
     validate: {
@@ -157,15 +157,15 @@ export default function DispatchPage() {
     setReviewOpened(false);
 
     const selectedClient = clients.find((client) =>
-      client.clientName.trim() == form.values.clientName.trim()
+      client.clientName.trim() == form.values.clientName!.trim()
     )!;
 
     const selectedDriver = drivers.find((driver) =>
-      driver.driverName.trim() == form.values.driverName.trim()
+      driver.driverName.trim() == form.values.driverName!.trim()
     )!;
 
     const selectedTruck = trucks.find((truck) =>
-      truck.plateNumber.trim() == form.values.plateNo.trim()
+      truck.plateNumber.trim() == form.values.plateNo!.trim()
     )!;
 
     const helpers = form.values.helpers.map((helper) => helper.id);

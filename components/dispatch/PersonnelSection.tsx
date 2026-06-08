@@ -52,7 +52,6 @@ export function PersonnelSection({
             label="Helper/s"
             placeholder="Add helper"
             searchValue={helperSearch}
-            allowDeselect={false}
             onSearchChange={setHelperSearch}
             data={helpers
               .filter((helper) => !form.values.helpers.some((sh) => sh.id === helper.id))

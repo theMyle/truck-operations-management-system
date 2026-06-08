@@ -25,6 +25,10 @@ export function LocationSearch({
   const [loading, setLoading] = useState(false);
   const debounceRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  React.useEffect(() => {
+    setQuery(value ?? "");
+  }, [value]);
+
   const search = (q: string) => {
     setQuery(q);
     onChange?.(q); // keep parent in sync as user types

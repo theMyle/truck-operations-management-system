@@ -27,12 +27,11 @@ export function TruckSection({
           data={trucks.map((truck) => truck.plateNumber)}
           {...form.getInputProps("plateNo")}
           onChange={(val) => {
-            form.setFieldValue("plateNo", val || "");
+            form.setFieldValue("plateNo", val);
             const truck = trucks.find((t) => t.plateNumber === val) ?? null;
             form.setFieldValue("truckerRate", truck?.rate ?? "");
           }}
           clearable
-          allowDeselect={false}
           searchable
           nothingFoundMessage="No plates found"
           maxDropdownHeight={160}

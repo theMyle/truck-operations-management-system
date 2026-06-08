@@ -26,12 +26,11 @@ export function ClientSection({
               data={clients.map((client) => client.clientName)}
               {...form.getInputProps("clientName")}
               onChange={(val) => {
-                form.setFieldValue("clientName", val || "");
+                form.setFieldValue("clientName", val);
                 const client = clients.find((c) => c.clientName === val) ?? null;
                 form.setFieldValue("clientRate", client?.rate ?? "");
                 form.setFieldValue("ruta", "");
               }}
-              allowDeselect={false}
               styles={inputStyles}
               maxDropdownHeight={160}
               searchable

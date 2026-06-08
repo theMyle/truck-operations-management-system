@@ -38,15 +38,15 @@ export function ReviewModal({
   };
 
   const displayData: Record<string, string> = {
-    client: values.clientName,
+    client: values.clientName ?? "",
     ruta: values.ruta,
     bookingDr: values.bookingDr,
     pickupLocation: values.pickupLocation,
     dropOffs: getDropOffsString(),
     noOfDrops: values.noOfDrops?.toString() || "",
     unit: selectedTruck?.fleetType || "",
-    plateNo: values.plateNo,
-    driver: values.driverName,
+    plateNo: values.plateNo ?? "",
+    driver: values.driverName ?? "",
     helper: values.helpers.map((h: Helper) => h.helperName).join(", "),
     pickupDate: formatDate(values.pickupDate as Date),
   };
