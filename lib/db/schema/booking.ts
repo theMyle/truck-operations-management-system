@@ -12,6 +12,7 @@ import { relations } from "drizzle-orm";
 export const booking = pgTable("booking", {
     // ** Booking **
     id: uuid('id').primaryKey().defaultRandom(),
+    bookingDate: date('bookingDate', { mode: 'string' }).notNull(),
 
     clientId: uuid('clientId').references(() => clients.id).notNull(),
     clientName: text('clientName').notNull(),

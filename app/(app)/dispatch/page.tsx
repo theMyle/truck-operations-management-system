@@ -180,6 +180,7 @@ export default function DispatchPage() {
       });
 
     const payload: CreateBookingInput = {
+      bookingDate: new Date().toISOString().split('T')[0],
       bookedBy: userRole,
       bookingDRNo: form.values.bookingDr,
       clientId: selectedClient.id,

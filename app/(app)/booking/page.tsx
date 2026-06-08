@@ -428,6 +428,7 @@ export default function BookingRecordsPage() {
                   accessor: "bookingDate",
                   title: "Date Booked",
                   width: 120,
+                  render: (r) => <Text size="xs" fw={600}>{r.bookingDate || "—"}</Text>
                 },
                 {
                   accessor: "bookingDRNo",
