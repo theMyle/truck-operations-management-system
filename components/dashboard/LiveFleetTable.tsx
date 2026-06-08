@@ -12,9 +12,9 @@ import { IconSearch, IconX } from "@tabler/icons-react";
 import { CardHeader } from "./CardHeader";
 
 interface Truck {
-  plate: string;
+  plateNumber: string;
   status: string;
-  color: string;
+  color?: string;
 }
 
 interface LiveFleetTableProps {
@@ -25,6 +25,13 @@ interface LiveFleetTableProps {
   onSearchChange: (value: string) => void;
   activeStatus?: string | null;
 }
+
+const STATUS_CONFIG: Record<string, { color: string; label: string }> = {
+  available: { color: "green", label: "Available" },
+  "on trip": { color: "blue", label: "On Trip" },
+  maintenance: { color: "red", label: "Maintenance" },
+  unavailable: { color: "gray", label: "Unavailable" },
+};
 
 export const LiveFleetTable = ({
   trucks,
@@ -50,7 +57,10 @@ export const LiveFleetTable = ({
       title="Live Fleet"
       subtitle={
         <Text style={{ fontSize: "10px" }} c="dimmed">
-          {activeStatus ?? "All Fleet"} | {trucks.length}/{totalCount}
+          {activeStatus
+            ? (STATUS_CONFIG[activeStatus]?.label ?? activeStatus)
+            : "All Fleet"}{" "}
+          | {trucks.length}/{totalCount}
         </Text>
       }
     />
@@ -108,15 +118,15 @@ export const LiveFleetTable = ({
         <Table.Tbody>
           {trucks.length ? (
             trucks.map((truck, idx) => (
-              <Table.Tr key={`${truck.plate}-${idx}`}>
+              <Table.Tr key={`${truck.plateNumber}-${idx}`}>
                 <Table.Td>
                   <Text style={{ fontSize: "11px" }} fw={700} c="gray.8">
-                    {truck.plate}
+                    {truck.plateNumber}
                   </Text>
                 </Table.Td>
                 <Table.Td ta="center">
                   <Badge
-                    color={truck.color}
+                    color={STATUS_CONFIG[truck.status]?.color ?? "gray"}
                     variant="filled"
                     radius="sm"
                     w={90}
@@ -129,7 +139,7 @@ export const LiveFleetTable = ({
                       },
                     }}
                   >
-                    {truck.status}
+                    {STATUS_CONFIG[truck.status]?.label ?? truck.status}
                   </Badge>
                 </Table.Td>
               </Table.Tr>
@@ -137,7 +147,12 @@ export const LiveFleetTable = ({
           ) : (
             <Table.Tr>
               <Table.Td colSpan={2}>
-                <Text ta="center" c="dimmed" style={{ fontSize: "11px" }} py="lg">
+                <Text
+                  ta="center"
+                  c="dimmed"
+                  style={{ fontSize: "11px" }}
+                  py="lg"
+                >
                   No fleet matches current filter
                 </Text>
               </Table.Td>

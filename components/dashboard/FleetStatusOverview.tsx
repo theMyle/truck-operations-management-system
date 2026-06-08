@@ -9,16 +9,17 @@ import {
 } from "@mantine/core";
 import { useState } from "react";
 
-interface FleetStatus {
+export interface FleetStatus {
   label: string;
-  count: number;
-  color: string;
+  displayLabel: string;
+  count?: number;
+  color: string
 }
 
 interface FleetStatusOverviewProps {
   statusData: FleetStatus[];
   onClick?: () => void;
-  onStatusClick?: (status: string) => void;
+  onStatusClick?: (status: string) => void
   active?: boolean;
   activeStatus?: string | null;
   isOpen?: boolean;
@@ -75,14 +76,14 @@ export const FleetStatusOverview = ({
         <Stack gap={4} justify="center" style={{ flex: 1 }}>
           {statusData.map((status) => {
             const isActive = activeStatus === status.label;
-            const isStatusHovered = hoveredStatus === status.label;
+            const isStatusHovered = hoveredStatus === status.displayLabel;
             const statusTooltipLabel = isActive
-              ? `Clear ${status.label.toLowerCase()} fleet filter`
-              : `Open ${status.label.toLowerCase()} fleet`;
+              ? `Clear ${status.displayLabel.toLowerCase()} fleet filter`
+              : `Open ${status.displayLabel.toLowerCase()} fleet`;
 
             return (
               <Tooltip
-                key={status.label}
+                key={status.displayLabel}
                 label={statusTooltipLabel}
                 withArrow
                 position="left"
@@ -96,7 +97,7 @@ export const FleetStatusOverview = ({
                     event.stopPropagation();
                     onStatusClick?.(status.label);
                   }}
-                  onMouseEnter={() => setHoveredStatus(status.label)}
+                  onMouseEnter={() => setHoveredStatus(status.displayLabel)}
                   onMouseLeave={() => setHoveredStatus(null)}
                   w="100%"
                   style={{
@@ -121,7 +122,7 @@ export const FleetStatusOverview = ({
                       fw={700}
                       c={isActive ? `${status.color}.8` : "gray.7"}
                     >
-                      {status.label}
+                      {status.displayLabel}
                     </Text>
                     <Badge
                       color={status.color}
