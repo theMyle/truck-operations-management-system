@@ -40,6 +40,7 @@ export function ViewModal({
         { label: "Helper", value: record.helper },
         { label: "Status", value: record.status },
         { label: "Date", value: record.date },
+        { label: "Time", value: record.pickUpTime },
       ],
     },
   ];

@@ -100,6 +100,7 @@ export default function DispatchPage() {
       bookingDr: (value) => (!value?.trim() ? "Booking / DR# is required" : null),
       noOfDrops: (value) => (!value || Number(value) < 1 ? "At least 1 drop required" : null),
       pickupDate: (value) => (!value ? "Pickup date is required" : null),
+      pickupTime: (value) => (!value ? "Pickup time is required" : null),
       dropOffs: {
         location: (value) => (!value?.trim() ? "Location is required" : null),
       },

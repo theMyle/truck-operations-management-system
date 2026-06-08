@@ -38,6 +38,7 @@ import { useDispatchExport } from "@/app/hooks/useDispatchExport ";
 import { useDispatchPrint } from "@/app/hooks/useDispatchPrint";
 import { TableRowActions } from "@/components/TableRowActions";
 import { getAllBookingAction } from "@/lib/actions/booking";
+import { formatTime12Hour } from "@/lib/utils/stringFormat";
 
 /* ── Status badge helper ── */
 const statusColor: Record<DispatchRecord["status"], string> = {
@@ -97,7 +98,7 @@ export default function BookingRecordsPage() {
         const mapped = res.data.map((b) => ({
           id: b.id,
           date: b.pickupDate,
-          pickUpTime: b.pickupTime,
+          pickUpTime: formatTime12Hour(b.pickupTime),
           client: b.clientName,
           trucker: b.trucker,
           driver: b.driverName,

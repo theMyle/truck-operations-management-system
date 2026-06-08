@@ -2,6 +2,7 @@ import { Modal, Group, ScrollArea, Stack, Box, Paper, Divider, Button, Text, Tab
 import { IconEye, IconEdit, IconCheck } from "@tabler/icons-react";
 import { DispatchFormValues } from "@/types/dispatch";
 import { Truck, Helper } from "@/lib/db/schema";
+import { formatTime12Hour } from "@/lib/utils/stringFormat";
 
 export function ReviewModal({
   opened,
@@ -49,6 +50,7 @@ export function ReviewModal({
     driver: values.driverName ?? "",
     helper: values.helpers.map((h: Helper) => h.helperName).join(", "),
     pickupDate: formatDate(values.pickupDate as Date),
+    pickupTime: formatTime12Hour(values.pickupTime),
   };
 
   const sections = [
@@ -66,6 +68,7 @@ export function ReviewModal({
         { label: "Driver", key: "driver" },
         { label: "Helper", key: "helper" },
         { label: "Pickup Date", key: "pickupDate" },
+        { label: "Pickup Time", key: "pickupTime" },
       ],
     },
   ];
