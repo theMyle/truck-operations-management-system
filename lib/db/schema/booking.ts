@@ -4,8 +4,10 @@ import { trucks } from "./trucks";
 import { drivers } from "./drivers";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import z from "zod";
-import { selectBookingDropSchema } from "./bookingDrops";
+import { bookingDrops, selectBookingDropSchema } from "./bookingDrops";
 import { selectHelperSchema } from "./helpers";
+import { bookingToHelpers } from "./bookingHelpers";
+import { relations } from "drizzle-orm";
 
 export const booking = pgTable("booking", {
     // ** Booking **
@@ -70,3 +72,8 @@ export const bookingWithRelationsSchema = selectBookingSchema.extend({
 export type Booking = z.infer<typeof selectBookingSchema>;
 export type NewBooking = z.infer<typeof insertBookingSchema>;
 export type BookingWithRelations = z.infer<typeof bookingWithRelationsSchema>;
+
+export const bookingRelations = relations(booking, ({ many }) => ({
+    drops: many(bookingDrops),
+    helpers: many(bookingToHelpers),
+}));

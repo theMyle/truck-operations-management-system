@@ -13,8 +13,12 @@ export const makeBookingRepository = (database = db): IBookingRepository => {
             throw new Error("Function not implemented.");
         },
 
-        add: async function (bookingData: NewBooking, drops?: NewBookingDrop[], helperIds?: string[]): Promise<BookingWithRelations> {
-            return database.transaction(async (tx) => {
+        add: async function (
+            bookingData: NewBooking,
+            drops?: NewBookingDrop[],
+            helperIds?: string[]
+        ): Promise<BookingWithRelations> {
+            return await database.transaction(async (tx) => {
                 let [newBooking] = await tx
                     .insert(booking)
                     .values(bookingData)
@@ -25,18 +29,15 @@ export const makeBookingRepository = (database = db): IBookingRepository => {
                 }
 
                 if (drops && drops.length > 0) {
-                    const dropsWithBookingId = drops.map((drop) => ({
-                        ...drop,
+                    const dropsWithBookingId = drops.map((drop, index) => ({
+                        sequenceNumber: index + 1,
+                        locationName: drop.locationName,
                         bookingId: newBooking.id,
                     }));
-                    const dropsInsert = await tx
-                        .insert(bookingDrops)
-                        .values(dropsWithBookingId)
-                        .returning();
 
-                    if (!dropsInsert) {
-                        throw new Error("Failed to bulk insert booking drop offs.");
-                    }
+                    await tx
+                        .insert(bookingDrops)
+                        .values(dropsWithBookingId);
                 }
 
                 if (helperIds && helperIds.length > 0) {
@@ -44,14 +45,10 @@ export const makeBookingRepository = (database = db): IBookingRepository => {
                         bookingId: newBooking.id,
                         helperId: helperId,
                     }));
-                    const helpersInsert = await tx
-                        .insert(bookingToHelpers)
-                        .values(helperJunctionEntries)
-                        .returning();
 
-                    if (!helpersInsert) {
-                        throw new Error("Failed to bulk insert booking helpers.");
-                    }
+                    await tx
+                        .insert(bookingToHelpers)
+                        .values(helperJunctionEntries);
                 }
 
                 const fullBooking = await tx.query.booking.findFirst({
@@ -63,14 +60,12 @@ export const makeBookingRepository = (database = db): IBookingRepository => {
                 });
 
                 if (!fullBooking) {
-                    throw new Error("Failed to retrieve created booking with relations.");
+                    throw new Error("Failed to retrieve created booking with relations from current schema targets.");
                 }
 
-                console.log("Success!")
-                console.log(fullBooking)
-
-                return fullBooking
-            })
+                console.log("✅ TRANSACTION SUCCESSFUL! Saved Entity:", fullBooking.id);
+                return fullBooking;
+            });
         },
 
         update: function (id: string, booking: Partial<NewBooking>, drops?: NewBookingDrop[], helperIds?: string[]): Promise<BookingWithRelations> {

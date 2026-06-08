@@ -8,6 +8,13 @@
       "when": 1780906107138,
       "tag": "0000_unusual_ogun",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1780913929385,
+      "tag": "0001_even_goliath",
+      "breakpoints": true
     }
   ]
 }

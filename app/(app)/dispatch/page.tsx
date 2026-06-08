@@ -37,7 +37,6 @@ import { useUser } from "@clerk/nextjs";
 import { toTitleCase } from "@/lib/utils/stringFormat";
 import { createBookingAction } from "@/lib/actions/booking";
 import { CreateBookingInput } from "@/lib/validations/booking";
-import { reschedulePrefetchTask } from "next/dist/client/components/segment-cache/scheduler";
 
 export const inputStyles = {
   label: {
@@ -140,7 +139,10 @@ export default function DispatchPage() {
 
   const handleOpenReview = () => {
     console.log(form.values);
-    form.values.noOfDrops = form.values.dropOffs.length;
+    form.setFieldValue(
+      "noOfDrops",
+      form.values.dropOffs.filter((drop) => drop.location.trim().length > 0).length,
+    );
     const validation = form.validate();
 
     if (validation.hasErrors) {
@@ -167,12 +169,14 @@ export default function DispatchPage() {
     )!;
 
     const helpers = form.values.helpers.map((helper) => helper.id);
-    const drops = form.values.dropOffs.map((drop) => {
-      return {
-        sequenceNumber: drop.id,
-        locationName: drop.location
-      }
-    });
+    const drops = form.values.dropOffs
+      .filter((drop) => drop.location.trim().length > 0)
+      .map((drop, index) => {
+        return {
+          sequenceNumber: index + 1,
+          locationName: drop.location
+        }
+      });
 
     const payload: CreateBookingInput = {
       bookedBy: userRole,
@@ -197,6 +201,8 @@ export default function DispatchPage() {
 
     const result = await createBookingAction(payload);
 
+    console.log("createBookingAction result", result);
+
     if (result.serverError) {
       console.error("❌ SERVER ERROR DETAILS:", result.serverError);
       notifications.show({
@@ -207,7 +213,7 @@ export default function DispatchPage() {
       return;
     }
 
-    if (!result) {
+    if (result.validationErrors) {
       notifications.show({
         title: "Validation Error",
         message: "Please check your form input fields and try again.",
@@ -215,15 +221,24 @@ export default function DispatchPage() {
         icon: <IconX size={16} />,
       });
       return;
-    } else {
-      notifications.show({
-        title: "Dispatch submitted",
-        message: "The dispatch form was submitted successfully.",
-        color: "green",
-        icon: <IconCheck size={16} />,
-      });
-      form.reset();
     }
+
+    if (!result.data) {
+      notifications.show({
+        title: "Submission failed",
+        message: "The booking action finished without returning saved data.",
+        color: "red",
+      });
+      return;
+    }
+
+    notifications.show({
+      title: "Dispatch submitted",
+      message: "The dispatch form was submitted successfully.",
+      color: "green",
+      icon: <IconCheck size={16} />,
+    });
+    form.reset();
   };
 
   const handleEditRedirect = () => {
