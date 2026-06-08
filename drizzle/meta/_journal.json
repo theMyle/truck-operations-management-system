@@ -36,6 +36,20 @@
       "when": 1780320558544,
       "tag": "0004_cooing_kate_bishop",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1780892837546,
+      "tag": "0005_lethal_white_tiger",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1780893324540,
+      "tag": "0006_acoustic_marten_broadcloak",
+      "breakpoints": true
     }
   ]
 }

@@ -1,0 +1,1 @@
+ALTER TABLE "booking" ALTER COLUMN "plateNumber" SET DATA TYPE text;
