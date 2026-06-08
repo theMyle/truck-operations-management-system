@@ -288,11 +288,11 @@ export default function DispatchRecordsPage() {
   const [deleteRecord, setDeleteRecord] = useState<DispatchRecord | null>(null);
   const [deleteOpened, setDeleteOpened] = useState(false);
 
-  const [expandedRow, setExpandedRow] = useState<number | null>(null);
+  const [expandedRow, setExpandedRow] = useState<string | number | null>(null);
 
   const [odoRecord, setOdoRecord] = useState<DispatchRecord | null>(null);
   const [odoOpened, setOdoOpened] = useState(false);
-  const [odoData, setOdoData] = useState<Record<number, OdoFormData>>({});
+  const [odoData, setOdoData] = useState<Record<string | number, OdoFormData>>({});
   const [page, setPage] = useState(1);
   const { setEditingRecord, travelLogs, deleteTravelLog } =
     useDispatch();

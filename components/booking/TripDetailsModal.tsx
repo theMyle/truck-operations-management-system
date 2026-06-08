@@ -265,7 +265,7 @@ export function TripDetailsModal({
   opened: boolean;
   onClose: () => void;
   record: DispatchRecord | null;
-  onSave: (id: number, details: Partial<DispatchRecord>) => void;
+  onSave: (id: string | number, details: Partial<DispatchRecord>) => void;
 }) {
   const initial = useMemo(
     () => ({

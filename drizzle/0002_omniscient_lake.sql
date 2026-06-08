@@ -1,1 +1,0 @@
-ALTER TABLE "dispatch" ALTER COLUMN "client_id" SET DATA TYPE uuid;

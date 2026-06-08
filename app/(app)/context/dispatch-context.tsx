@@ -11,10 +11,10 @@ interface DispatchContextType {
   setEditingRecord: (r: DispatchRecord | null) => void;
   bookingRecords: DispatchRecord[];
   travelLogs: DispatchRecord[];
-  updateBookingRecord: (id: number, details: Partial<DispatchRecord>) => void;
-  deleteBookingRecord: (id: number) => void;
-  updateTravelLog: (id: number, data: Partial<DispatchRecord>) => void;
-  deleteTravelLog: (id: number) => void;
+  updateBookingRecord: (id: number | string, details: Partial<DispatchRecord>) => void;
+  deleteBookingRecord: (id: number | string) => void;
+  updateTravelLog: (id: number | string, data: Partial<DispatchRecord>) => void;
+  deleteTravelLog: (id: number | string) => void;
 }
 
 const DispatchContext = createContext<DispatchContextType | null>(null);
@@ -30,7 +30,7 @@ export function DispatchProvider({ children }: { children: React.ReactNode }) {
     MOCK_RECORDS_BOOKING.filter((r) => r.deliveryStatus === "Completed"),
   );
 
-  const updateBookingRecord = (id: number, details: Partial<DispatchRecord>) => {
+  const updateBookingRecord = (id: number | string, details: Partial<DispatchRecord>) => {
     setBookingRecords((prev) => {
       const updated = prev.map((r) => (r.id === id ? { ...r, ...details } : r));
       const completed = updated.find(
@@ -44,17 +44,17 @@ export function DispatchProvider({ children }: { children: React.ReactNode }) {
     });
   };
 
-  const deleteBookingRecord = (id: number) => {
+  const deleteBookingRecord = (id: number | string) => {
     setBookingRecords((prev) => prev.filter((r) => r.id !== id));
   };
 
-  const updateTravelLog = (id: number, data: Partial<DispatchRecord>) => {
+  const updateTravelLog = (id: number | string, data: Partial<DispatchRecord>) => {
     setTravelLogs((prev) =>
       prev.map((r) => (r.id === id ? { ...r, ...data } : r)),
     );
   };
 
-  const deleteTravelLog = (id: number) => {
+  const deleteTravelLog = (id: number | string) => {
     setTravelLogs((prev) => prev.filter((r) => r.id !== id));
   };
 

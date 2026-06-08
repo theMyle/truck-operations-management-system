@@ -19,13 +19,13 @@ import { UseFormReturnType } from "@mantine/form";
 import { IconMapPin, IconCalendar, IconPlus, IconX } from "@tabler/icons-react";
 import { LocationSearch } from "./LocationSearch";
 import { TimePickerInput } from "./TimePickerInput";
-import { FormValues } from "@/types/dispatch";
+import { DispatchFormValues } from "@/types/dispatch";
 import { inputStyles } from "@/app/(app)/dispatch/page";
 
 export function LocationSection({
   form,
 }: {
-  form: UseFormReturnType<FormValues>;
+  form: UseFormReturnType<DispatchFormValues>;
 }) {
   const addDropOff = () => {
     form.insertListItem("dropOffs", {
@@ -87,7 +87,11 @@ export function LocationSection({
                   placeholder="Enter number of drops"
                   min={1}
                   styles={inputStyles}
-                  {...form.getInputProps("noOfDrops")}
+                  value={
+                    form.values.dropOffs.filter(drop => drop.location.trim().length > 0).length
+                  }
+                  readOnly
+                  aria-readonly
                 />
               </Grid.Col>
             </Grid>
@@ -115,7 +119,11 @@ export function LocationSection({
                   <Popover.Dropdown p="sm">
                     <DatePicker
                       value={form.values.pickupDate}
-                      onChange={(date) => form.setFieldValue("pickupDate", date)}
+                      onChange={(date) => {
+                        if (!date) return;
+                        form.setFieldValue("pickupDate", new Date(date))
+                      }
+                      }
                     />
                   </Popover.Dropdown>
                 </Popover>

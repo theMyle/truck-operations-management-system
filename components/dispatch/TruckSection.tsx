@@ -3,7 +3,7 @@
 import { SimpleGrid, Select, TextInput, Divider } from "@mantine/core";
 import { UseFormReturnType } from "@mantine/form";
 import { Truck } from "@/lib/db/schema";
-import { FormValues } from "@/types/dispatch";
+import { DispatchFormValues } from "@/types/dispatch";
 import { inputStyles } from "@/app/(app)/dispatch/page";
 
 export function TruckSection({
@@ -11,7 +11,7 @@ export function TruckSection({
   trucks,
   selectedTruck,
 }: {
-  form: UseFormReturnType<FormValues>;
+  form: UseFormReturnType<DispatchFormValues>;
   trucks: Truck[];
   selectedTruck: Truck | null;
 }) {
@@ -27,12 +27,11 @@ export function TruckSection({
           data={trucks.map((truck) => truck.plateNumber)}
           {...form.getInputProps("plateNo")}
           onChange={(val) => {
-            form.setFieldValue("plateNo", val || "");
+            form.setFieldValue("plateNo", val);
             const truck = trucks.find((t) => t.plateNumber === val) ?? null;
             form.setFieldValue("truckerRate", truck?.rate ?? "");
           }}
           clearable
-          allowDeselect={false}
           searchable
           nothingFoundMessage="No plates found"
           maxDropdownHeight={160}

@@ -11,7 +11,6 @@ import {
   ScrollArea,
   Divider,
 } from "@mantine/core";
-import { type DateValue } from "@mantine/dates";
 import { notifications } from "@mantine/notifications";
 import { useState, useEffect } from "react";
 import { useForm } from "@mantine/form";
@@ -29,11 +28,15 @@ import { LocationSection } from "@/components/dispatch/LocationSection";
 import { TruckSection } from "@/components/dispatch/TruckSection";
 import { PersonnelSection } from "@/components/dispatch/PersonnelSection";
 
-import { DropOff, FormValues } from "@/types/dispatch";
+import { DispatchFormValues } from "@/types/dispatch";
 import { getTruckAction } from "@/lib/actions/trucks";
 import { getClientAction } from "@/lib/actions/clients";
 import { getDriverAction } from "@/lib/actions/drivers";
 import { getHelperAction } from "@/lib/actions/helpers";
+import { useUser } from "@clerk/nextjs";
+import { toTitleCase } from "@/lib/utils/stringFormat";
+import { createBookingAction } from "@/lib/actions/booking";
+import { CreateBookingInput } from "@/lib/validations/booking";
 
 export const inputStyles = {
   label: {
@@ -51,6 +54,9 @@ export const inputStyles = {
 };
 
 export default function DispatchPage() {
+  const { user } = useUser();
+  const userRole = (user?.publicMetadata?.role as string) || "";
+
   const [isLoading, setIsLoading] = useState(true);
 
   const [drivers, setDrivers] = useState<Driver[]>([]);
@@ -60,21 +66,23 @@ export default function DispatchPage() {
 
   const [reviewOpened, setReviewOpened] = useState(false);
 
-  const form = useForm<FormValues>({
+  const form = useForm<DispatchFormValues>({
     initialValues: {
-      clientName: "",
+      clientName: null,
       clientRate: "",
       ruta: "",
       pickupLocation: "",
       bookingDr: "",
-      noOfDrops: "" as string | number,
-      pickupDate: null as DateValue | null,
+      noOfDrops: "",
+      pickupDate: null,
       pickupTime: "",
-      dropOffs: [{ id: Date.now(), location: "", contactPerson: "", contactNo: "" }] as DropOff[],
-      plateNo: "",
+      dropOffs: [
+        { id: Date.now(), location: "", contactPerson: "", contactNo: "" }
+      ],
+      plateNo: null,
       truckerRate: "",
-      driverName: "",
-      helpers: [] as Helper[],
+      driverName: null,
+      helpers: [],
     },
     validate: {
       clientName: (value) => (!value ? "Client is required" : null),
@@ -92,6 +100,7 @@ export default function DispatchPage() {
       bookingDr: (value) => (!value?.trim() ? "Booking / DR# is required" : null),
       noOfDrops: (value) => (!value || Number(value) < 1 ? "At least 1 drop required" : null),
       pickupDate: (value) => (!value ? "Pickup date is required" : null),
+      pickupTime: (value) => (!value ? "Pickup time is required" : null),
       dropOffs: {
         location: (value) => (!value?.trim() ? "Location is required" : null),
       },
@@ -130,13 +139,101 @@ export default function DispatchPage() {
   }, []);
 
   const handleOpenReview = () => {
-    const validation = form.validate() as any;
-    if (validation.hasErrors) return;
+    console.log(form.values);
+    form.setFieldValue(
+      "noOfDrops",
+      form.values.dropOffs.filter((drop) => drop.location.trim().length > 0).length,
+    );
+    const validation = form.validate();
+
+    if (validation.hasErrors) {
+      console.log(validation.errors)
+      return
+    };
+
     setReviewOpened(true);
   };
 
-  const handleConfirmSubmit = () => {
+  const handleConfirmSubmit = async () => {
     setReviewOpened(false);
+
+    const selectedClient = clients.find((client) =>
+      client.clientName.trim() == form.values.clientName!.trim()
+    )!;
+
+    const selectedDriver = drivers.find((driver) =>
+      driver.driverName.trim() == form.values.driverName!.trim()
+    )!;
+
+    const selectedTruck = trucks.find((truck) =>
+      truck.plateNumber.trim() == form.values.plateNo!.trim()
+    )!;
+
+    const helpers = form.values.helpers.map((helper) => helper.id);
+    const drops = form.values.dropOffs
+      .filter((drop) => drop.location.trim().length > 0)
+      .map((drop, index) => {
+        return {
+          sequenceNumber: index + 1,
+          locationName: drop.location
+        }
+      });
+
+    const payload: CreateBookingInput = {
+      bookingDate: new Date().toISOString().split('T')[0],
+      bookedBy: userRole,
+      bookingDRNo: form.values.bookingDr,
+      clientId: selectedClient.id,
+      clientName: selectedClient.clientName,
+      clientRate: form.values.clientRate,
+      ruta: form.values.ruta,
+      pickupDate: form.values.pickupDate?.toISOString()!,
+      pickupTime: form.values.pickupTime,
+      pickupLocation: form.values.pickupLocation,
+      driverId: selectedDriver.id,
+      driverName: selectedDriver.driverName,
+      plateNumber: selectedTruck.plateNumber,
+      fleetType: selectedTruck.fleetType!,
+      trucker: selectedTruck.unitType!,
+      truckerRate: form.values.truckerRate,
+      numberOfDrops: form.values.noOfDrops as number,
+      helpers: helpers,
+      drops: drops
+    }
+
+    const result = await createBookingAction(payload);
+
+    console.log("createBookingAction result", result);
+
+    if (result.serverError) {
+      console.error("❌ SERVER ERROR DETAILS:", result.serverError);
+      notifications.show({
+        title: "Database Transaction Failed",
+        message: result.serverError,
+        color: "red",
+      });
+      return;
+    }
+
+    if (result.validationErrors) {
+      notifications.show({
+        title: "Validation Error",
+        message: "Please check your form input fields and try again.",
+        color: "red",
+        icon: <IconX size={16} />,
+      });
+      return;
+    }
+
+    if (!result.data) {
+      notifications.show({
+        title: "Submission failed",
+        message: "The booking action finished without returning saved data.",
+        color: "red",
+      });
+      return;
+    }
+
     notifications.show({
       title: "Dispatch submitted",
       message: "The dispatch form was submitted successfully.",
@@ -221,7 +318,6 @@ export default function DispatchPage() {
               <ClientSection
                 form={form}
                 clients={clients}
-                selectedClient={selectedClient}
               />
 
               <LocationSection
@@ -274,7 +370,7 @@ export default function DispatchPage() {
                   fw={700}
                   c="dimmed"
                 >
-                  Booked by: <Badge size="xs" variant="light" color="blue" radius="sm"> Admin </Badge> {/** TODO - user actual username */}
+                  Booked by: <Badge size="xs" variant="light" color="blue" radius="sm"> {toTitleCase(userRole)} </Badge>
                 </Text>
               </Group>
             </Paper>

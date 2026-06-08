@@ -5,7 +5,7 @@ import { UseFormReturnType } from "@mantine/form";
 import { IconX } from "@tabler/icons-react";
 import { Driver, Helper } from "@/lib/db/schema";
 import { useState } from "react";
-import { FormValues } from "@/types/dispatch";
+import { DispatchFormValues } from "@/types/dispatch";
 import { inputStyles } from "@/app/(app)/dispatch/page";
 
 export function PersonnelSection({
@@ -13,7 +13,7 @@ export function PersonnelSection({
   drivers,
   helpers,
 }: {
-  form: UseFormReturnType<FormValues>;
+  form: UseFormReturnType<DispatchFormValues>;
   drivers: Driver[];
   helpers: Helper[];
 }) {
@@ -52,7 +52,6 @@ export function PersonnelSection({
             label="Helper/s"
             placeholder="Add helper"
             searchValue={helperSearch}
-            allowDeselect={false}
             onSearchChange={setHelperSearch}
             data={helpers
               .filter((helper) => !form.values.helpers.some((sh) => sh.id === helper.id))

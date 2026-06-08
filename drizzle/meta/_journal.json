@@ -5,36 +5,29 @@
     {
       "idx": 0,
       "version": "7",
-      "when": 1780126696812,
-      "tag": "0000_worthless_norman_osborn",
+      "when": 1780906107138,
+      "tag": "0000_unusual_ogun",
       "breakpoints": true
     },
     {
       "idx": 1,
       "version": "7",
-      "when": 1780133042394,
-      "tag": "0001_dizzy_gambit",
+      "when": 1780913929385,
+      "tag": "0001_even_goliath",
       "breakpoints": true
     },
     {
       "idx": 2,
       "version": "7",
-      "when": 1780133156351,
-      "tag": "0002_omniscient_lake",
+      "when": 1780918904214,
+      "tag": "0002_glorious_quentin_quire",
       "breakpoints": true
     },
     {
       "idx": 3,
       "version": "7",
-      "when": 1780318805684,
-      "tag": "0003_wakeful_ares",
-      "breakpoints": true
-    },
-    {
-      "idx": 4,
-      "version": "7",
-      "when": 1780320558544,
-      "tag": "0004_cooing_kate_bishop",
+      "when": 1780920498969,
+      "tag": "0003_colorful_skrulls",
       "breakpoints": true
     }
   ]

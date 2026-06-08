@@ -3,17 +3,15 @@
 import { Grid, Stack, Select, NumberInput, Autocomplete, Divider } from "@mantine/core";
 import { UseFormReturnType } from "@mantine/form";
 import { Client } from "@/lib/db/schema";
-import { FormValues } from "@/types/dispatch";
+import { DispatchFormValues } from "@/types/dispatch";
 import { inputStyles } from "@/app/(app)/dispatch/page";
 
 export function ClientSection({
   form,
   clients,
-  selectedClient,
 }: {
-  form: UseFormReturnType<FormValues>;
+  form: UseFormReturnType<DispatchFormValues>;
   clients: Client[];
-  selectedClient: Client | null;
 }) {
   return (
     <>
@@ -28,12 +26,11 @@ export function ClientSection({
               data={clients.map((client) => client.clientName)}
               {...form.getInputProps("clientName")}
               onChange={(val) => {
-                form.setFieldValue("clientName", val || "");
+                form.setFieldValue("clientName", val);
                 const client = clients.find((c) => c.clientName === val) ?? null;
                 form.setFieldValue("clientRate", client?.rate ?? "");
                 form.setFieldValue("ruta", "");
               }}
-              allowDeselect={false}
               styles={inputStyles}
               maxDropdownHeight={160}
               searchable

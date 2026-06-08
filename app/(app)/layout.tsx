@@ -34,6 +34,7 @@ import LOGO from "../assets/logo.png";
 import { useClerk, useUser } from "@clerk/nextjs";
 import { usePathname } from "next/navigation";
 import { DispatchProvider } from "./context/dispatch-context";
+import { toTitleCase } from "@/lib/utils/stringFormat";
 
 interface NavItem {
   label: string
@@ -198,10 +199,10 @@ export default function DashboardLayout({
                     </Avatar>
                     <Box style={{ flex: 1 }}>
                       <Text fw={600} style={{ fontSize: "11px" }}>
-                        Admin
+                        {user?.firstName}
                       </Text>
                       <Text style={{ fontSize: "9px" }} c="dimmed">
-                        Fleet Manager
+                        {toTitleCase(userRole)}
                       </Text>
                     </Box>
                     <IconChevronUp size={12} className="text-gray-400" />

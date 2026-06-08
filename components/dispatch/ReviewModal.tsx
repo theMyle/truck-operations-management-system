@@ -1,7 +1,8 @@
 import { Modal, Group, ScrollArea, Stack, Box, Paper, Divider, Button, Text, Table } from "@mantine/core";
 import { IconEye, IconEdit, IconCheck } from "@tabler/icons-react";
-import { FormValues } from "@/types/dispatch";
+import { DispatchFormValues } from "@/types/dispatch";
 import { Truck, Helper } from "@/lib/db/schema";
+import { formatTime12Hour } from "@/lib/utils/stringFormat";
 
 export function ReviewModal({
   opened,
@@ -15,7 +16,7 @@ export function ReviewModal({
   onClose: () => void;
   onConfirm: () => void;
   onEdit: () => void;
-  values: FormValues;
+  values: DispatchFormValues;
   selectedTruck: Truck | null;
 }) {
   const formatDate = (date: Date | null): string => {
@@ -38,17 +39,18 @@ export function ReviewModal({
   };
 
   const displayData: Record<string, string> = {
-    client: values.clientName,
+    client: values.clientName ?? "",
     ruta: values.ruta,
     bookingDr: values.bookingDr,
     pickupLocation: values.pickupLocation,
     dropOffs: getDropOffsString(),
     noOfDrops: values.noOfDrops?.toString() || "",
     unit: selectedTruck?.fleetType || "",
-    plateNo: values.plateNo,
-    driver: values.driverName,
+    plateNo: values.plateNo ?? "",
+    driver: values.driverName ?? "",
     helper: values.helpers.map((h: Helper) => h.helperName).join(", "),
     pickupDate: formatDate(values.pickupDate as Date),
+    pickupTime: formatTime12Hour(values.pickupTime),
   };
 
   const sections = [
@@ -66,6 +68,7 @@ export function ReviewModal({
         { label: "Driver", key: "driver" },
         { label: "Helper", key: "helper" },
         { label: "Pickup Date", key: "pickupDate" },
+        { label: "Pickup Time", key: "pickupTime" },
       ],
     },
   ];

@@ -1,19 +1,25 @@
 export interface DispatchRecord {
-  id: number;
+  id: number | string;
   date: string;
+  bookingDate?: string;
+  pickUpDate?: string;
   pickUpTime?: string;
   client: string;
+  clientName?: string;
   trucker?: string;
   podFile?: string | null;
   podFileUrl?: string | null;
   podFileType?: string | null;
   driver: string;
+  driverName?: string;
   helper: string;
   unit: string;
+  fleetType?: string;
   plateNo: string;
   totalKM?: number;
   ruta: string;
   bookingDr: string;
+  bookingDRNo?: string;
   pickLocation?: string;
   dropOffLocation?: string;
   noOfDrops: number;

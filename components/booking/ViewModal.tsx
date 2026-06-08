@@ -30,16 +30,17 @@ export function ViewModal({
     {
       title: "Trip Booking Details",
       rows: [
-        { label: "Client (Kliyente)", value: record.client },
+        { label: "Client (Kliyente)", value: record.client || record.clientName },
         { label: "Route (Ruta)", value: record.ruta },
-        { label: "Booking / DR#", value: record.bookingDr },
+        { label: "Booking / DR#", value: record.bookingDr || record.bookingDRNo },
         { label: "No. of Drops", value: String(record.noOfDrops) },
-        { label: "Unit", value: record.unit },
+        { label: "Unit", value: record.unit || record.fleetType },
         { label: "Plate #", value: record.plateNo },
-        { label: "Driver", value: record.driver },
+        { label: "Driver", value: record.driver || record.driverName },
         { label: "Helper", value: record.helper },
         { label: "Status", value: record.status },
-        { label: "Date", value: record.date },
+        { label: "Date", value: record.date || record.bookingDate },
+        { label: "Time", value: record.pickUpTime },
       ],
     },
   ];

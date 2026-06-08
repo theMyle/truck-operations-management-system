@@ -1,5 +1,5 @@
 {
-  "id": "d2770fea-22de-4c7c-8d12-c8f87cae9646",
+  "id": "1f8d562a-c5b8-4112-96c2-f8e56d643815",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -31,6 +31,13 @@
           "type": "numeric",
           "primaryKey": false,
           "notNull": false
+        },
+        "is_subcon": {
+          "name": "is_subcon",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
         },
         "status": {
           "name": "status",
@@ -133,21 +140,95 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
+    "public.client_routes": {
+      "name": "client_routes",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "client_id": {
+          "name": "client_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "route": {
+          "name": "route",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "client_routes_client_id_clients_id_fk": {
+          "name": "client_routes_client_id_clients_id_fk",
+          "tableFrom": "client_routes",
+          "tableTo": "clients",
+          "columnsFrom": [
+            "client_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
     "public.clients": {
       "name": "clients",
       "schema": "",
       "columns": {
         "id": {
           "name": "id",
-          "type": "text",
+          "type": "uuid",
           "primaryKey": true,
-          "notNull": true
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "client_rate": {
+          "name": "client_rate",
+          "type": "numeric(10, 2)",
+          "primaryKey": false,
+          "notNull": false
         },
         "client_name": {
           "name": "client_name",
           "type": "text",
           "primaryKey": false,
           "notNull": true
+        },
+        "has_fixed_routes": {
+          "name": "has_fixed_routes",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
         },
         "created_at": {
           "name": "created_at",
@@ -261,7 +342,7 @@
         },
         "client_id": {
           "name": "client_id",
-          "type": "text",
+          "type": "uuid",
           "primaryKey": false,
           "notNull": false
         },
@@ -433,6 +514,317 @@
         }
       },
       "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.booking": {
+      "name": "booking",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "clientId": {
+          "name": "clientId",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "clientName": {
+          "name": "clientName",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "ruta": {
+          "name": "ruta",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "clientRate": {
+          "name": "clientRate",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "pickupDate": {
+          "name": "pickupDate",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "pickupLocation": {
+          "name": "pickupLocation",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "bookingDRNo": {
+          "name": "bookingDRNo",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "numberOfDrops": {
+          "name": "numberOfDrops",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "plateNumber": {
+          "name": "plateNumber",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "trucker": {
+          "name": "trucker",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "fleetType": {
+          "name": "fleetType",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "truckerRate": {
+          "name": "truckerRate",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "driverId": {
+          "name": "driverId",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "driverName": {
+          "name": "driverName",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "bookedBy": {
+          "name": "bookedBy",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "pickupArrivalTime": {
+          "name": "pickupArrivalTime",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "pickupDepartureTime": {
+          "name": "pickupDepartureTime",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "loadingStartTime": {
+          "name": "loadingStartTime",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "loadingEndTime": {
+          "name": "loadingEndTime",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "finishedDeliveryTime": {
+          "name": "finishedDeliveryTime",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "deliveryStatus": {
+          "name": "deliveryStatus",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "PODLink": {
+          "name": "PODLink",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "tripRemarks": {
+          "name": "tripRemarks",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "booking_clientId_clients_id_fk": {
+          "name": "booking_clientId_clients_id_fk",
+          "tableFrom": "booking",
+          "tableTo": "clients",
+          "columnsFrom": [
+            "clientId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "booking_plateNumber_trucks_plate_number_fk": {
+          "name": "booking_plateNumber_trucks_plate_number_fk",
+          "tableFrom": "booking",
+          "tableTo": "trucks",
+          "columnsFrom": [
+            "plateNumber"
+          ],
+          "columnsTo": [
+            "plate_number"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "booking_driverId_drivers_id_fk": {
+          "name": "booking_driverId_drivers_id_fk",
+          "tableFrom": "booking",
+          "tableTo": "drivers",
+          "columnsFrom": [
+            "driverId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.bookingDrops": {
+      "name": "bookingDrops",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "bookingId": {
+          "name": "bookingId",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "sequenceNumber": {
+          "name": "sequenceNumber",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "locationName": {
+          "name": "locationName",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "bookingDrops_bookingId_booking_id_fk": {
+          "name": "bookingDrops_bookingId_booking_id_fk",
+          "tableFrom": "bookingDrops",
+          "tableTo": "booking",
+          "columnsFrom": [
+            "bookingId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.bookingsToHelpers": {
+      "name": "bookingsToHelpers",
+      "schema": "",
+      "columns": {
+        "bookingId": {
+          "name": "bookingId",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "helperId": {
+          "name": "helperId",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "bookingsToHelpers_bookingId_booking_id_fk": {
+          "name": "bookingsToHelpers_bookingId_booking_id_fk",
+          "tableFrom": "bookingsToHelpers",
+          "tableTo": "booking",
+          "columnsFrom": [
+            "bookingId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "bookingsToHelpers_helperId_helpers_id_fk": {
+          "name": "bookingsToHelpers_helperId_helpers_id_fk",
+          "tableFrom": "bookingsToHelpers",
+          "tableTo": "helpers",
+          "columnsFrom": [
+            "helperId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "bookingsToHelpers_bookingId_helperId_pk": {
+          "name": "bookingsToHelpers_bookingId_helperId_pk",
+          "columns": [
+            "bookingId",
+            "helperId"
+          ]
+        }
+      },
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},
