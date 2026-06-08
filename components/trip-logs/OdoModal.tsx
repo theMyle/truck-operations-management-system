@@ -70,7 +70,7 @@ export interface OdoFormData {
   fuelAmount: string;
   fuelPayment: "shell_card" | "cash" | "";
   collectionFromCustomer: string;
-  naibalikNaSukli: string;
+  cashOnHandReturned: string;
   kanino: string;
   autoCA: "yes" | "no" | "";
   expenses: ExpenseRow[];
@@ -108,7 +108,7 @@ const defaultForm = (): OdoFormData => ({
   fuelAmount: "",
   fuelPayment: "",
   collectionFromCustomer: "",
-  naibalikNaSukli: "",
+  cashOnHandReturned: "",
   kanino: "",
   autoCA: "",
   expenses: [],
@@ -210,7 +210,7 @@ export function OdoModal({
           fuelAmount: "",
           fuelPayment: "",
           collectionFromCustomer: "",
-          naibalikNaSukli: "",
+          cashOnHandReturned: "",
           kanino: "",
           autoCA: "",
         }));
@@ -221,7 +221,7 @@ export function OdoModal({
             "rfidLoad",
             "fuelAmount",
             "collectionFromCustomer",
-            "naibalikNaSukli",
+            "cashOnHandReturned",
           ].forEach((k) => delete next[k]);
           return next;
         });
@@ -302,10 +302,10 @@ export function OdoModal({
       !isNonNegativeNumber(form.collectionFromCustomer)
         ? "Enter a valid amount"
         : undefined,
-    naibalikNaSukli:
-      touched.naibalikNaSukli &&
-      form.naibalikNaSukli &&
-      !isNonNegativeNumber(form.naibalikNaSukli)
+    cashOnHandReturned:
+      touched.cashOnHandReturned &&
+      form.cashOnHandReturned &&
+      !isNonNegativeNumber(form.cashOnHandReturned)
         ? "Enter a valid amount"
         : undefined,
   };
@@ -1052,15 +1052,15 @@ export function OdoModal({
 
               <SimpleGrid cols={2} spacing="sm">
                 <TextInput
-                  label="Naibalik na Sukli (₱)"
+                  label="CASH ONHAND RETURNED (₱)"
                   placeholder="e.g. 500"
                   styles={inputStyles}
-                  value={form.naibalikNaSukli}
+                  value={form.cashOnHandReturned}
                   onChange={(e) =>
-                    set("naibalikNaSukli", e.currentTarget.value)
+                    set("cashOnHandReturned", e.currentTarget.value)
                   }
-                  onBlur={() => touch("naibalikNaSukli")}
-                  error={budgetErrors.naibalikNaSukli}
+                  onBlur={() => touch("cashOnHandReturned")}
+                  error={budgetErrors.cashOnHandReturned}
                 />
                 <TextInput
                   label="Kanino Naibalik"

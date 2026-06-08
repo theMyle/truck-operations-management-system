@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  Box,
   Group,
   Modal,
   Textarea,
@@ -17,18 +18,41 @@ import {
 } from "@mantine/core";
 import { TimeInput } from "@mantine/dates";
 import { DispatchRecord } from "@/app/(app)/constant";
-import { useState, useMemo, useRef } from "react";
+import {
+  useState,
+  useMemo,
+  useRef,
+  type ChangeEvent,
+  type DragEvent,
+} from "react";
 import {
   IconAlertTriangle,
   IconBan,
   IconCheck,
   IconClock,
+  IconFileDescription,
   IconRoute,
+  IconTrash,
   IconTruck,
   IconTruckDelivery,
+  IconUpload,
   IconUser,
   IconX,
 } from "@tabler/icons-react";
+
+interface TripDetailsForm {
+  pickUpTime: string;
+  arrivalPickup: string;
+  loadingStart: string;
+  loadingEnd: string;
+  departurePickup: string;
+  finishDelivery: string;
+  deliveryStatus: string;
+  podFile: string;
+  podFileUrl: string;
+  podFileType: string;
+  tripRemarks: string;
+}
 
 /* ── Constants ── */
 const DELIVERY_STATUS_OPTIONS = [
@@ -109,6 +133,129 @@ function TimeField({
 }
 
 /* ── Main Modal ── */
+function PodUploadField({
+  fileName,
+  onUploadClick,
+  onFileChange,
+  onClear,
+}: {
+  fileName: string;
+  onUploadClick: () => void;
+  onFileChange: (file: File | null) => void;
+  onClear: () => void;
+}) {
+  const [isDragging, setIsDragging] = useState(false);
+
+  const handleDrop = (event: DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    setIsDragging(false);
+    onFileChange(event.dataTransfer.files?.[0] ?? null);
+  };
+
+  return (
+    <Stack gap={6} mt="sm">
+      <Text style={{ fontSize: "11px", fontWeight: 600 }} c="gray.7">
+        POD
+      </Text>
+      <Box
+        role="button"
+        tabIndex={0}
+        onClick={onUploadClick}
+        onKeyDown={(event) => {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            onUploadClick();
+          }
+        }}
+        onDragOver={(event) => {
+          event.preventDefault();
+          setIsDragging(true);
+        }}
+        onDragLeave={() => setIsDragging(false)}
+        onDrop={handleDrop}
+        style={{
+          minHeight: 98,
+          border: `1px dashed ${
+            isDragging
+              ? "var(--mantine-color-blue-5)"
+              : "var(--mantine-color-blue-4)"
+          }`,
+          borderRadius: 8,
+          background: isDragging
+            ? "var(--mantine-color-blue-0)"
+            : "var(--mantine-color-gray-0)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          cursor: "pointer",
+          transition: "border-color 0.15s ease, background-color 0.15s ease",
+        }}
+      >
+        <Stack align="center" gap={6}>
+          <ThemeIcon color="blue" variant="light" radius="xl" size={30}>
+            <IconUpload size={15} />
+          </ThemeIcon>
+          <Text style={{ fontSize: "11px" }} fw={800} c="blue.7">
+            Upload File
+          </Text>
+          <Text style={{ fontSize: "10px" }} c="dimmed" fw={500}>
+            JPG, PNG or WEBP
+          </Text>
+        </Stack>
+      </Box>
+
+      {fileName && (
+        <Group
+          justify="space-between"
+          wrap="nowrap"
+          gap={8}
+          px={8}
+          py={5}
+          style={{
+            borderRadius: 999,
+            background: "var(--mantine-color-blue-0)",
+            border: "1px solid var(--mantine-color-blue-1)",
+          }}
+        >
+          <Group gap={6} wrap="nowrap" style={{ minWidth: 0 }}>
+            <IconFileDescription
+              size={13}
+              color="var(--mantine-color-blue-6)"
+            />
+            <Text
+              style={{
+                fontSize: "10px",
+                fontWeight: 700,
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+              }}
+              c="gray.8"
+            >
+              {fileName}
+            </Text>
+          </Group>
+          <Tooltip label="Remove POD" withArrow fz={10}>
+            <ActionIcon
+              size="sm"
+              radius="xl"
+              color="blue"
+              variant="filled"
+              aria-label="Remove POD file"
+              onClick={(event) => {
+                event.stopPropagation();
+                onClear();
+              }}
+            >
+              <IconTrash size={12} />
+            </ActionIcon>
+          </Tooltip>
+        </Group>
+      )}
+    </Stack>
+  );
+}
+
 export function TripDetailsModal({
   opened,
   onClose,
@@ -129,16 +276,44 @@ export function TripDetailsModal({
       departurePickup: record?.departurePickup ?? "",
       finishDelivery: record?.finishDelivery ?? "",
       deliveryStatus: record?.deliveryStatus ?? "",
+      podFile: record?.podFile ?? "",
+      podFileUrl: record?.podFileUrl ?? "",
+      podFileType: record?.podFileType ?? "",
       tripRemarks: record?.tripRemarks ?? "",
+
     }),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [record?.id],
+    [record],
   );
 
-  const [form, setForm] = useState(initial);
+  const [form, setForm] = useState<TripDetailsForm>(initial);
+  const podInputRef = useRef<HTMLInputElement>(null);
 
-  const set = (key: string, val: string) =>
+  const set = (key: keyof TripDetailsForm, val: string) =>
     setForm((prev) => ({ ...prev, [key]: val }));
+
+  const handlePodChange = (file: File | null) => {
+    if (!file) {
+      setForm((prev) => ({
+        ...prev,
+        podFile: "",
+        podFileUrl: "",
+        podFileType: "",
+      }));
+      return;
+    }
+
+    setForm((prev) => ({
+      ...prev,
+      podFile: file.name,
+      podFileUrl: URL.createObjectURL(file),
+      podFileType: file.type,
+    }));
+  };
+
+  const handlePodInputChange = (event: ChangeEvent<HTMLInputElement>) => {
+    handlePodChange(event.currentTarget.files?.[0] ?? null);
+    event.currentTarget.value = "";
+  };
 
   const isFormValid =
     !!form.pickUpTime &&
@@ -151,6 +326,11 @@ export function TripDetailsModal({
 
   if (!record) return null;
 
+  const handleClose = () => {
+    setForm(initial);
+    onClose();
+  };
+
   const handleSave = () => {
     onSave(record.id, form);
     onClose();
@@ -160,7 +340,7 @@ export function TripDetailsModal({
     <Modal
       key={record.id}
       opened={opened}
-      onClose={onClose}
+      onClose={handleClose}
       title={
         <Stack gap={2}>
           <Group gap={8}>
@@ -300,6 +480,19 @@ export function TripDetailsModal({
             }}
             radius="md"
           />
+          <input
+            ref={podInputRef}
+            type="file"
+            accept="image/png,image/jpeg,image/webp"
+            onChange={handlePodInputChange}
+            style={{ display: "none" }}
+          />
+          <PodUploadField
+            fileName={form.podFile}
+            onUploadClick={() => podInputRef.current?.click()}
+            onFileChange={handlePodChange}
+            onClear={() => handlePodChange(null)}
+          />
           <Textarea
             label="Trip Remarks"
             placeholder="Any notes about this trip..."
@@ -322,7 +515,7 @@ export function TripDetailsModal({
               root: { height: 34 },
               label: { fontSize: "11px", fontWeight: 700 },
             }}
-            onClick={onClose}
+            onClick={handleClose}
           >
             Cancel
           </Button>
