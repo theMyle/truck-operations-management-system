@@ -1799,7 +1799,7 @@ export function OdoModal({
                   </Button>
                   {/* ── SAVE now opens the review modal ── */}
                   <Button
-                    color={isAllValid ? "blue.6" : "blue.6"}
+                    color="blue.6"
                     leftSection={<IconClipboardList size={14} />}
                     styles={{
                       root: { height: 34 },
