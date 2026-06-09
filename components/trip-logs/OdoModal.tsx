@@ -34,7 +34,7 @@ import {
 } from "@tabler/icons-react";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { DispatchRecord } from "@/app/(app)/constant";
 import { ReviewModal } from "./ReviewModal";
 
