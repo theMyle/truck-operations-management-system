@@ -1,37 +1,80 @@
 import { eq } from "drizzle-orm";
 import { db } from "../db";
-import { Client, clients, NewClient } from "../db/schema";
-import IClientRepository from "./client.repository.interface";
+import {
+  Client,
+  clients,
+  clientRoutes,
+  NewClient,
+  ClientWithRoutes,
+} from "../db/schema";
+import IClientRepository, { RouteInput } from "./client.repository.interface";
 
 export const makeClientRepository = (database = db): IClientRepository => {
-    return {
-        getAll: async function (): Promise<Client[]> {
-            return await database.select().from(clients);
-        },
+  return {
+    getAll: async function (): Promise<ClientWithRoutes[]> {
+      // switch from .select() to relational query to pull routes in one shot
+      return await database.query.clients.findMany({
+        with: { routes: true },
+      });
+    },
 
-        add: async function (client: NewClient): Promise<Client> {
-            const [newClient] = await database.insert(clients).values(client).returning();
-            return newClient;
-        },
+    add: async function (
+      client: NewClient,
+      routes: RouteInput[],
+    ): Promise<Client> {
+      return await database.transaction(async (tx) => {
+        const [newClient] = await tx.insert(clients).values(client).returning();
 
-        update: async function (id: string, updateData: Partial<NewClient>): Promise<Client | null> {
-            const [updated] = await database
-                .update(clients)
-                .set({ ...updateData, updatedAt: new Date() })
-                .where(eq(clients.id, id))
-                .returning();
-
-            return updated ?? null;
-        },
-
-        delete: async function (id: string): Promise<Client | null> {
-            const [deleted] = await database
-                .delete(clients)
-                .where(eq(clients.id, id))
-                .returning();
-            return deleted ?? null;
+        if (routes.length > 0) {
+          await tx
+            .insert(clientRoutes)
+            .values(
+              routes.map((r) => ({ clientId: newClient.id, route: r.route })),
+            );
         }
-    }
-}
+
+        return newClient;
+      });
+    },
+
+    update: async function (
+      id: string,
+      updateData: Partial<NewClient>,
+      routes?: RouteInput[],
+    ): Promise<Client | null> {
+      return await database.transaction(async (tx) => {
+        const [updated] = await tx
+          .update(clients)
+          .set({ ...updateData, updatedAt: new Date() })
+          .where(eq(clients.id, id))
+          .returning();
+
+        if (!updated) return null;
+
+        // only touch routes if caller passed them in
+        if (routes !== undefined) {
+          await tx.delete(clientRoutes).where(eq(clientRoutes.clientId, id));
+
+          if (routes.length > 0) {
+            await tx
+              .insert(clientRoutes)
+              .values(routes.map((r) => ({ clientId: id, route: r.route })));
+          }
+        }
+
+        return updated;
+      });
+    },
+
+    delete: async function (id: string): Promise<Client | null> {
+      // cascade delete handles clientRoutes automatically (defined in schema)
+      const [deleted] = await database
+        .delete(clients)
+        .where(eq(clients.id, id))
+        .returning();
+      return deleted ?? null;
+    },
+  };
+};
 
 export const clientRepository = makeClientRepository();

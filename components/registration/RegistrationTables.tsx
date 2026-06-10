@@ -6,7 +6,7 @@ import {
   Text,
   Paper,
 } from "@mantine/core";
-import type { Client } from "@/lib/db/schema/clients";
+import type { ClientWithRoutes } from "@/lib/db/schema/clients";
 import type { Truck } from "@/lib/db/schema/trucks";
 import type { Driver } from "@/lib/db/schema/drivers";
 import type { Helper } from "@/lib/db/schema/helpers";
@@ -16,7 +16,7 @@ import { HelpersTable } from "./HelpersTable";
 import { TrucksTable } from "./TrucksTable";
 
 interface Props {
-  clients: Client[];
+  clients: ClientWithRoutes[];
   trucks: Truck[];
   drivers: Driver[];
   helpers: Helper[];

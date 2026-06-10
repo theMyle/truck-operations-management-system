@@ -22,7 +22,7 @@ import {
 import "@mantine/dates/styles.css";
 import { CardHeader } from "@/components/dispatch/CardHeader";
 import { ReviewModal } from "@/components/dispatch/ReviewModal";
-import { Client, Driver, Helper, Truck } from "@/lib/db/schema";
+import { ClientWithRoutes, Driver, Helper, Truck } from "@/lib/db/schema";
 import { ClientSection } from "@/components/dispatch/ClientSection";
 import { LocationSection } from "@/components/dispatch/LocationSection";
 import { TruckSection } from "@/components/dispatch/TruckSection";
@@ -61,7 +61,7 @@ export default function DispatchPage() {
 
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [helpers, setHelpers] = useState<Helper[]>([]);
-  const [clients, setClients] = useState<Client[]>([]);
+  const [clients, setClients] = useState<ClientWithRoutes[]>([]);
   const [trucks, setTrucks] = useState<Truck[]>([]);
 
   const [reviewOpened, setReviewOpened] = useState(false);

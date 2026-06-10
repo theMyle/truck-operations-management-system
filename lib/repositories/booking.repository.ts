@@ -33,7 +33,7 @@ export const makeBookingRepository = (database = db): IBookingRepository => {
             helperIds?: string[]
         ): Promise<BookingWithRelations> {
             return await database.transaction(async (tx) => {
-                let [newBooking] = await tx
+                const [newBooking] = await tx
                     .insert(booking)
                     .values(bookingData)
                     .returning();
@@ -92,7 +92,7 @@ export const makeBookingRepository = (database = db): IBookingRepository => {
             throw new Error("Function not implemented.");
         },
 
-        delete: function (id: string): Boolean {
+        delete: function (id: string): boolean {
             throw new Error("Function not implemented.");
         }
     }

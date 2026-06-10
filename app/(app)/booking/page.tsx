@@ -61,7 +61,7 @@ export default function BookingRecordsPage() {
           pickLocation: b.pickupLocation,
           dropOffLocation: b.drops.map((d) => d.locationName).join(", ") || "—",
           bookedBy: b.bookedBy,
-          status: (b.deliveryStatus as any) || "Pending",
+          status: (b.deliveryStatus as "Pending" | "In Transit" | "Completed") || "Pending",
           date: b.pickupDate,
           client: b.clientName,
           driver: b.driverName,
