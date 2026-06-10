@@ -18,55 +18,22 @@ type FleetCount = {
 type Props = {
   fleetCounts: FleetCount[];
   truckList: Truck[];
+  dailyOperations: { id: number; name: string; kts: number; subcon: number }[];
+  weeklyOperations: { day: string; kts: number; subcon: number }[];
+  monthlyOperations: { day: string; kts: number; subcon: number }[];
 };
 
 type TruckList = "available" | "on trip" | "maintenance" | "unavailable";
 
-export default function DashboardClient({ fleetCounts, truckList }: Props) {
+export default function DashboardClient({ fleetCounts, truckList, dailyOperations, weeklyOperations, monthlyOperations }: Props) {
   const [isFleetTableOpen, setIsFleetTableOpen] = useState(false);
-  const [activeFleetStatus, setActiveFleetStatus] = useState<string | null>(
-    null,
-  );
+  const [activeFleetStatus, setActiveFleetStatus] = useState<string | null>(null);
   const [fleetSearch, setFleetSearch] = useState("");
 
   const incomeStats = [
     { label: "Daily Income", value: "P 100,000" },
     { label: "Weekly Income", value: "P 700,000" },
     { label: "Monthly Income", value: "P 3,200,000" },
-  ];
-
-  const dailyTrips = [
-    { id: 1, name: "Flash", kts: 6, subcon: 0 },
-    { id: 2, name: "Shopee", kts: 0, subcon: 1 },
-    { id: 3, name: "Intel", kts: 0, subcon: 0 },
-    { id: 4, name: "Trans", kts: 10, subcon: 0 },
-    { id: 5, name: "I.P.I", kts: 0, subcon: 0 },
-    { id: 6, name: "Others", kts: 0, subcon: 0 },
-  ];
-
-  const weeklyOperations = [
-    { day: "January 1", kts: 5, subcon: 5 },
-    { day: "January 2", kts: 5, subcon: 5 },
-    { day: "January 3", kts: 5, subcon: 5 },
-    { day: "January 4", kts: 5, subcon: 5 },
-    { day: "January 5", kts: 5, subcon: 5 },
-    { day: "January 6", kts: 5, subcon: 5 },
-    { day: "January 7", kts: 5, subcon: 5 },
-  ];
-
-  const monthlyOperations = [
-    { day: "January", kts: 145, subcon: 32 },
-    { day: "February", kts: 130, subcon: 28 },
-    { day: "March", kts: 160, subcon: 35 },
-    { day: "April", kts: 155, subcon: 30 },
-    { day: "May", kts: 170, subcon: 38 },
-    { day: "June", kts: 140, subcon: 29 },
-    { day: "July", kts: 125, subcon: 25 },
-    { day: "August", kts: 180, subcon: 40 },
-    { day: "September", kts: 165, subcon: 36 },
-    { day: "October", kts: 190, subcon: 42 },
-    { day: "November", kts: 175, subcon: 39 },
-    { day: "December", kts: 110, subcon: 20 },
   ];
 
   const fleetStatus: {
@@ -149,7 +116,7 @@ export default function DashboardClient({ fleetCounts, truckList }: Props) {
           />
         </Flex>
 
-        <DailyOperationsTable trips={dailyTrips} />
+        <DailyOperationsTable trips={dailyOperations} />
 
         <Flex
           gap="md"
