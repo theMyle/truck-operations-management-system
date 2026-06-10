@@ -1,18 +1,24 @@
 "use client";
 
-import { Grid, Stack, Select, NumberInput, Autocomplete, Divider } from "@mantine/core";
+import { Grid, Stack, Select, NumberInput, Autocomplete, Divider, Alert } from "@mantine/core";
 import { UseFormReturnType } from "@mantine/form";
-import { Client } from "@/lib/db/schema";
+import { ClientWithRoutes } from "@/lib/db/schema";
 import { DispatchFormValues } from "@/types/dispatch";
 import { inputStyles } from "@/app/(app)/dispatch/page";
+import { IconInfoCircle } from "@tabler/icons-react";
 
 export function ClientSection({
   form,
   clients,
 }: {
   form: UseFormReturnType<DispatchFormValues>;
-  clients: Client[];
+  clients: ClientWithRoutes[];
 }) {
+  const selectedClient =
+    clients.find((c) => c.clientName === form.values.clientName) ?? null;
+
+  const clientRoutes = selectedClient?.routes ?? [];
+
   return (
     <>
       <Divider mb="xs" mt="lg" label="CLIENT DETAILS" />
@@ -27,9 +33,16 @@ export function ClientSection({
               {...form.getInputProps("clientName")}
               onChange={(val) => {
                 form.setFieldValue("clientName", val);
-                const client = clients.find((c) => c.clientName === val) ?? null;
+                const client =
+                  clients.find((c) => c.clientName === val) ?? null;
                 form.setFieldValue("clientRate", client?.rate ?? "");
-                form.setFieldValue("ruta", "");
+
+                const routes = client?.routes ?? [];
+                if (routes.length === 1) {
+                  form.setFieldValue("ruta", routes[0].route);
+                } else {
+                  form.setFieldValue("ruta", "");
+                }
               }}
               styles={inputStyles}
               maxDropdownHeight={160}
@@ -45,7 +58,9 @@ export function ClientSection({
               styles={inputStyles}
               disabled={!form.values.clientName}
               {...form.getInputProps("clientRate")}
-              onChange={(e) => form.setFieldValue("clientRate", e?.toString() ?? "")}
+              onChange={(e) =>
+                form.setFieldValue("clientRate", e?.toString() ?? "")
+              }
             />
           </Stack>
         </Grid.Col>
@@ -54,12 +69,31 @@ export function ClientSection({
           <Stack gap="sm">
             <Autocomplete
               label="Ruta"
-              placeholder="Select Existing Route"
+              placeholder={
+                clientRoutes.length > 0
+                  ? "Select a route"
+                  : "Type a route"
+              }
+              data={clientRoutes.map((r) => r.route)}
               styles={inputStyles}
-              // data={selectedClient?.routes.map((route) => route.route) || []}
               disabled={!form.values.clientName}
               {...form.getInputProps("ruta")}
             />
+
+            {selectedClient && clientRoutes.length > 1 && !form.values.ruta && (
+              <Alert
+                variant="light"
+                color="blue"
+                icon={<IconInfoCircle size={16} />}
+                py="xs"
+                styles={{
+                  message: { fontSize: "11px", fontWeight: 600 },
+                }}
+              >
+                This client has {clientRoutes.length} routes. Please select one
+                from the dropdown above.
+              </Alert>
+            )}
           </Stack>
         </Grid.Col>
       </Grid>

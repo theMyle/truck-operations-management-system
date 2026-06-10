@@ -1,32 +1,47 @@
 "use client";
 
-import { Modal, TextInput, Button, Stack, Group, Switch } from "@mantine/core";
+import {
+  Modal,
+  TextInput,
+  Button,
+  Stack,
+  Group,
+  Switch,
+  Text,
+  ActionIcon,
+  Divider,
+  Checkbox,
+} from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { useAction } from "next-safe-action/hooks";
 import { createClientAction, updateClientAction } from "@/lib/actions/clients";
 import { notifications } from "@mantine/notifications";
-import type { Client } from "@/lib/db/schema/clients";
+import type { ClientWithRoutes } from "@/lib/db/schema/clients";
+import { IconPlus, IconTrash } from "@tabler/icons-react";
 
 interface Props {
   opened: boolean;
   onClose: () => void;
-  client?: Client | null;
+  client?: ClientWithRoutes | null;
 }
 
 export function ClientModal({ opened, onClose, client }: Props) {
   const isEditMode = !!client;
-
   const form = useForm({
     initialValues: {
       clientName: client?.clientName ?? "",
       rate: client?.rate ?? "",
       hasFixedRoutes: client?.hasFixedRoutes ?? false,
+      routes: client?.routes?.map((r) => ({ route: r.route })) ?? [],
     },
     validate: {
-      clientName: (v) =>
+      clientName: (v: string) =>
         v.trim().length < 1 ? "Client name is required" : null,
-      rate: (v) =>
+      rate: (v: string) =>
         !v || isNaN(Number(v)) || Number(v) < 0 ? "Enter a valid amount" : null,
+      routes: {
+        route: (v: string) => (!v?.trim() ? "Route cannot be empty" : null), // add this
+      },
     },
   });
 
@@ -54,6 +69,7 @@ export function ClientModal({ opened, onClose, client }: Props) {
       clientName: values.clientName,
       rate: values.rate || " ",
       hasFixedRoutes: values.hasFixedRoutes,
+      routes: values.routes,
     };
     if (isEditMode && client) {
       updateAction.execute({ id: client.id, ...payload });
@@ -70,37 +86,90 @@ export function ClientModal({ opened, onClose, client }: Props) {
       onClose={onClose}
       title={isEditMode ? "Edit Client" : "Add New Client"}
       centered
-      size="md"
+      size="lg"
     >
-      <form onSubmit={handleSubmit}>
         <Stack gap="sm">
-          <TextInput
-            id="input-client-name"
-            label="Client Name"
-            placeholder="e.g. Shopee"
-            {...form.getInputProps("clientName")}
-          />
-          <TextInput
-            label="Base Rate"
-            placeholder="0.00"
-            leftSection="₱"
-            {...form.getInputProps("rate")}
-          />
-          <Switch
-            label="Has Fixed Route"
-            {...form.getInputProps("hasFixedRoutes", { type: "checkbox" })}
-          />
-        </Stack>
+          <form onSubmit={handleSubmit}>
+            <Group align="flex-start" gap="lg" wrap="nowrap">
+              {/* LEFT — client details */}
+              <Stack style={{ flex: 1 }} gap="sm">
+                <Text size="xs" fw={700} c="dimmed" tt="uppercase" lts={0.5}>
+                  Client Details
+                </Text>
+                <TextInput
+                  label="Client Name"
+                  placeholder="e.g. Shopee"
+                  {...form.getInputProps("clientName")}
+                />
+                <TextInput
+                  label="Base Rate"
+                  placeholder="0.00"
+                  leftSection="₱"
+                  {...form.getInputProps("rate")}
+                />
+                <Checkbox
+                  label="Fixed Routes"
+                  {...form.getInputProps("hasFixedRoutes", {
+                    type: "checkbox",
+                  })}
+                />
+              </Stack>
 
-        <Group justify="flex-end">
-          <Button variant="default" onClick={onClose} disabled={isPending}>
-            Cancel
-          </Button>
-          <Button type="submit" loading={isPending}>
-            {isEditMode ? "Update" : "Save"}
-          </Button>
-        </Group>
-      </form>
+              <Divider orientation="vertical" />
+
+              {/* RIGHT — routes */}
+              <Stack style={{ flex: 1 }} gap="xs">
+                <Text size="xs" fw={700} c="dimmed" tt="uppercase" lts={0.5}>
+                  Routes
+                </Text>
+
+                {form.values.routes.length === 0 && (
+                  <Text size="xs" c="dimmed" fs="italic">
+                    No routes added yet
+                  </Text>
+                )}
+
+                {form.values.routes.map((_, index) => (
+                  <Group key={index} gap="xs">
+                    <TextInput
+                      style={{ flex: 1 }}
+                      placeholder="Enter route"
+                      {...form.getInputProps(`routes.${index}.route`)}
+                    />
+                    <ActionIcon
+                      color="red"
+                      variant="light"
+                      onClick={() => form.removeListItem("routes", index)}
+                    >
+                      <IconTrash size={14} />
+                    </ActionIcon>
+                  </Group>
+                ))}
+
+                <Button
+                  variant="light"
+                  size="xs"
+                  leftSection={<IconPlus size={12} />}
+                  onClick={() => form.insertListItem("routes", { route: "" })}
+                  mt={form.values.routes.length === 0 ? 0 : 4}
+                >
+                  Add Route
+                </Button>
+              </Stack>
+            </Group>
+
+            <Divider my="md" />
+
+            <Group justify="flex-end">
+              <Button variant="default" onClick={onClose} disabled={isPending}>
+                Cancel
+              </Button>
+              <Button type="submit" loading={isPending}>
+                {isEditMode ? "Update" : "Save"}
+              </Button>
+            </Group>
+          </form>
+        </Stack>
     </Modal>
   );
 }

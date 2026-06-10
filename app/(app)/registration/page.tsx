@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic";
 
 export default async function RegistrationPage() {
   const [clientList, truckList, driverList, helperList] = await Promise.all([
-    db.select().from(clients),
+    db.query.clients.findMany({with: {routes: true}}),
     db.select().from(trucks),
     db.select().from(drivers),
     db.select().from(helpers),

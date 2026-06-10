@@ -8,13 +8,13 @@ import { DataTable } from "mantine-datatable";
 import { useDisclosure } from "@mantine/hooks";
 import { modals } from "@mantine/modals";
 import { notifications } from "@mantine/notifications";
-import type { Client } from "@/lib/db/schema/clients";
+import type { ClientWithRoutes } from "@/lib/db/schema/clients";
 import { deleteClientAction } from "@/lib/actions/clients";
 import { TableHeader } from "./TableHeader";
 import { ClientModal } from "./ClientModal";
 
 interface Props {
-  data: Client[];
+  data: ClientWithRoutes[];
 }
 
 const PAGE_SIZE = 7;
@@ -22,7 +22,7 @@ const UNIFORM_TABLE_HEIGHT = "21rem";
 
 export function ClientsTable({ data }: Props) {
   const [addOpened, { open: openAdd, close: closeAdd }] = useDisclosure(false);
-  const [editClient, setEditClient] = useState<Client | null>(null);
+  const [editClient, setEditClient] = useState<ClientWithRoutes| null>(null);
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
 
@@ -31,7 +31,7 @@ export function ClientsTable({ data }: Props) {
   );
   const paged = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
-  const openDeleteConfirm = (client: Client) => {
+  const openDeleteConfirm = (client: ClientWithRoutes) => {
     modals.openConfirmModal({
       title: "Delete Client",
       centered: true,
@@ -64,7 +64,11 @@ export function ClientsTable({ data }: Props) {
 
   return (
     <>
-      <ClientModal key={`client-add-${addOpened}`} opened={addOpened} onClose={closeAdd} />
+      <ClientModal
+        key={`client-add-${addOpened}`}
+        opened={addOpened}
+        onClose={closeAdd}
+      />
       <ClientModal
         key={`client-edit-${editClient?.id ?? "none"}-${!!editClient}`}
         opened={!!editClient}
@@ -162,9 +166,9 @@ export function ClientsTable({ data }: Props) {
               render: (row) =>
                 row.rate
                   ? `₱ ${Number(row.rate).toLocaleString(undefined, {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2,
-                  })}`
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    })}`
                   : "-",
             },
           ]}
