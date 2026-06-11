@@ -4,7 +4,7 @@ import { Stack, ScrollArea } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { useRouter } from "next/navigation";
 import React, { useState, useMemo, useEffect } from "react";
-import { IconTrash } from "@tabler/icons-react";
+import { IconError404, IconTrash } from "@tabler/icons-react";
 
 import { DispatchRecord } from "../constant";
 import { useDispatch } from "../context/dispatch-context";
@@ -15,7 +15,10 @@ import { BookingTable } from "@/components/booking/BookingTable";
 import { BookingToolbar } from "@/components/booking/BookingToolbar";
 import { useDispatchExport } from "@/app/hooks/useDispatchExport ";
 import { useDispatchPrint } from "@/app/hooks/useDispatchPrint";
-import { getAllBookingAction } from "@/lib/actions/booking";
+import {
+  deleteBookingAction,
+  getAllBookingAction,
+} from "@/lib/actions/booking";
 import { formatTime12Hour } from "@/lib/utils/stringFormat";
 
 const PAGE_SIZE = 10;
@@ -136,8 +139,20 @@ export default function BookingRecordsPage() {
     setDeleteOpened(true);
   };
 
-  const handleDeleteConfirm = () => {
+  const handleDeleteConfirm = async () => {
     if (!deleteRecord) return;
+
+    const result = await deleteBookingAction({ id: String(deleteRecord.id) });
+
+    if (result.serverError) {
+      notifications.show({
+        title: "Error",
+        message: result.serverError,
+        color: "red",
+        icon: <IconError404 size={16} />,
+      });
+    }
+
     setRecords((prev) => prev.filter((r) => r.id !== deleteRecord.id));
     setDeleteOpened(false);
     setDeleteRecord(null);

@@ -10,5 +10,9 @@ export const updateBookingActionSchema = createBookingActionSchema.extend({
   id: z.string(),
 });
 
+export const deleteBookingActionSchema = z.object({
+  id: z.string(),
+});
 export type CreateBookingInput = z.infer<typeof createBookingActionSchema>;
 export type UpdateBookingInput = z.infer<typeof updateBookingActionSchema>;
+export type DeleteBookingInput = z.infer<typeof deleteBookingActionSchema>;

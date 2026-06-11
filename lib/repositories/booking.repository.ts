@@ -140,8 +140,15 @@ export const makeBookingRepository = (database = db): IBookingRepository => {
       });
     },
 
-    delete: function (id: string): boolean {
-      throw new Error("Function not implemented.");
+    delete: async function (id: string): Promise<boolean> {
+      await database.transaction(async (tx) => {
+        await tx.delete(bookingDrops).where(eq(bookingDrops.bookingId, id));
+        await tx
+          .delete(bookingToHelpers)
+          .where(eq(bookingToHelpers.bookingId, id));
+        await tx.delete(booking).where(eq(booking.id, id));
+      });
+      return true;
     },
   };
 };
