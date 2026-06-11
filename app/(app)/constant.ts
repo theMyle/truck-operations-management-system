@@ -20,6 +20,7 @@ export interface DispatchRecord {
   ruta: string;
   bookingDr: string;
   bookingDRNo?: string;
+  rawPickupTime?: string;
   pickLocation?: string;
   dropOffLocation?: string;
   noOfDrops: number;
@@ -33,6 +34,8 @@ export interface DispatchRecord {
   finishDelivery?: string;
   deliveryStatus?: string;
   tripRemarks?: string;
+  rawDrops?: { locationName: string }[];
+  truckerRate?: string;
 }
 
 export const MOCK_RECORDS: DispatchRecord[] = [
@@ -52,6 +55,7 @@ export const MOCK_RECORDS: DispatchRecord[] = [
     status: "Completed",
     bookedBy: "Admin User",
     tripRate: "₱15,000",
+    truckerRate: "₱10,000",
     podFile: "pod_FE-2025-0001.jpg",
   },
   {

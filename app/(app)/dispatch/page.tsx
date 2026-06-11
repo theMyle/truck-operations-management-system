@@ -14,11 +14,7 @@ import {
 import { notifications } from "@mantine/notifications";
 import { useState, useEffect } from "react";
 import { useForm } from "@mantine/form";
-import {
-  IconCheck,
-  IconEye,
-  IconX,
-} from "@tabler/icons-react";
+import { IconCheck, IconEye, IconX } from "@tabler/icons-react";
 import "@mantine/dates/styles.css";
 import { CardHeader } from "@/components/dispatch/CardHeader";
 import { ReviewModal } from "@/components/dispatch/ReviewModal";
@@ -35,8 +31,15 @@ import { getDriverAction } from "@/lib/actions/drivers";
 import { getHelperAction } from "@/lib/actions/helpers";
 import { useUser } from "@clerk/nextjs";
 import { toTitleCase } from "@/lib/utils/stringFormat";
-import { createBookingAction } from "@/lib/actions/booking";
-import { CreateBookingInput } from "@/lib/validations/booking";
+import {
+  createBookingAction,
+  updateBookingAction,
+} from "@/lib/actions/booking";
+import {
+  CreateBookingInput,
+  UpdateBookingInput,
+} from "@/lib/validations/booking";
+import { useDispatch } from "../context/dispatch-context";
 
 export const inputStyles = {
   label: {
@@ -63,6 +66,8 @@ export default function DispatchPage() {
   const [helpers, setHelpers] = useState<Helper[]>([]);
   const [clients, setClients] = useState<ClientWithRoutes[]>([]);
   const [trucks, setTrucks] = useState<Truck[]>([]);
+  const { editingRecord, setEditingRecord } = useDispatch();
+  const isEditMode = !!editingRecord;
 
   const [reviewOpened, setReviewOpened] = useState(false);
 
@@ -77,7 +82,7 @@ export default function DispatchPage() {
       pickupDate: null,
       pickupTime: "",
       dropOffs: [
-        { id: Date.now(), location: "", contactPerson: "", contactNo: "" }
+        { id: Date.now(), location: "", contactPerson: "", contactNo: "" },
       ],
       plateNo: null,
       truckerRate: "",
@@ -88,7 +93,9 @@ export default function DispatchPage() {
       clientName: (value) => (!value ? "Client is required" : null),
       clientRate: (value, values) => {
         if (!values.clientName) return null;
-        return !value?.toString().trim() || isNaN(Number(value)) || Number(value) <= 0
+        return !value?.toString().trim() ||
+          isNaN(Number(value)) ||
+          Number(value) <= 0
           ? "Valid client rate is required"
           : null;
       },
@@ -96,9 +103,12 @@ export default function DispatchPage() {
         if (!values.clientName) return null;
         return !value?.trim() ? "Route is required" : null;
       },
-      pickupLocation: (value) => (!value?.trim() ? "Pickup location is required" : null),
-      bookingDr: (value) => (!value?.trim() ? "Booking / DR# is required" : null),
-      noOfDrops: (value) => (!value || Number(value) < 1 ? "At least 1 drop required" : null),
+      pickupLocation: (value) =>
+        !value?.trim() ? "Pickup location is required" : null,
+      bookingDr: (value) =>
+        !value?.trim() ? "Booking / DR# is required" : null,
+      noOfDrops: (value) =>
+        !value || Number(value) < 1 ? "At least 1 drop required" : null,
       pickupDate: (value) => (!value ? "Pickup date is required" : null),
       pickupTime: (value) => (!value ? "Pickup time is required" : null),
       dropOffs: {
@@ -107,7 +117,9 @@ export default function DispatchPage() {
       plateNo: (value) => (!value ? "Plate number is required" : null),
       truckerRate: (value, values) => {
         if (!values.plateNo) return null;
-        return !value?.toString().trim() || isNaN(Number(value)) || Number(value) <= 0
+        return !value?.toString().trim() ||
+          isNaN(Number(value)) ||
+          Number(value) <= 0
           ? "Valid trucker rate is required"
           : null;
       },
@@ -115,18 +127,22 @@ export default function DispatchPage() {
     },
   });
 
-  const selectedClient = clients.find(c => c.clientName === form.values.clientName) ?? null;
-  const selectedTruck = trucks.find(t => t.plateNumber === form.values.plateNo) ?? null;
+  const selectedClient =
+    clients.find((c) => c.clientName === form.values.clientName) ?? null;
+  const selectedTruck =
+    trucks.find((t) => t.plateNumber === form.values.plateNo) ?? null;
 
   // On Load
   useEffect(() => {
     async function fetchDispatchersData() {
-      const [trucksRes, clientsRes, driversRes, helpersRes] = await Promise.all([
-        getTruckAction(),
-        getClientAction(),
-        getDriverAction(),
-        getHelperAction(),
-      ]);
+      const [trucksRes, clientsRes, driversRes, helpersRes] = await Promise.all(
+        [
+          getTruckAction(),
+          getClientAction(),
+          getDriverAction(),
+          getHelperAction(),
+        ],
+      );
 
       if (trucksRes.data) setTrucks(trucksRes.data);
       if (clientsRes.data) setClients(clientsRes.data);
@@ -142,14 +158,15 @@ export default function DispatchPage() {
     console.log(form.values);
     form.setFieldValue(
       "noOfDrops",
-      form.values.dropOffs.filter((drop) => drop.location.trim().length > 0).length,
+      form.values.dropOffs.filter((drop) => drop.location.trim().length > 0)
+        .length,
     );
     const validation = form.validate();
 
     if (validation.hasErrors) {
-      console.log(validation.errors)
-      return
-    };
+      console.log(validation.errors);
+      return;
+    }
 
     setReviewOpened(true);
   };
@@ -157,16 +174,16 @@ export default function DispatchPage() {
   const handleConfirmSubmit = async () => {
     setReviewOpened(false);
 
-    const selectedClient = clients.find((client) =>
-      client.clientName.trim() == form.values.clientName!.trim()
+    const selectedClient = clients.find(
+      (client) => client.clientName.trim() == form.values.clientName!.trim(),
     )!;
 
-    const selectedDriver = drivers.find((driver) =>
-      driver.driverName.trim() == form.values.driverName!.trim()
+    const selectedDriver = drivers.find(
+      (driver) => driver.driverName.trim() == form.values.driverName!.trim(),
     )!;
 
-    const selectedTruck = trucks.find((truck) =>
-      truck.plateNumber.trim() == form.values.plateNo!.trim()
+    const selectedTruck = trucks.find(
+      (truck) => truck.plateNumber.trim() == form.values.plateNo!.trim(),
     )!;
 
     const helpers = form.values.helpers.map((helper) => helper.id);
@@ -175,12 +192,12 @@ export default function DispatchPage() {
       .map((drop, index) => {
         return {
           sequenceNumber: index + 1,
-          locationName: drop.location
-        }
+          locationName: drop.location,
+        };
       });
 
     const payload: CreateBookingInput = {
-      bookingDate: new Date().toISOString().split('T')[0],
+      bookingDate: new Date().toISOString().split("T")[0],
       bookedBy: userRole,
       bookingDRNo: form.values.bookingDr,
       clientId: selectedClient.id,
@@ -198,11 +215,21 @@ export default function DispatchPage() {
       truckerRate: form.values.truckerRate,
       numberOfDrops: form.values.noOfDrops as number,
       helpers: helpers,
-      drops: drops
+      drops: drops,
+    };
+
+    let result;
+
+    if (isEditMode && editingRecord) {
+      const updatePayload: UpdateBookingInput = {
+        ...payload,
+        id: String(editingRecord.id),
+      };
+
+      result = await updateBookingAction(updatePayload);
+    } else {
+      result = await createBookingAction(payload);
     }
-
-    const result = await createBookingAction(payload);
-
     console.log("createBookingAction result", result);
 
     if (result.serverError) {
@@ -248,11 +275,60 @@ export default function DispatchPage() {
   };
 
   const handleReset = () => {
+    setEditingRecord(null);
     form.reset();
   };
 
+  useEffect(() => {
+    if (isLoading || !editingRecord) return;
+
+    const helperNames =
+      editingRecord.helper !== "No Helper"
+        ? editingRecord.helper.split(", ").filter(Boolean)
+        : [];
+
+    const matchedHelpers = helpers.filter((h) =>
+      helperNames.includes(h.helperName),
+    );
+
+    const drops =
+      (editingRecord.rawDrops ?? []).length > 0
+        ? editingRecord.rawDrops!.map((d, i) => ({
+            id: Date.now() + i,
+            location: d.locationName,
+            contactPerson: "",
+            contactNo: "",
+          }))
+        : [{ id: Date.now(), location: "", contactPerson: "", contactNo: "" }];
+
+    form.setValues({
+      clientName: editingRecord.clientName ?? null,
+      clientRate: String(editingRecord.tripRate ?? ""),
+      ruta: editingRecord.ruta ?? "",
+      pickupLocation: editingRecord.pickLocation ?? "",
+      bookingDr: editingRecord.bookingDRNo ?? "",
+      noOfDrops: editingRecord.noOfDrops ?? "",
+      pickupDate: editingRecord.pickUpDate
+        ? new Date(editingRecord.pickUpDate)
+        : null,
+      pickupTime: editingRecord.rawPickupTime ?? "",
+      dropOffs: drops,
+      plateNo: editingRecord.plateNo ?? null,
+      truckerRate: String(editingRecord.truckerRate ?? ""),
+      driverName: editingRecord.driverName ?? null,
+      helpers: matchedHelpers,
+    });
+  }, [isLoading, editingRecord]);
   if (isLoading) return null;
 
+  const badgeStyles = {
+    root: { height: 22, padding: "0 8px" },
+    label: {
+      fontSize: "10px",
+      fontWeight: 800,
+      textTransform: "none" as const,
+    },
+  };
   return (
     <>
       <ReviewModal
@@ -268,24 +344,35 @@ export default function DispatchPage() {
         <Stack gap="md">
           <Group justify="space-between" align="center">
             <Group gap={8}>
-              <Badge
-                variant="filled"
-                color="blue.6"
-                radius="sm"
-                styles={{
-                  root: { height: 22, padding: "0 8px" },
-                  label: {
-                    fontSize: "10px",
-                    fontWeight: 800,
-                    textTransform: "none",
-                  },
-                }}
-              >
-                Booking Form
-              </Badge>
-              <Text style={{ fontSize: "10px" }} c="dimmed" fw={500}>
-                Create and manage trip dispatches
-              </Text>
+              {isEditMode ? (
+                <>
+                  <Badge
+                    variant="filled"
+                    color="orange.6"
+                    radius="sm"
+                    styles={badgeStyles}
+                  >
+                    Edit Mode
+                  </Badge>
+                  <Text style={{ fontSize: "10px" }} c="dimmed" fw={500}>
+                    Editing Dispatch #{editingRecord?.bookingDRNo}
+                  </Text>
+                </>
+              ) : (
+                <>
+                  <Badge
+                    variant="filled"
+                    color="blue.6"
+                    radius="sm"
+                    styles={badgeStyles}
+                  >
+                    Booking Form
+                  </Badge>
+                  <Text style={{ fontSize: "10px" }} c="dimmed" fw={500}>
+                    Create and manage trip dispatches
+                  </Text>
+                </>
+              )}
             </Group>
             <Badge
               variant="light"
@@ -315,14 +402,9 @@ export default function DispatchPage() {
                 }
               />
 
-              <ClientSection
-                form={form}
-                clients={clients}
-              />
+              <ClientSection form={form} clients={clients} />
 
-              <LocationSection
-                form={form}
-              />
+              <LocationSection form={form} />
 
               <TruckSection
                 form={form}
@@ -341,7 +423,7 @@ export default function DispatchPage() {
               <Group flex={1}>
                 <Button
                   variant="light"
-                  color="gray"
+                  color={isEditMode ? "orange" : "gray"}
                   leftSection={<IconX size={14} />}
                   styles={{
                     root: { height: 36 },
@@ -349,7 +431,7 @@ export default function DispatchPage() {
                   }}
                   onClick={handleReset}
                 >
-                  Reset
+                  {isEditMode ? "Cancel Edit" : "Reset"}
                 </Button>
                 <Button
                   color="blue.6"
@@ -363,14 +445,12 @@ export default function DispatchPage() {
                   Review & Submit
                 </Button>
 
-                <Text
-                  component="div"
-                  ml="auto"
-                  fz="10px"
-                  fw={700}
-                  c="dimmed"
-                >
-                  Booked by: <Badge size="xs" variant="light" color="blue" radius="sm"> {toTitleCase(userRole)} </Badge>
+                <Text component="div" ml="auto" fz="10px" fw={700} c="dimmed">
+                  Booked by:{" "}
+                  <Badge size="xs" variant="light" color="blue" radius="sm">
+                    {" "}
+                    {toTitleCase(userRole)}{" "}
+                  </Badge>
                 </Text>
               </Group>
             </Paper>
