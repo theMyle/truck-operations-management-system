@@ -31,7 +31,10 @@ export default function BookingRecordsPage() {
 
   const [records, setRecords] = useState<DispatchRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [filters, setFilters] = useState<FilterValues>({ search: "", status: null });
+  const [filters, setFilters] = useState<FilterValues>({
+    search: "",
+    status: null,
+  });
   const [page, setPage] = useState(1);
 
   const [viewRecord, setViewRecord] = useState<DispatchRecord | null>(null);
@@ -61,7 +64,9 @@ export default function BookingRecordsPage() {
           pickLocation: b.pickupLocation,
           dropOffLocation: b.drops.map((d) => d.locationName).join(", ") || "—",
           bookedBy: b.bookedBy,
-          status: (b.deliveryStatus as "Pending" | "In Transit" | "Completed") || "Pending",
+          status:
+            (b.deliveryStatus as "Pending" | "In Transit" | "Completed") ||
+            "Pending",
           date: b.pickupDate,
           client: b.clientName,
           driver: b.driverName,
@@ -71,6 +76,13 @@ export default function BookingRecordsPage() {
           tripRate: b.clientRate,
           deliveryStatus: b.deliveryStatus || "Pending",
           tripRemarks: b.tripRemarks || undefined,
+          truckerRate: b.truckerRate ?? "",
+          rawPickupTime: b.pickupTime,
+          rawHelpers: b.helpers.map((h) => ({
+            id: h.id,
+            helperName: h.helperName,
+          })),
+          rawDrops: b.drops.map((d) => ({ locationName: d.locationName })),
         }));
         setRecords(mapped);
       }
