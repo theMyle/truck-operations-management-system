@@ -17,5 +17,5 @@ export default interface IBookingRepository {
         helperIds?: string[]
     ): Promise<BookingWithRelations>,
 
-    delete(id: string): Boolean,
+    delete(id: string): Promise<boolean>,
 }

@@ -2,7 +2,11 @@
 
 import { actionClient } from "../safe-action";
 import { bookingRepository } from "../repositories/booking.repository";
-import { createBookingActionSchema, updateBookingActionSchema } from "../validations/booking";
+import {
+  createBookingActionSchema,
+  updateBookingActionSchema,
+  deleteBookingActionSchema,
+} from "../validations/booking";
 import { revalidatePath } from "next/cache";
 
 export const createBookingAction = actionClient
@@ -30,20 +34,17 @@ export const getAllBookingAction = actionClient.action(async () => {
   }
 });
 
-
 export const updateBookingAction = actionClient
   .inputSchema(updateBookingActionSchema)
   .action(async ({ parsedInput }) => {
     try {
       const { id, drops, helpers, ...bookingData } = parsedInput;
 
-     
       const dropsWithBookingId = drops.map((drop) => ({
         ...drop,
-        bookingId: id, 
+        bookingId: id,
       }));
 
-     
       const updatedBooking = await bookingRepository.update(
         id,
         bookingData,
@@ -51,11 +52,25 @@ export const updateBookingAction = actionClient
         helpers,
       );
 
-      revalidatePath("/")
+      revalidatePath("/");
 
       return updatedBooking;
     } catch (error) {
       console.error("Update Error:", error);
       return { serverError: "Failed to update booking in database." };
+    }
+  });
+
+export const deleteBookingAction = actionClient
+  .inputSchema(deleteBookingActionSchema)
+  .action(async ({ parsedInput }) => {
+    try {
+      const { id } = parsedInput as { id: string };
+      await bookingRepository.delete(id);
+      revalidatePath("/");
+      return { success: true };
+    } catch (error) {
+      console.error("❌ DELETE ACTION CRASHED:", error);
+      return { serverError: "Failed to delete bokking" };
     }
   });
