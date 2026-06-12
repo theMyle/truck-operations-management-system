@@ -38,7 +38,7 @@ export function ViewModal({
         { label: "Plate #", value: record.plateNo },
         { label: "Driver", value: record.driver || record.driverName },
         { label: "Helper", value: record.helper },
-        { label: "Status", value: record.status },
+        { label: "Status", value: record.status, },
         { label: "Date", value: record.date || record.bookingDate },
         { label: "Time", value: record.pickUpTime },
       ],

@@ -7,6 +7,7 @@ import {
 } from "../db/schema/booking";
 import { bookingDrops, NewBookingDrop } from "../db/schema/bookingDrops";
 import { bookingToHelpers } from "../db/schema/bookingHelpers";
+import { UpdateTripDetailInput } from "../db/schema/booking";
 import IBookingRepository from "./booking.repository.interface";
 
 export const makeBookingRepository = (database = db): IBookingRepository => {
@@ -152,5 +153,27 @@ export const makeBookingRepository = (database = db): IBookingRepository => {
     },
   };
 };
+
+export async function updateTripDetails(data: UpdateTripDetailInput) {
+  // DB uses timestamp, form gives "HH:mm" — combine with pickup date
+  const toTs = (time?: string): Date | null => {
+    if (!time || !data.pickupDate) return null;
+    const d = new Date(`${data.pickupDate}T${time}:00`);
+    return isNaN(d.getTime()) ? null : d;
+  };
+
+  return db
+    .update(booking)
+    .set({
+      pickupArrivalTime: toTs(data.arrivalPickup),
+      loadingStartTime: toTs(data.loadingStart),
+      loadingEndTime: toTs(data.loadingEnd),
+      pickupDepartureTime: toTs(data.departurePickup),
+      finishedDeliveryTime: toTs(data.finishDelivery),
+      deliveryStatus: data.deliveryStatus,
+      tripRemarks: data.tripRemarks ?? null,
+    })
+    .where(eq(booking.id, data.id));
+}
 
 export const bookingRepository = makeBookingRepository();

@@ -20,3 +20,10 @@ export function formatTime12Hour(timeStr: string | null | undefined): string {
     const displayMinutes = minutes.toString().padStart(2, "0");
     return `${displayHours}:${displayMinutes} ${ampm}`;
 }
+
+export function formatTimeHHMM(date: Date | string | null | undefined): string {
+  if (!date) return "";
+  const d = new Date(date);
+  if (isNaN(d.getTime())) return "";
+  return `${d.getHours().toString().padStart(2, "0")}:${d.getMinutes().toString().padStart(2, "0")}`;
+}
