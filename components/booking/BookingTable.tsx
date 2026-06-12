@@ -20,6 +20,7 @@ import {
   IconClipboardList,
 } from "@tabler/icons-react";
 import { DispatchRecord } from "@/app/(app)/constant";
+import { STATUS_META } from "./TripDetailsModal";
 
 const STATUS_COLOR: Record<string, string> = {
   "In Transit": "blue",
@@ -216,7 +217,7 @@ export function BookingTable({
                   <Table.Td style={cellStyle}>
                     <Badge
                       variant="light"
-                      color={STATUS_COLOR[record.status] ?? "gray"}
+                      color={STATUS_META[record.status]?.color ?? "gray"}
                       radius="md"
                       styles={{
                         root: { height: 18 },

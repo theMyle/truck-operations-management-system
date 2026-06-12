@@ -8,7 +8,10 @@ import { IconError404, IconTrash } from "@tabler/icons-react";
 
 import { DispatchRecord } from "../constant";
 import { useDispatch } from "../context/dispatch-context";
-import { TripDetailsModal } from "@/components/booking/TripDetailsModal";
+import {
+  TripDetailsModal,
+  TripDetailsForm,
+} from "@/components/booking/TripDetailsModal";
 import { ViewModal } from "@/components/booking/ViewModal";
 import { DeleteModal } from "@/components/booking/DeleteModal";
 import { BookingTable } from "@/components/booking/BookingTable";
@@ -18,8 +21,9 @@ import { useDispatchPrint } from "@/app/hooks/useDispatchPrint";
 import {
   deleteBookingAction,
   getAllBookingAction,
+  updateTripDetailsAction,
 } from "@/lib/actions/booking";
-import { formatTime12Hour } from "@/lib/utils/stringFormat";
+import { formatTime12Hour, formatTimeHHMM } from "@/lib/utils/stringFormat";
 
 const PAGE_SIZE = 10;
 
@@ -86,7 +90,13 @@ export default function BookingRecordsPage() {
             helperName: h.helperName,
           })),
           rawDrops: b.drops.map((d) => ({ locationName: d.locationName })),
+          arrivalPickup: formatTimeHHMM(b.pickupArrivalTime),
+          loadingStart: formatTimeHHMM(b.loadingStartTime),
+          loadingEnd: formatTimeHHMM(b.loadingEndTime),
+          departurePickup: formatTimeHHMM(b.pickupDepartureTime),
+          finishDelivery: formatTimeHHMM(b.finishedDeliveryTime),
         }));
+
         setRecords(mapped);
       }
       setIsLoading(false);
@@ -102,7 +112,9 @@ export default function BookingRecordsPage() {
     return records.filter((r) => {
       const matchesSearch =
         !q || Object.values(r).some((v) => String(v).toLowerCase().includes(q));
-      const matchesStatus = activeStatuses.includes(r.status);
+      const matchesStatus = filters.status
+        ? r.status === filters.status
+        : r.status !== "Completed";
       return matchesSearch && matchesStatus;
     });
   }, [filters, records]);
@@ -164,28 +176,54 @@ export default function BookingRecordsPage() {
     });
   };
 
-  const handleTripSave = (
+  const handleTripSave = async (
     id: string | number,
-    details: Partial<DispatchRecord>,
+    form: TripDetailsForm, // ← was Partial<DispatchRecord>
   ) => {
-    setRecords((prev) => {
-      const updated = prev.map((r) => (r.id === id ? { ...r, ...details } : r));
-      const completed = updated.find(
-        (r) => r.id === id && r.deliveryStatus === "Completed",
-      );
-      if (completed) return updated.filter((r) => r.id !== id);
-      return updated;
+    const source = records.find((r) => r.id === id);
+
+    const result = await updateTripDetailsAction({
+      id: String(id),
+      pickupDate: source?.pickUpDate ?? "",
+      arrivalPickup: form.arrivalPickup || undefined,
+      loadingStart: form.loadingStart || undefined,
+      loadingEnd: form.loadingEnd || undefined,
+      departurePickup: form.departurePickup || undefined,
+      finishDelivery: form.finishDelivery || undefined,
+      deliveryStatus: form.deliveryStatus,
+      tripRemarks: form.tripRemarks || undefined,
     });
-    const isCompleted = details.deliveryStatus === "Completed";
+
+    if (result?.serverError) {
+      notifications.show({
+        title: "Error",
+        message: result.serverError,
+        color: "red",
+      });
+      return;
+    }
+
+    setRecords((prev) => {
+      if (form.deliveryStatus === "Completed") {
+        return prev.filter((r) => r.id !== id);
+      }
+      return prev.map((r) => {
+        if (r.id !== id) return r;
+        return {
+          ...r,
+          ...form,
+          status: form.deliveryStatus as DispatchRecord["status"],
+        };
+      });
+    });
+
     notifications.show({
-      title: isCompleted ? "Trip completed" : "Trip details saved",
-      message: isCompleted
-        ? `Record #${id} moved to Trip Logs.`
-        : `Record #${id} updated.`,
-      color: isCompleted ? "green" : "blue",
+      title:
+        form.deliveryStatus === "Completed" ? "Trip completed" : "Trip updated",
+      message: `Record #${id} → ${form.deliveryStatus}.`,
+      color: form.deliveryStatus === "Completed" ? "green" : "blue",
     });
   };
-
   if (isLoading) return null;
 
   return (

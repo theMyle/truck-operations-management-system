@@ -1,13 +1,17 @@
 "use server";
 
 import { actionClient } from "../safe-action";
-import { bookingRepository } from "../repositories/booking.repository";
+import {
+  bookingRepository,
+  updateTripDetails,
+} from "../repositories/booking.repository";
 import {
   createBookingActionSchema,
   updateBookingActionSchema,
   deleteBookingActionSchema,
 } from "../validations/booking";
 import { revalidatePath } from "next/cache";
+import { updateTripDetailSchema } from "../db/schema/booking";
 
 export const createBookingAction = actionClient
   .inputSchema(createBookingActionSchema)
@@ -73,4 +77,10 @@ export const deleteBookingAction = actionClient
       console.error("❌ DELETE ACTION CRASHED:", error);
       return { serverError: "Failed to delete bokking" };
     }
+  });
+
+export const updateTripDetailsAction = actionClient
+  .schema(updateTripDetailSchema)
+  .action(async ({ parsedInput }) => {
+    await updateTripDetails(parsedInput);
   });

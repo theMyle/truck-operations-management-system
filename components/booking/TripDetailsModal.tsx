@@ -40,7 +40,7 @@ import {
   IconX,
 } from "@tabler/icons-react";
 
-interface TripDetailsForm {
+export interface TripDetailsForm {
   pickUpTime: string;
   arrivalPickup: string;
   loadingStart: string;
@@ -59,7 +59,7 @@ const DELIVERY_STATUS_OPTIONS = [
   { value: "Completed", label: "Completed" },
   { value: "Foul Trip", label: "Foul Trip" },
   { value: "Incomplete", label: "Incomplete" },
-  { value: "Ongoing", label: "Ongoing" },
+  { value: "In Transit", label: "In Transit" },
   { value: "Cancel/No Show", label: "Cancel / No Show" },
 ];
 
@@ -67,15 +67,15 @@ export const deliveryStatusColor: Record<string, string> = {
   Completed: "green",
   "Foul Trip": "red",
   Incomplete: "orange",
-  Ongoing: "blue",
+  "In Transit": "blue",
   "Cancel/No Show": "gray",
 };
 
-const STATUS_META: Record<string, { color: string; icon: React.ReactNode }> = {
+export const STATUS_META: Record<string, { color: string; icon: React.ReactNode }> = {
   Completed: { color: "green", icon: <IconCheck size={11} /> },
   "Foul Trip": { color: "red", icon: <IconX size={11} /> },
   Incomplete: { color: "orange", icon: <IconAlertTriangle size={11} /> },
-  Ongoing: { color: "blue", icon: <IconTruck size={11} /> },
+  "In Transit": { color: "blue", icon: <IconTruck size={11} /> },
   "Cancel/No Show": { color: "gray", icon: <IconBan size={11} /> },
 };
 
@@ -265,7 +265,7 @@ export function TripDetailsModal({
   opened: boolean;
   onClose: () => void;
   record: DispatchRecord | null;
-  onSave: (id: string | number, details: Partial<DispatchRecord>) => void;
+  onSave: (id: string | number, form: TripDetailsForm) => void;
 }) {
   const initial = useMemo(
     () => ({
@@ -280,7 +280,6 @@ export function TripDetailsModal({
       podFileUrl: record?.podFileUrl ?? "",
       podFileType: record?.podFileType ?? "",
       tripRemarks: record?.tripRemarks ?? "",
-
     }),
     [record],
   );
@@ -316,13 +315,14 @@ export function TripDetailsModal({
   };
 
   const isFormValid =
-    !!form.pickUpTime &&
-    !!form.arrivalPickup &&
-    !!form.loadingStart &&
-    !!form.loadingEnd &&
-    !!form.departurePickup &&
-    !!form.finishDelivery &&
-    !!form.deliveryStatus;
+    !!form.deliveryStatus &&
+    (form.deliveryStatus === "Completed"
+      ? !!form.arrivalPickup &&
+        !!form.loadingStart &&
+        !!form.loadingEnd &&
+        !!form.departurePickup &&
+        form.finishDelivery
+      : true);
 
   if (!record) return null;
 
@@ -395,7 +395,7 @@ export function TripDetailsModal({
           >
             Timeline
           </Text>
-         <SimpleGrid cols={2} spacing="sm" verticalSpacing="sm">
+          <SimpleGrid cols={2} spacing="sm" verticalSpacing="sm">
             <TimeField
               label="Arrival at Pick Up"
               value={form.arrivalPickup}
@@ -417,12 +417,12 @@ export function TripDetailsModal({
               onChange={(v) => set("departurePickup", v)}
             />
           </SimpleGrid>
-          <Divider/>
-           <TimeField
-              label="Finish Delivery Time"
-              value={form.finishDelivery}
-              onChange={(v) => set("finishDelivery", v)}
-            />
+          <Divider />
+          <TimeField
+            label="Finish Delivery Time"
+            value={form.finishDelivery}
+            onChange={(v) => set("finishDelivery", v)}
+          />
         </Paper>
 
         <Paper
