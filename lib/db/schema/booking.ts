@@ -22,7 +22,7 @@ import { relations } from "drizzle-orm";
 export const booking = pgTable("booking", {
   // ** Booking **
   id: uuid("id").primaryKey().defaultRandom(),
-  displayBookingNo: serial("displayBookingNo").unique(),
+  displayBookingNo: serial("displayBookingNo").unique().notNull(),
   bookingDate: date("bookingDate", { mode: "string" }).notNull(),
 
   clientId: uuid("clientId")
@@ -93,7 +93,10 @@ export const updateTripDetailSchema = z.object({
   PODlink: z.string().optional(),
 });
 
-export const insertBookingSchema = createInsertSchema(booking);
+export const insertBookingSchema = createInsertSchema(booking).omit({
+  id: true,
+  displayBookingNo: true,
+});
 export const selectBookingSchema = createSelectSchema(booking);
 export const bookingWithRelationsSchema = selectBookingSchema.extend({
   drops: z.array(selectBookingDropSchema).default([]),

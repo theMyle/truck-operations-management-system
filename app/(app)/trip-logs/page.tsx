@@ -37,6 +37,9 @@ import { useDispatch } from "../context/dispatch-context";
 import { TripDetailsModal } from "@/components/trip-logs/TripDetailsModal";
 import type { NewTripDetailsFormData } from "@/components/trip-logs/TripDetailsModal";
 import { DispatchRecord } from "@/app/(app)/constant";
+import { getAllBookingAction, deleteBookingAction } from "@/lib/actions/booking";
+import { formatTime12Hour, formatTimeHHMM } from "@/lib/utils/stringFormat";
+import { TripLogsTable } from "@/components/trip-logs/TripLogsTable";
 
 /* ── Status badge helper ── */
 const statusColor: Record<DispatchRecord["status"], string> = {
@@ -281,6 +284,8 @@ const PAGE_SIZE = 10;
 
 export default function DispatchRecordsPage() {
   const router = useRouter();
+  const [records, setRecords] = useState<DispatchRecord[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState("");
 
   const [viewRecord, setViewRecord] = useState<DispatchRecord | null>(null);
@@ -295,17 +300,83 @@ export default function DispatchRecordsPage() {
   const [odoOpened, setOdoOpened] = useState(false);
   const [odoData, setOdoData] = useState<Record<string | number, NewTripDetailsFormData>>({});
   const [page, setPage] = useState(1);
-  const { setEditingRecord, travelLogs, deleteTravelLog } =
-    useDispatch();
+  const { setEditingRecord } = useDispatch();
+
+  useEffect(() => {
+    async function loadBookings() {
+      const res = await getAllBookingAction();
+      console.log(res)
+      if (res?.data) {
+        const mapped = res.data.map((b) => ({
+          id: b.id,
+          displayBookingNo: b.displayBookingNo,
+          bookingDate: b.bookingDate,
+          bookingDRNo: b.bookingDRNo,
+          clientName: b.clientName,
+          pickUpDate: b.pickupDate,
+          pickUpTime: formatTime12Hour(b.pickupTime),
+          driverName: b.driverName,
+          trucker: b.trucker,
+          helper: b.helpers.map((h) => h.helperName).join(", ") || "No Helper",
+          fleetType: b.fleetType,
+          plateNo: b.plateNumber,
+          ruta: b.ruta,
+          pickLocation: b.pickupLocation,
+          dropOffLocation: b.drops.map((d) => d.locationName).join(", ") || "—",
+          bookedBy: b.bookedBy,
+          status:
+            (b.deliveryStatus as "Pending" | "In Transit" | "Completed") ||
+            "Pending",
+          date: b.pickupDate,
+          client: b.clientName,
+          driver: b.driverName,
+          unit: b.fleetType,
+          bookingDr: b.bookingDRNo,
+          noOfDrops: b.numberOfDrops,
+          tripRate: b.clientRate,
+          deliveryStatus: b.deliveryStatus || "Pending",
+          tripRemarks: b.tripRemarks || undefined,
+          truckerRate: b.truckerRate ?? "",
+          rawPickupTime: b.pickupTime,
+          rawHelpers: b.helpers.map((h) => ({
+            id: h.id,
+            helperName: h.helperName,
+          })),
+          rawDrops: b.drops.map((d) => ({ locationName: d.locationName })),
+          arrivalPickup: formatTimeHHMM(b.pickupArrivalTime),
+          loadingStart: formatTimeHHMM(b.loadingStartTime),
+          loadingEnd: formatTimeHHMM(b.loadingEndTime),
+          departurePickup: formatTimeHHMM(b.pickupDepartureTime),
+          finishDelivery: formatTimeHHMM(b.finishedDeliveryTime),
+          podFile: b.PODLink ? b.PODLink.split("/").pop() ?? "" : "",
+          podFileUrl: b.PODLink ?? "",
+          podFileType: ""
+        }));
+
+        // Set all booking records for logs so they can be viewed and configured
+        setRecords(mapped);
+      }
+      setIsLoading(false);
+    }
+    loadBookings();
+  }, []);
 
   /* ── Search filter (searches across all string fields) ── */
   const filtered = useMemo(() => {
     const q = search.toLowerCase().trim();
-    return travelLogs.filter(
-      (r) =>
-        !q || Object.values(r).some((v) => String(v).toLowerCase().includes(q)),
-    );
-  }, [search, travelLogs]);
+    return records.filter((r) => {
+      return (
+        !q ||
+        String(r.displayBookingNo || "").toLowerCase().includes(q) ||
+        String(r.clientName || r.client || "").toLowerCase().includes(q) ||
+        String(r.driverName || r.driver || "").toLowerCase().includes(q) ||
+        String(r.plateNo || "").toLowerCase().includes(q) ||
+        String(r.bookingDRNo || r.bookingDr || "").toLowerCase().includes(q) ||
+        String(r.ruta || "").toLowerCase().includes(q) ||
+        String(r.bookedBy || "").toLowerCase().includes(q)
+      );
+    });
+  }, [search, records]);
 
   const paginated = useMemo(
     () => filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
@@ -326,9 +397,18 @@ export default function DispatchRecordsPage() {
     setDeleteOpened(true);
   };
 
-  const handleDeleteConfirm = () => {
+  const handleDeleteConfirm = async () => {
     if (!deleteRecord) return;
-    deleteTravelLog(deleteRecord.id);
+    const result = await deleteBookingAction({ id: String(deleteRecord.id) });
+    if (result.serverError) {
+      notifications.show({
+        title: "Error",
+        message: result.serverError,
+        color: "red",
+      });
+      return;
+    }
+    setRecords((prev) => prev.filter((r) => r.id !== deleteRecord.id));
     setDeleteOpened(false);
     setDeleteRecord(null);
     notifications.show({
@@ -340,7 +420,6 @@ export default function DispatchRecordsPage() {
   };
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setPage(1);
   }, [search]);
   const cellStyle: React.CSSProperties = {
@@ -360,6 +439,8 @@ export default function DispatchRecordsPage() {
     padding: "8px 12px",
     backgroundColor: "var(--mantine-color-gray-0)",
   };
+
+  if (isLoading) return null;
 
   return (
     <>
@@ -413,7 +494,7 @@ export default function DispatchRecordsPage() {
                 Dispatch Records
               </Badge>
               <Text style={{ fontSize: "10px" }} c="dimmed" fw={500}>
-                {filtered.length} of {travelLogs.length} records
+                {filtered.length} of {records.length} records
               </Text>
             </Group>
 
@@ -516,367 +597,20 @@ export default function DispatchRecordsPage() {
           </Group>
 
           {/* Table */}
-          <Paper withBorder radius="md" p={0} style={{ overflow: "hidden" }}>
-            <ScrollArea scrollbars="xy" type="always" scrollbarSize={4}>
-              <Table
-                striped
-                highlightOnHover
-                withColumnBorders
-                style={{ minWidth: 1800 }}
-              >
-                <Table.Thead>
-                  <Table.Tr>
-                    {/* Actions — fixed width */}
-                    <Table.Th
-                      style={{
-                        ...headerCellStyle,
-                        minWidth: 96,
-                        position: "sticky",
-                        left: 0,
-                        zIndex: 2,
-                        backgroundColor: "var(--mantine-color-gray-1)",
-                        boxShadow: "2px 0 4px rgba(0,0,0,0.06)",
-                      }}
-                    >
-                      Actions
-                    </Table.Th>
-                    {COLUMNS.slice(1).map((col) => (
-                      <Table.Th
-                        key={col.key}
-                        style={{ ...headerCellStyle, minWidth: 120 }}
-                      >
-                        {col.label}
-                      </Table.Th>
-                    ))}
-                  </Table.Tr>
-                </Table.Thead>
-                <Table.Tbody>
-                  {filtered.length === 0 ? (
-                    <Table.Tr>
-                      <Table.Td
-                        colSpan={COLUMNS.length}
-                        style={{ textAlign: "center", padding: "32px 0" }}
-                      >
-                        <Stack align="center" gap={6}>
-                          <IconClipboardList
-                            size={28}
-                            color="var(--mantine-color-gray-4)"
-                          />
-                          <Text
-                            style={{ fontSize: "12px" }}
-                            c="dimmed"
-                            fw={500}
-                          >
-                            No records found
-                          </Text>
-                        </Stack>
-                      </Table.Td>
-                    </Table.Tr>
-                  ) : (
-                    paginated.map((record) => (
-                      <React.Fragment key={record.id}>
-                        <Table.Tr
-                          key={record.id}
-                          onClick={() => {
-                            setOdoRecord(record);
-                            setOdoOpened(true);
-                          }}
-                          style={{ cursor: "pointer" }}
-                        >
-                          {/* Sticky actions column */}
-                          <Table.Td
-                            style={{
-                              ...cellStyle,
-                              position: "sticky",
-                              left: 0,
-                              zIndex: 1,
-                              backgroundColor: "var(--mantine-color-body)",
-                              boxShadow: "2px 0 4px rgba(0,0,0,0.06)",
-                            }}
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            <Group gap={4} wrap="nowrap">
-                              <Tooltip
-                                label="View"
-                                withArrow
-                                position="top"
-                                fz={10}
-                              >
-                                <ActionIcon
-                                  variant="light"
-                                  color="blue"
-                                  size="sm"
-                                  radius="sm"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleView(record);
-                                  }}
-                                >
-                                  <IconEye size={13} />
-                                </ActionIcon>
-                              </Tooltip>
-                              <Tooltip
-                                label="Edit"
-                                withArrow
-                                position="top"
-                                fz={10}
-                              >
-                                <ActionIcon
-                                  variant="light"
-                                  color="orange"
-                                  size="sm"
-                                  radius="sm"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleEdit(record);
-                                  }}
-                                >
-                                  <IconEdit size={13} />
-                                </ActionIcon>
-                              </Tooltip>
-                              <Tooltip
-                                label="Delete"
-                                withArrow
-                                position="top"
-                                fz={10}
-                              >
-                                <ActionIcon
-                                  variant="light"
-                                  color="red"
-                                  size="sm"
-                                  radius="sm"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleDeleteClick(record);
-                                  }}
-                                >
-                                  <IconTrash size={13} />
-                                </ActionIcon>
-                              </Tooltip>
-                            </Group>
-                          </Table.Td>
-
-                          <Table.Td style={cellStyle}>{record.id}</Table.Td>
-                          <Table.Td style={cellStyle}>
-                            {record.tripRate || "—"}
-                          </Table.Td>
-                          <Table.Td style={cellStyle}>{record.date}</Table.Td>
-                          <Table.Td style={cellStyle}>
-                            <Badge
-                              variant="light"
-                              color={statusColor[record.status]}
-                              radius="md"
-                              styles={{
-                                root: { height: 18 },
-                                label: { fontSize: "9px", fontWeight: 700 },
-                              }}
-                            >
-                              {record.status}
-                            </Badge>
-                          </Table.Td>
-                          <Table.Td style={cellStyle}>{record.client}</Table.Td>
-                          <Table.Td style={cellStyle}>{record.driver}</Table.Td>
-                          <Table.Td style={cellStyle}>{record.helper}</Table.Td>
-                          <Table.Td style={cellStyle}>{record.unit}</Table.Td>
-                          <Table.Td style={cellStyle}>
-                            {record.plateNo}
-                          </Table.Td>
-                          <Table.Td
-                            style={{
-                              ...cellStyle,
-                              maxWidth: 160,
-                              overflow: "hidden",
-                              textOverflow: "ellipsis",
-                            }}
-                          >
-                            {record.ruta}
-                          </Table.Td>
-                          <Table.Td style={cellStyle}>
-                            {record.bookingDr}
-                          </Table.Td>
-                          <Table.Td style={cellStyle}>
-                            {record.bookedBy}
-                          </Table.Td>
-                        </Table.Tr>
-                        {expandedRow === record.id && (
-                          <Table.Tr>
-                            <Table.Td
-                              colSpan={COLUMNS.length}
-                              style={{
-                                backgroundColor: "var(--mantine-color-blue-0)",
-                                padding: "12px 16px",
-                              }}
-                            >
-                              <Group gap="sm" align="flex-end">
-                                <TextInput
-                                  label="ODO Start"
-                                  placeholder="e.g. 12000"
-                                  size="xs"
-                                  w={140}
-                                  value={odoData[record.id]?.trips?.[0]?.odoStart ?? ""}
-                                  onChange={(e) => {
-                                    const val = Number(e.currentTarget.value) || 0;
-                                    setOdoData((prev) => {
-                                      const existing = prev[record.id] || {
-                                        tripType: "single",
-                                        trips: [{ tripNumber: 1, odoStart: 0, odoEnd: 0 }],
-                                        totalKm: 0,
-                                        budget: 0,
-                                        budgetFrom: "",
-                                        rfidLoad: 0,
-                                        rfidPaymentType: "cash",
-                                        fuelAmount: 0,
-                                        fuelPaymentType: "cash",
-                                        collectionFromCustomer: 0,
-                                        cashOnHandReturned: 0,
-                                        cashOnHandReturnedToWhom: "",
-                                        autoCA: false,
-                                        expenses: [],
-                                      };
-                                      const updatedTrips = [...existing.trips];
-                                      if (updatedTrips.length === 0) {
-                                        updatedTrips.push({ tripNumber: 1, odoStart: val, odoEnd: 0 });
-                                      } else {
-                                        updatedTrips[0] = { ...updatedTrips[0], odoStart: val };
-                                      }
-                                      return {
-                                        ...prev,
-                                        [record.id]: {
-                                          ...existing,
-                                          trips: updatedTrips,
-                                        },
-                                      };
-                                    });
-                                  }}
-                                  styles={{
-                                    label: {
-                                      fontSize: "9px",
-                                      fontWeight: 700,
-                                      textTransform: "uppercase",
-                                    },
-                                  }}
-                                />
-                                <TextInput
-                                  label="ODO End"
-                                  placeholder="e.g. 12500"
-                                  size="xs"
-                                  w={140}
-                                  value={odoData[record.id]?.trips?.[odoData[record.id]?.trips.length - 1]?.odoEnd ?? ""}
-                                  onChange={(e) => {
-                                    const val = Number(e.currentTarget.value) || 0;
-                                    setOdoData((prev) => {
-                                      const existing = prev[record.id] || {
-                                        tripType: "single",
-                                        trips: [{ tripNumber: 1, odoStart: 0, odoEnd: 0 }],
-                                        totalKm: 0,
-                                        budget: 0,
-                                        budgetFrom: "",
-                                        rfidLoad: 0,
-                                        rfidPaymentType: "cash",
-                                        fuelAmount: 0,
-                                        fuelPaymentType: "cash",
-                                        collectionFromCustomer: 0,
-                                        cashOnHandReturned: 0,
-                                        cashOnHandReturnedToWhom: "",
-                                        autoCA: false,
-                                        expenses: [],
-                                      };
-                                      const updatedTrips = [...existing.trips];
-                                      const lastIdx = updatedTrips.length - 1;
-                                      if (lastIdx >= 0) {
-                                        updatedTrips[lastIdx] = { ...updatedTrips[lastIdx], odoEnd: val };
-                                      } else {
-                                        updatedTrips.push({ tripNumber: 1, odoStart: 0, odoEnd: val });
-                                      }
-                                      return {
-                                        ...prev,
-                                        [record.id]: {
-                                          ...existing,
-                                          trips: updatedTrips,
-                                        },
-                                      };
-                                    });
-                                  }}
-                                  styles={{
-                                    label: {
-                                      fontSize: "9px",
-                                      fontWeight: 700,
-                                      textTransform: "uppercase",
-                                    },
-                                  }}
-                                />
-                                {odoData[record.id]?.trips?.[0]?.odoStart !== undefined &&
-                                  odoData[record.id]?.trips?.[odoData[record.id]?.trips.length - 1]?.odoEnd !== undefined && (
-                                    <Text
-                                      style={{ fontSize: "11px" }}
-                                      fw={700}
-                                      c="blue.7"
-                                    >
-                                      Total:{" "}
-                                      {Math.max(
-                                        0,
-                                        (odoData[record.id]?.trips?.[odoData[record.id]?.trips.length - 1]?.odoEnd || 0) -
-                                        (odoData[record.id]?.trips?.[0]?.odoStart || 0),
-                                      )}{" "}
-                                      km
-                                    </Text>
-                                  )}
-                                <Button
-                                  size="xs"
-                                  color="blue.6"
-                                  styles={{
-                                    root: { height: 30 },
-                                    label: { fontSize: "10px" },
-                                  }}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setExpandedRow(null);
-                                  }}
-                                >
-                                  Save
-                                </Button>
-                              </Group>
-                            </Table.Td>
-                          </Table.Tr>
-                        )}
-                      </React.Fragment>
-                    ))
-                  )}
-                </Table.Tbody>
-              </Table>
-            </ScrollArea>
-
-            {/* Footer count */}
-            {/* Footer */}
-            <Box
-              px="md"
-              py={8}
-              style={{
-                borderTop: "1px solid var(--mantine-color-gray-2)",
-                backgroundColor: "var(--mantine-color-gray-0)",
-              }}
-            >
-              <Group justify="space-between" align="center">
-                <Text style={{ fontSize: "10px" }} c="dimmed" fw={600}>
-                  Showing{" "}
-                  {Math.min((page - 1) * PAGE_SIZE + 1, filtered.length)} of{" "}
-                  {filtered.length} record
-                  {filtered.length !== 1 ? "s" : ""}
-                  {search ? ` matching "${search}"` : ""}
-                </Text>
-                <Pagination
-                  total={Math.ceil(filtered.length / PAGE_SIZE)}
-                  value={page}
-                  onChange={setPage}
-                  size="xs"
-                  radius="md"
-                  styles={{
-                    control: { fontSize: "10px", height: 24, minWidth: 24 },
-                  }}
-                />
-              </Group>
-            </Box>
-          </Paper>
+          <TripLogsTable
+            records={paginated}
+            totalRecords={filtered.length}
+            page={page}
+            pageSize={PAGE_SIZE}
+            onPageChange={setPage}
+            onRowClick={(record) => {
+              setOdoRecord(record);
+              setOdoOpened(true);
+            }}
+            onView={handleView}
+            onEdit={handleEdit}
+            onDelete={handleDeleteClick}
+          />
         </Stack>
       </ScrollArea>
     </>
