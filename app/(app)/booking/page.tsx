@@ -54,9 +54,11 @@ export default function BookingRecordsPage() {
   useEffect(() => {
     async function loadBookings() {
       const res = await getAllBookingAction();
+
       if (res?.data) {
         const mapped = res.data.map((b) => ({
           id: b.id,
+          displayBookingNo: b.displayBookingNo,
           bookingDate: b.bookingDate,
           bookingDRNo: b.bookingDRNo,
           clientName: b.clientName,
@@ -109,12 +111,16 @@ export default function BookingRecordsPage() {
 
   const filtered = useMemo(() => {
     const q = filters.search.toLowerCase().trim();
-    const activeStatuses = filters.status
-      ? [filters.status]
-      : ["Pending", "In Transit"];
     return records.filter((r) => {
       const matchesSearch =
-        !q || Object.values(r).some((v) => String(v).toLowerCase().includes(q));
+        !q ||
+        String(r.displayBookingNo || "").toLowerCase().includes(q) ||
+        String(r.clientName || r.client || "").toLowerCase().includes(q) ||
+        String(r.driverName || r.driver || "").toLowerCase().includes(q) ||
+        String(r.plateNo || "").toLowerCase().includes(q) ||
+        String(r.bookingDRNo || r.bookingDr || "").toLowerCase().includes(q) ||
+        String(r.ruta || "").toLowerCase().includes(q) ||
+        String(r.bookedBy || "").toLowerCase().includes(q);
       const matchesStatus = filters.status
         ? r.status === filters.status
         : r.status !== "Completed";

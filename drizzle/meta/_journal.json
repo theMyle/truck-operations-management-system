@@ -29,6 +29,13 @@
       "when": 1780920498969,
       "tag": "0003_colorful_skrulls",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1781337884517,
+      "tag": "0004_nappy_blizzard",
+      "breakpoints": true
     }
   ]
 }

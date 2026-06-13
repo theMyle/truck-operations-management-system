@@ -1,5 +1,6 @@
 "use client";
 
+import React from "react";
 import {
   Badge,
   Box,
@@ -7,11 +8,11 @@ import {
   Paper,
   Pagination,
   ScrollArea,
-  Stack,
   Table,
   Text,
   Tooltip,
   ActionIcon,
+  Stack,
 } from "@mantine/core";
 import {
   IconEye,
@@ -20,12 +21,14 @@ import {
   IconClipboardList,
 } from "@tabler/icons-react";
 import { DispatchRecord } from "@/app/(app)/constant";
-import { STATUS_META } from "./TripDetailsModal";
 
 const STATUS_COLOR: Record<string, string> = {
-  "In Transit": "blue",
-  Pending: "orange",
   Completed: "green",
+  completed: "green",
+  "In Transit": "blue",
+  "in transit": "blue",
+  Pending: "orange",
+  pending: "orange",
 };
 
 const headerCellStyle: React.CSSProperties = {
@@ -46,27 +49,23 @@ const cellStyle: React.CSSProperties = {
   padding: "8px 12px",
 };
 
-const COLUMNS = [
+export const COLUMNS = [
   { key: "actions", label: "Actions" },
-  { key: "id", label: "Booking ID" },
-  { key: "bookingDate", label: "Date Booked" },
-  { key: "bookingDRNo", label: "Booking / DR#" },
-  { key: "clientName", label: "Client" },
-  { key: "pickUpDate", label: "Pickup Date" },
-  { key: "pickUpTime", label: "Pickup Time" },
+  { key: "id", label: "Trip ID" },
+  { key: "tripRate", label: "Trip Rate" },
+  { key: "date", label: "Date" },
   { key: "status", label: "Status" },
-  { key: "driverName", label: "Driver" },
-  { key: "trucker", label: "Trucker" },
+  { key: "client", label: "Client" },
+  { key: "driver", label: "Driver" },
   { key: "helper", label: "Helper" },
-  { key: "fleetType", label: "Unit Type" },
+  { key: "unit", label: "Unit" },
   { key: "plateNo", label: "Plate #" },
   { key: "ruta", label: "Route" },
-  { key: "pickLocation", label: "Pickup Location" },
-  { key: "dropOffLocation", label: "Drop-off Location" },
+  { key: "bookingDr", label: "Booking / DR#" },
   { key: "bookedBy", label: "Booked By" },
 ];
 
-interface BookingTableProps {
+interface TripLogsTableProps {
   records: DispatchRecord[];
   totalRecords: number;
   page: number;
@@ -78,7 +77,7 @@ interface BookingTableProps {
   onDelete: (record: DispatchRecord) => void;
 }
 
-export function BookingTable({
+export function TripLogsTable({
   records,
   totalRecords,
   page,
@@ -88,7 +87,7 @@ export function BookingTable({
   onView,
   onEdit,
   onDelete,
-}: BookingTableProps) {
+}: TripLogsTableProps) {
   return (
     <Paper withBorder radius="md" p={0} style={{ overflow: "hidden" }}>
       <ScrollArea scrollbars="xy" type="always" scrollbarSize={4}>
@@ -96,7 +95,7 @@ export function BookingTable({
           striped
           highlightOnHover
           withColumnBorders
-          style={{ minWidth: 2200 }}
+          style={{ minWidth: 1800 }}
         >
           <Table.Thead>
             <Table.Tr>
@@ -116,7 +115,7 @@ export function BookingTable({
               {COLUMNS.slice(1).map((col) => (
                 <Table.Th
                   key={col.key}
-                  style={{ ...headerCellStyle, minWidth: 130 }}
+                  style={{ ...headerCellStyle, minWidth: 120 }}
                 >
                   {col.label}
                 </Table.Th>
@@ -137,7 +136,7 @@ export function BookingTable({
                       color="var(--mantine-color-gray-4)"
                     />
                     <Text style={{ fontSize: "12px" }} c="dimmed" fw={500}>
-                      No booking records found
+                      No records found
                     </Text>
                   </Stack>
                 </Table.Td>
@@ -209,15 +208,14 @@ export function BookingTable({
                   <Table.Td style={{ ...cellStyle, color: "var(--mantine-color-blue-6)", fontFamily: "monospace" }}>
                     {record.displayBookingNo ?? record.id}
                   </Table.Td>
-                  <Table.Td style={cellStyle}>{record.bookingDate || "—"}</Table.Td>
-                  <Table.Td style={cellStyle}>{record.bookingDRNo || record.bookingDr || "—"}</Table.Td>
-                  <Table.Td style={cellStyle}>{record.clientName || record.client || "—"}</Table.Td>
-                  <Table.Td style={cellStyle}>{record.pickUpDate || record.date || "—"}</Table.Td>
-                  <Table.Td style={cellStyle}>{record.pickUpTime || "—"}</Table.Td>
+                  <Table.Td style={cellStyle}>
+                    {record.tripRate || "—"}
+                  </Table.Td>
+                  <Table.Td style={cellStyle}>{record.date || "—"}</Table.Td>
                   <Table.Td style={cellStyle}>
                     <Badge
                       variant="light"
-                      color={STATUS_META[record.status]?.color ?? "gray"}
+                      color={STATUS_COLOR[record.status] || "gray"}
                       radius="md"
                       styles={{
                         root: { height: 18 },
@@ -227,19 +225,29 @@ export function BookingTable({
                       {record.status}
                     </Badge>
                   </Table.Td>
-                  <Table.Td style={cellStyle}>{record.driverName || record.driver || "—"}</Table.Td>
-                  <Table.Td style={cellStyle}>{record.trucker || "—"}</Table.Td>
+                  <Table.Td style={cellStyle}>{record.client || "—"}</Table.Td>
+                  <Table.Td style={cellStyle}>{record.driver || "—"}</Table.Td>
                   <Table.Td style={cellStyle}>{record.helper || "—"}</Table.Td>
-                  <Table.Td style={cellStyle}>{record.fleetType || record.unit || "—"}</Table.Td>
-                  <Table.Td style={{ ...cellStyle, fontFamily: "monospace" }}>{record.plateNo || "—"}</Table.Td>
-                  <Table.Td style={{ ...cellStyle, maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis" }}>
+                  <Table.Td style={cellStyle}>{record.unit || "—"}</Table.Td>
+                  <Table.Td style={{ ...cellStyle, fontFamily: "monospace" }}>
+                    {record.plateNo || "—"}
+                  </Table.Td>
+                  <Table.Td
+                    style={{
+                      ...cellStyle,
+                      maxWidth: 160,
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                    }}
+                  >
                     {record.ruta || "—"}
                   </Table.Td>
-                  <Table.Td style={cellStyle}>{record.pickLocation || "—"}</Table.Td>
-                  <Table.Td style={{ ...cellStyle, maxWidth: 240, overflow: "hidden", textOverflow: "ellipsis" }}>
-                    {record.dropOffLocation || "—"}
+                  <Table.Td style={cellStyle}>
+                    {record.bookingDr || "—"}
                   </Table.Td>
-                  <Table.Td style={cellStyle}>{record.bookedBy || "—"}</Table.Td>
+                  <Table.Td style={cellStyle}>
+                    {record.bookedBy || "—"}
+                  </Table.Td>
                 </Table.Tr>
               ))
             )}

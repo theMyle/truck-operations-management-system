@@ -1,5 +1,6 @@
 export interface DispatchRecord {
   id: number | string;
+  displayBookingNo?: number | null;
   date: string;
   bookingDate?: string;
   pickUpDate?: string;
