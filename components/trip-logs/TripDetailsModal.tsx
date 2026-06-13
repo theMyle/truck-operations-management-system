@@ -8,6 +8,8 @@ import { DispatchRecord } from "@/app/(app)/constant";
 import { NewOdometerTab } from "./OdometerTab";
 import { NewBudgetTab } from "./BudgetTab";
 import { NewExpensesTab } from "./ExpensesTab";
+import { ReviewModal } from "./ReviewModal";
+import { generateLiquidationPDF } from "@/lib/utils/pdf";
 
 export interface TripData {
     tripNumber: number;
@@ -61,6 +63,13 @@ const defaultForm = (): NewTripDetailsFormData => ({
     expenses: [],
 });
 
+const generateRefNumber = (id: string | number) => {
+    const d = new Date();
+    const datePart = `${String(d.getDate()).padStart(2, "0")}${String(d.getMonth() + 1).padStart(2, "0")}${String(d.getFullYear()).slice(-2)}`;
+    const randomPart = Math.random().toString(36).toUpperCase().slice(2, 5);
+    return `LIQ-${datePart}-${String(id).padStart(4, "0")}-${randomPart}`;
+};
+
 export function TripDetailsModal({
     opened,
     onClose,
@@ -75,6 +84,8 @@ export function TripDetailsModal({
     onSave: (data: NewTripDetailsFormData) => void;
 }) {
     const [activeTab, setActiveTab] = useState<string | null>("odometer");
+    const [reviewOpened, setReviewOpened] = useState(false);
+    const [pendingRefNumber, setPendingRefNumber] = useState("");
 
     const form = useForm<NewTripDetailsFormData>({
         initialValues: initialData || defaultForm(),
@@ -121,18 +132,31 @@ export function TripDetailsModal({
         }
     };
 
+    /* ── Dynamic Calculations ── */
+    const start = form.values.trips[0]?.odoStart || 0;
+    const end = form.values.trips[form.values.trips.length - 1]?.odoEnd || 0;
+    const totalKm = Math.max(0, end - start);
+
     const handleSave = () => {
         const validation = form.validate();
         if (validation.hasErrors) return;
 
-        const start = form.values.trips[0]?.odoStart || 0;
-        const end = form.values.trips[form.values.trips.length - 1]?.odoEnd || 0;
-        const totalKm = Math.max(0, end - start);
+        if (!record) return;
+        setPendingRefNumber(generateRefNumber(record.id));
+        setReviewOpened(true);
+    };
 
+    const handleConfirmSave = () => {
+        setReviewOpened(false);
         onSave({
             ...form.values,
             totalKm,
         });
+    };
+
+    const handleDownload = () => {
+        if (!record) return;
+        generateLiquidationPDF(record, form.values, pendingRefNumber);
     };
 
     const manpowerOptions = useMemo(() => {
@@ -155,78 +179,90 @@ export function TripDetailsModal({
     if (!record) return null;
 
     return (
-        <Modal
-            opened={opened}
-            onClose={onClose}
-            title={
-                <Group gap={8}>
-                    <IconClipboardList size={16} color="var(--mantine-color-blue-6)" />
-                    <Text fw={700} style={{ fontSize: "13px" }} tt="uppercase" lts={0.5}>
-                        Trip Details — #{record.id}
-                    </Text>
-                    <Badge
-                        variant="light"
-                        color="blue"
-                        radius="sm"
-                        styles={{ label: { fontSize: "9px" }, root: { height: 18 } }}
-                    >
-                        {record.client}
-                    </Badge>
-                </Group>
-            }
-            size="lg"
-            radius="md"
-            centered
-            scrollAreaComponent={ScrollArea.Autosize}
-        >
-            <Text style={{ fontSize: "11px" }} c="dimmed" mb="sm">
-                {record.driver} · {record.ruta} · {record.date}
-            </Text>
+        <>
+            <ReviewModal
+                opened={reviewOpened}
+                onClose={() => setReviewOpened(false)}
+                onDownload={handleDownload}
+                onConfirm={handleConfirmSave}
+                form={form.values}
+                record={record}
+                refNumber={pendingRefNumber}
+            />
 
-            <Tabs value={activeTab} onChange={setActiveTab}>
-                <Tabs.List mb="md">
-                    <Tabs.Tab value="odometer" leftSection={<IconGauge size={13} />}>
-                        <Text style={{ fontSize: "11px" }} fw={600}>
-                            Odometer
+            <Modal
+                opened={opened}
+                onClose={onClose}
+                title={
+                    <Group gap={8}>
+                        <IconClipboardList size={16} color="var(--mantine-color-blue-6)" />
+                        <Text fw={700} style={{ fontSize: "13px" }} tt="uppercase" lts={0.5}>
+                            Trip Details — #{record.id}
                         </Text>
-                    </Tabs.Tab>
-                    <Tabs.Tab value="budget" leftSection={<IconWallet size={13} />}>
-                        <Text style={{ fontSize: "11px" }} fw={600}>
-                            Budget
-                        </Text>
-                    </Tabs.Tab>
-                    <Tabs.Tab value="expenses" leftSection={<IconReceipt size={13} />}>
-                        <Text style={{ fontSize: "11px" }} fw={600}>
-                            Expenses
-                        </Text>
-                    </Tabs.Tab>
-                </Tabs.List>
+                        <Badge
+                            variant="light"
+                            color="blue"
+                            radius="sm"
+                            styles={{ label: { fontSize: "9px" }, root: { height: 18 } }}
+                        >
+                            {record.client}
+                        </Badge>
+                    </Group>
+                }
+                size="lg"
+                radius="md"
+                centered
+                scrollAreaComponent={ScrollArea.Autosize}
+            >
+                <Text style={{ fontSize: "11px" }} c="dimmed" mb="sm">
+                    {record.driver} · {record.ruta} · {record.date}
+                </Text>
 
-                {/* ══ ODOMETER TAB ══ */}
-                <Tabs.Panel value="odometer">
-                    <NewOdometerTab
-                        form={form}
-                        setActiveTab={setActiveTab}
-                        handleReset={handleReset}
-                    />
-                </Tabs.Panel>
+                <Tabs value={activeTab} onChange={setActiveTab}>
+                    <Tabs.List mb="md">
+                        <Tabs.Tab value="odometer" leftSection={<IconGauge size={13} />}>
+                            <Text style={{ fontSize: "11px" }} fw={600}>
+                                Odometer
+                            </Text>
+                        </Tabs.Tab>
+                        <Tabs.Tab value="budget" leftSection={<IconWallet size={13} />}>
+                            <Text style={{ fontSize: "11px" }} fw={600}>
+                                Budget
+                            </Text>
+                        </Tabs.Tab>
+                        <Tabs.Tab value="expenses" leftSection={<IconReceipt size={13} />}>
+                            <Text style={{ fontSize: "11px" }} fw={600}>
+                                Expenses
+                            </Text>
+                        </Tabs.Tab>
+                    </Tabs.List>
 
-                {/* ══ BUDGET TAB ══ */}
-                <Tabs.Panel value="budget">
-                    <NewBudgetTab form={form} setActiveTab={setActiveTab} handleReset={handleReset} />
-                </Tabs.Panel>
+                    {/* ══ ODOMETER TAB ══ */}
+                    <Tabs.Panel value="odometer">
+                        <NewOdometerTab
+                            form={form}
+                            setActiveTab={setActiveTab}
+                            handleReset={handleReset}
+                        />
+                    </Tabs.Panel>
 
-                {/* ══ EXPENSES TAB ══ */}
-                <Tabs.Panel value="expenses">
-                    <NewExpensesTab
-                        form={form}
-                        setActiveTab={setActiveTab}
-                        handleReset={handleReset}
-                        handleSave={handleSave}
-                        manpowerOptions={manpowerOptions}
-                    />
-                </Tabs.Panel>
-            </Tabs>
-        </Modal>
+                    {/* ══ BUDGET TAB ══ */}
+                    <Tabs.Panel value="budget">
+                        <NewBudgetTab form={form} setActiveTab={setActiveTab} handleReset={handleReset} />
+                    </Tabs.Panel>
+
+                    {/* ══ EXPENSES TAB ══ */}
+                    <Tabs.Panel value="expenses">
+                        <NewExpensesTab
+                            form={form}
+                            setActiveTab={setActiveTab}
+                            handleReset={handleReset}
+                            handleSave={handleSave}
+                            manpowerOptions={manpowerOptions}
+                        />
+                    </Tabs.Panel>
+                </Tabs>
+            </Modal>
+        </>
     );
 }
