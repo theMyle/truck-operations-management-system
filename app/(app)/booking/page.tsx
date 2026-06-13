@@ -195,7 +195,7 @@ export default function BookingRecordsPage() {
       finishDelivery: form.finishDelivery || undefined,
       deliveryStatus: form.deliveryStatus,
       tripRemarks: form.tripRemarks || undefined,
-      PODlink: form.podFileUrl || undefined,
+      PODLink: form.podFileUrl || undefined,
     });
 
     if (result?.serverError) {
