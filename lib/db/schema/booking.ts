@@ -6,7 +6,6 @@ import {
   timestamp,
   date,
   integer,
-  time,
   serial,
 } from "drizzle-orm/pg-core";
 import { clients } from "./clients";
@@ -90,7 +89,7 @@ export const updateTripDetailSchema = z.object({
   finishDelivery: z.string().optional(),
   deliveryStatus: z.string(),
   tripRemarks: z.string().optional(),
-  PODlink: z.string().optional(),
+  PODLink: z.string().optional(),
 });
 
 export const insertBookingSchema = createInsertSchema(booking).omit({

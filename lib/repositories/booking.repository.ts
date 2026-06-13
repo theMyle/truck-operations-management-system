@@ -173,7 +173,7 @@ export async function updateTripDetails(data: UpdateTripDetailInput) {
       finishedDeliveryTime: toTs(data.finishDelivery),
       deliveryStatus: data.deliveryStatus,
       tripRemarks: data.tripRemarks ?? null,
-      PODLink: data.PODlink ?? null
+      PODLink: data.PODLink ?? null
     })
     .where(eq(booking.id, data.id));
 }
