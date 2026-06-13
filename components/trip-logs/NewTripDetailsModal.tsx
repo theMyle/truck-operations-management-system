@@ -1,0 +1,212 @@
+"use client";
+
+import { Modal, Tabs, Text, Group, Badge, ScrollArea } from "@mantine/core";
+import { IconClipboardList, IconGauge, IconWallet, IconReceipt } from "@tabler/icons-react";
+import { useState } from "react";
+import { useForm } from "@mantine/form";
+import { DispatchRecord } from "@/app/(app)/constant";
+import { NewOdometerTab } from "./NewOdometerTab";
+import { NewBudgetTab } from "./NewBudgetTab";
+import { NewExpensesTab } from "./NewExpensesTab";
+
+export interface TripData {
+    tripNumber: number;
+    odoStart: number;
+    odoEnd: number;
+}
+
+export interface Expenses {
+    expenseId: number;
+    expenseCategory: string;
+    amount: number;
+}
+
+export interface NewTripDetailsFormData {
+    // odometer
+    tripType: "single" | "multiple";
+    trips: TripData[];
+    totalKm: number;
+
+    // budget
+    budget: number;
+    budgetFrom: string;
+    rfidLoad: number;
+    rfidPaymentType: 'cash' | 'card';
+    fuelAmount: number;
+    fuelPaymentType: 'shell card' | 'cash';
+    collectionFromCustomer: number;
+    cashOnHandReturned: number;
+    cashOnHandReturnedToWhom: string;
+    autoCA: boolean;
+
+    // expenses
+    expenses: Expenses[];
+}
+
+const defaultForm = (): NewTripDetailsFormData => ({
+    tripType: "single",
+    trips: [{ tripNumber: 1, odoStart: 0, odoEnd: 0 }],
+    totalKm: 0,
+    budget: 0,
+    budgetFrom: "",
+    rfidLoad: 0,
+    rfidPaymentType: "cash",
+    fuelAmount: 0,
+    fuelPaymentType: "cash",
+    collectionFromCustomer: 0,
+    cashOnHandReturned: 0,
+    cashOnHandReturnedToWhom: "",
+    autoCA: false,
+    expenses: [],
+});
+
+export function TripDetailsModal({
+    opened,
+    onClose,
+    record,
+    initialData,
+    onSave,
+}: {
+    opened: boolean;
+    onClose: () => void;
+    record: DispatchRecord | null;
+    initialData?: NewTripDetailsFormData;
+    onSave: (data: NewTripDetailsFormData) => void;
+}) {
+    const [activeTab, setActiveTab] = useState<string | null>("odometer");
+
+    const form = useForm<NewTripDetailsFormData>({
+        initialValues: initialData || defaultForm(),
+        validate: {
+            trips: {
+                odoEnd: (value, values, path) => {
+                    const idx = parseInt(path.split(".")[1], 10);
+                    const trip = values.trips[idx];
+                    if (trip && value < trip.odoStart) {
+                        return "ODO End must be ≥ ODO Start";
+                    }
+                    return null;
+                },
+            },
+        },
+    });
+
+    const handleReset = () => {
+        switch (activeTab) {
+            case "odometer":
+                form.setValues({
+                    tripType: "single",
+                    trips: [{ tripNumber: 1, odoStart: 0, odoEnd: 0 }],
+                    totalKm: 0,
+                });
+                break;
+            case "budget":
+                form.setValues({
+                    budget: 0,
+                    budgetFrom: "",
+                    rfidLoad: 0,
+                    rfidPaymentType: "cash",
+                    fuelAmount: 0,
+                    fuelPaymentType: "cash",
+                    collectionFromCustomer: 0,
+                    cashOnHandReturned: 0,
+                    cashOnHandReturnedToWhom: "",
+                    autoCA: false,
+                });
+                break;
+            case "expenses":
+                form.setFieldValue("expenses", []);
+                break;
+        }
+    };
+
+    const handleSave = () => {
+        const validation = form.validate();
+        if (validation.hasErrors) return;
+
+        const start = form.values.trips[0]?.odoStart || 0;
+        const end = form.values.trips[form.values.trips.length - 1]?.odoEnd || 0;
+        const totalKm = Math.max(0, end - start);
+
+        onSave({
+            ...form.values,
+            totalKm,
+        });
+    };
+
+    if (!record) return null;
+
+    return (
+        <Modal
+            opened={opened}
+            onClose={onClose}
+            title={
+                <Group gap={8}>
+                    <IconClipboardList size={16} color="var(--mantine-color-blue-6)" />
+                    <Text fw={700} style={{ fontSize: "13px" }} tt="uppercase" lts={0.5}>
+                        Trip Details — #{record.id}
+                    </Text>
+                    <Badge
+                        variant="light"
+                        color="blue"
+                        radius="sm"
+                        styles={{ label: { fontSize: "9px" }, root: { height: 18 } }}
+                    >
+                        {record.client}
+                    </Badge>
+                </Group>
+            }
+            size="lg"
+            radius="md"
+            centered
+            scrollAreaComponent={ScrollArea.Autosize}
+        >
+            <Text style={{ fontSize: "11px" }} c="dimmed" mb="sm">
+                {record.driver} · {record.ruta} · {record.date}
+            </Text>
+
+            <Tabs value={activeTab} onChange={setActiveTab}>
+                <Tabs.List mb="md">
+                    <Tabs.Tab value="odometer" leftSection={<IconGauge size={13} />}>
+                        <Text style={{ fontSize: "11px" }} fw={600}>
+                            Odometer
+                        </Text>
+                    </Tabs.Tab>
+                    <Tabs.Tab value="budget" leftSection={<IconWallet size={13} />}>
+                        <Text style={{ fontSize: "11px" }} fw={600}>
+                            Budget
+                        </Text>
+                    </Tabs.Tab>
+                    <Tabs.Tab value="expenses" leftSection={<IconReceipt size={13} />}>
+                        <Text style={{ fontSize: "11px" }} fw={600}>
+                            Expenses
+                        </Text>
+                    </Tabs.Tab>
+                </Tabs.List>
+
+                {/* ══ ODOMETER TAB ══ */}
+                <Tabs.Panel value="odometer">
+                    <NewOdometerTab
+                        form={form}
+                        setActiveTab={setActiveTab}
+                        handleReset={handleReset}
+                    />
+                </Tabs.Panel>
+
+                {/* ══ BUDGET TAB ══ */}
+                <Tabs.Panel value="budget">
+                    <NewBudgetTab form={form} setActiveTab={setActiveTab} />
+                </Tabs.Panel>
+
+                {/* ══ EXPENSES TAB ══ */}
+                <Tabs.Panel value="expenses">
+                    <NewExpensesTab
+                        form={form}
+                        setActiveTab={setActiveTab}
+                        handleSave={handleSave}
+                    />
+                </Tabs.Panel>
+            </Tabs>
+        </Modal>
+    );
+}

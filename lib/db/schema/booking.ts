@@ -7,6 +7,7 @@ import {
   date,
   integer,
   time,
+  serial,
 } from "drizzle-orm/pg-core";
 import { clients } from "./clients";
 import { trucks } from "./trucks";
@@ -21,6 +22,7 @@ import { relations } from "drizzle-orm";
 export const booking = pgTable("booking", {
   // ** Booking **
   id: uuid("id").primaryKey().defaultRandom(),
+  displayBookingNo: serial("displayBookingNo").unique(),
   bookingDate: date("bookingDate", { mode: "string" }).notNull(),
 
   clientId: uuid("clientId")

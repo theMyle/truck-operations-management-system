@@ -35,7 +35,7 @@ import {
 } from "@tabler/icons-react";
 import { useDispatch } from "../context/dispatch-context";
 import { OdoModal, OdoFormData } from "@/components/trip-logs/OdoModal";
-import {  DispatchRecord } from "@/app/(app)/constant";
+import { DispatchRecord } from "@/app/(app)/constant";
 
 /* ── Status badge helper ── */
 const statusColor: Record<DispatchRecord["status"], string> = {
@@ -764,7 +764,7 @@ export default function DispatchRecordsPage() {
                                       {Math.max(
                                         0,
                                         Number(odoData[record.id].odoEnd) -
-                                          Number(odoData[record.id].odoStart),
+                                        Number(odoData[record.id].odoStart),
                                       )}{" "}
                                       km
                                     </Text>
