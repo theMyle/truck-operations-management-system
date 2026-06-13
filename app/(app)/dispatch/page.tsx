@@ -40,6 +40,7 @@ import {
   UpdateBookingInput,
 } from "@/lib/validations/booking";
 import { useDispatch } from "../context/dispatch-context";
+import { DispatchModuleSkeleton } from "@/components/ui/ModuleSkeletons";
 
 export const inputStyles = {
   label: {
@@ -319,7 +320,7 @@ export default function DispatchPage() {
       helpers: matchedHelpers,
     });
   }, [isLoading, editingRecord]);
-  if (isLoading) return null;
+  if (isLoading) return <DispatchModuleSkeleton />;
 
   const badgeStyles = {
     root: { height: 22, padding: "0 8px" },

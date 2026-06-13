@@ -18,8 +18,6 @@ import {
   Progress,
   Tooltip,
   ActionIcon,
-  Loader,
-  Center,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import React, {
@@ -45,6 +43,10 @@ import { DispatchRecord } from "../constant";
 import { usePodDownload, type PodRecord } from "@/app/hooks/usePodDownload";
 import { SummaryCard } from "@/components/billing/SummaryCard";
 import { getBillingRecordsAction } from "@/lib/actions/billing";
+import {
+  BILLING_TABLE_HEADERS,
+} from "@/components/ui/ModuleSkeletons";
+import { TableSkeleton } from "@/components/ui/TableSkeleton";
 
 export type BillingRecord = DispatchRecord & {
   tripRate?: string | number;
@@ -391,7 +393,7 @@ export default function BillingModule() {
               loading={isLoading}
               onClick={handleGenerate}
             >
-              {isLoading ? "Loading…" : "Generate"}
+              {isLoading ? "Loading..." : "Generate"}
             </Button>
           </Group>
         </Stack>
@@ -598,19 +600,26 @@ export default function BillingModule() {
           </Group>
 
           {/* Table */}
-          <Paper withBorder radius="md" p={0} style={{ overflow: "hidden" }}>
-            <ScrollArea
-              scrollbars="xy"
-              type="always"
-              scrollbarSize={4}
-              mah={500}
-            >
-              <Table
-                striped
-                highlightOnHover
-                withColumnBorders
-                style={{ minWidth: 1400 }}
+          {isLoading ? (
+            <TableSkeleton
+              rows={9}
+              headers={BILLING_TABLE_HEADERS}
+              minWidth={1400}
+            />
+          ) : (
+            <Paper withBorder radius="md" p={0} style={{ overflow: "hidden" }}>
+              <ScrollArea
+                scrollbars="xy"
+                type="always"
+                scrollbarSize={4}
+                mah={500}
               >
+                <Table
+                  striped
+                  highlightOnHover
+                  withColumnBorders
+                  style={{ minWidth: 1400 }}
+                >
                 <Table.Thead>
                   <Table.Tr>
                     {[
@@ -636,15 +645,7 @@ export default function BillingModule() {
                   </Table.Tr>
                 </Table.Thead>
                 <Table.Tbody>
-                  {isLoading ? (
-                    <Table.Tr>
-                      <Table.Td colSpan={11} style={{ padding: "40px 0" }}>
-                        <Center>
-                          <Loader size="sm" />
-                        </Center>
-                      </Table.Td>
-                    </Table.Tr>
-                  ) : !activeFilters ? (
+                  {!activeFilters ? (
                     <Table.Tr>
                       <Table.Td
                         colSpan={11}
@@ -787,7 +788,8 @@ export default function BillingModule() {
                 />
               </Group>
             </Box>
-          </Paper>
+            </Paper>
+          )}
         </Stack>
       </ScrollArea>
     </>
