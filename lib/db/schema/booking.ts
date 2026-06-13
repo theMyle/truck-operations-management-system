@@ -6,6 +6,7 @@ import {
   timestamp,
   date,
   integer,
+  serial,
 } from "drizzle-orm/pg-core";
 import { clients } from "./clients";
 import { trucks } from "./trucks";
