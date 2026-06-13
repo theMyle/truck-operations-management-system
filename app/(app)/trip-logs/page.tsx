@@ -34,7 +34,8 @@ import {
   IconFileTypeXls,
 } from "@tabler/icons-react";
 import { useDispatch } from "../context/dispatch-context";
-import { OdoModal, OdoFormData } from "@/components/trip-logs/OdoModal";
+import { TripDetailsModal } from "@/components/trip-logs/TripDetailsModal";
+import type { NewTripDetailsFormData } from "@/components/trip-logs/TripDetailsModal";
 import { DispatchRecord } from "@/app/(app)/constant";
 
 /* ── Status badge helper ── */
@@ -292,7 +293,7 @@ export default function DispatchRecordsPage() {
 
   const [odoRecord, setOdoRecord] = useState<DispatchRecord | null>(null);
   const [odoOpened, setOdoOpened] = useState(false);
-  const [odoData, setOdoData] = useState<Record<string | number, OdoFormData>>({});
+  const [odoData, setOdoData] = useState<Record<string | number, NewTripDetailsFormData>>({});
   const [page, setPage] = useState(1);
   const { setEditingRecord, travelLogs, deleteTravelLog } =
     useDispatch();
@@ -375,7 +376,7 @@ export default function DispatchRecordsPage() {
         record={deleteRecord}
       />
 
-      <OdoModal
+      <TripDetailsModal
         opened={odoOpened}
         onClose={() => setOdoOpened(false)}
         record={odoRecord}
@@ -712,16 +713,41 @@ export default function DispatchRecordsPage() {
                                   placeholder="e.g. 12000"
                                   size="xs"
                                   w={140}
-                                  value={odoData[record.id]?.odoStart || ""}
-                                  onChange={(e) =>
-                                    setOdoData((prev) => ({
-                                      ...prev,
-                                      [record.id]: {
-                                        ...prev[record.id],
-                                        odoStart: e.currentTarget.value,
-                                      },
-                                    }))
-                                  }
+                                  value={odoData[record.id]?.trips?.[0]?.odoStart ?? ""}
+                                  onChange={(e) => {
+                                    const val = Number(e.currentTarget.value) || 0;
+                                    setOdoData((prev) => {
+                                      const existing = prev[record.id] || {
+                                        tripType: "single",
+                                        trips: [{ tripNumber: 1, odoStart: 0, odoEnd: 0 }],
+                                        totalKm: 0,
+                                        budget: 0,
+                                        budgetFrom: "",
+                                        rfidLoad: 0,
+                                        rfidPaymentType: "cash",
+                                        fuelAmount: 0,
+                                        fuelPaymentType: "cash",
+                                        collectionFromCustomer: 0,
+                                        cashOnHandReturned: 0,
+                                        cashOnHandReturnedToWhom: "",
+                                        autoCA: false,
+                                        expenses: [],
+                                      };
+                                      const updatedTrips = [...existing.trips];
+                                      if (updatedTrips.length === 0) {
+                                        updatedTrips.push({ tripNumber: 1, odoStart: val, odoEnd: 0 });
+                                      } else {
+                                        updatedTrips[0] = { ...updatedTrips[0], odoStart: val };
+                                      }
+                                      return {
+                                        ...prev,
+                                        [record.id]: {
+                                          ...existing,
+                                          trips: updatedTrips,
+                                        },
+                                      };
+                                    });
+                                  }}
                                   styles={{
                                     label: {
                                       fontSize: "9px",
@@ -735,16 +761,42 @@ export default function DispatchRecordsPage() {
                                   placeholder="e.g. 12500"
                                   size="xs"
                                   w={140}
-                                  value={odoData[record.id]?.odoEnd || ""}
-                                  onChange={(e) =>
-                                    setOdoData((prev) => ({
-                                      ...prev,
-                                      [record.id]: {
-                                        ...prev[record.id],
-                                        odoEnd: e.currentTarget.value,
-                                      },
-                                    }))
-                                  }
+                                  value={odoData[record.id]?.trips?.[odoData[record.id]?.trips.length - 1]?.odoEnd ?? ""}
+                                  onChange={(e) => {
+                                    const val = Number(e.currentTarget.value) || 0;
+                                    setOdoData((prev) => {
+                                      const existing = prev[record.id] || {
+                                        tripType: "single",
+                                        trips: [{ tripNumber: 1, odoStart: 0, odoEnd: 0 }],
+                                        totalKm: 0,
+                                        budget: 0,
+                                        budgetFrom: "",
+                                        rfidLoad: 0,
+                                        rfidPaymentType: "cash",
+                                        fuelAmount: 0,
+                                        fuelPaymentType: "cash",
+                                        collectionFromCustomer: 0,
+                                        cashOnHandReturned: 0,
+                                        cashOnHandReturnedToWhom: "",
+                                        autoCA: false,
+                                        expenses: [],
+                                      };
+                                      const updatedTrips = [...existing.trips];
+                                      const lastIdx = updatedTrips.length - 1;
+                                      if (lastIdx >= 0) {
+                                        updatedTrips[lastIdx] = { ...updatedTrips[lastIdx], odoEnd: val };
+                                      } else {
+                                        updatedTrips.push({ tripNumber: 1, odoStart: 0, odoEnd: val });
+                                      }
+                                      return {
+                                        ...prev,
+                                        [record.id]: {
+                                          ...existing,
+                                          trips: updatedTrips,
+                                        },
+                                      };
+                                    });
+                                  }}
                                   styles={{
                                     label: {
                                       fontSize: "9px",
@@ -753,8 +805,8 @@ export default function DispatchRecordsPage() {
                                     },
                                   }}
                                 />
-                                {odoData[record.id]?.odoStart &&
-                                  odoData[record.id]?.odoEnd && (
+                                {odoData[record.id]?.trips?.[0]?.odoStart !== undefined &&
+                                  odoData[record.id]?.trips?.[odoData[record.id]?.trips.length - 1]?.odoEnd !== undefined && (
                                     <Text
                                       style={{ fontSize: "11px" }}
                                       fw={700}
@@ -763,8 +815,8 @@ export default function DispatchRecordsPage() {
                                       Total:{" "}
                                       {Math.max(
                                         0,
-                                        Number(odoData[record.id].odoEnd) -
-                                        Number(odoData[record.id].odoStart),
+                                        (odoData[record.id]?.trips?.[odoData[record.id]?.trips.length - 1]?.odoEnd || 0) -
+                                        (odoData[record.id]?.trips?.[0]?.odoStart || 0),
                                       )}{" "}
                                       km
                                     </Text>

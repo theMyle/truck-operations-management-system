@@ -2,12 +2,12 @@
 
 import { Modal, Tabs, Text, Group, Badge, ScrollArea } from "@mantine/core";
 import { IconClipboardList, IconGauge, IconWallet, IconReceipt } from "@tabler/icons-react";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useForm } from "@mantine/form";
 import { DispatchRecord } from "@/app/(app)/constant";
-import { NewOdometerTab } from "./NewOdometerTab";
-import { NewBudgetTab } from "./NewBudgetTab";
-import { NewExpensesTab } from "./NewExpensesTab";
+import { NewOdometerTab } from "./OdometerTab";
+import { NewBudgetTab } from "./BudgetTab";
+import { NewExpensesTab } from "./ExpensesTab";
 
 export interface TripData {
     tripNumber: number;
@@ -19,6 +19,7 @@ export interface Expenses {
     expenseId: number;
     expenseCategory: string;
     amount: number;
+    assignedTo?: string;
 }
 
 export interface NewTripDetailsFormData {
@@ -134,6 +135,23 @@ export function TripDetailsModal({
         });
     };
 
+    const manpowerOptions = useMemo(() => {
+        if (!record) return [];
+        return (
+            [
+                record.driver
+                    ? { value: record.driver, label: `${record.driver} (Driver)` }
+                    : null,
+                record.helper
+                    ? { value: record.helper, label: `${record.helper} (Helper)` }
+                    : null,
+                record.trucker
+                    ? { value: record.trucker, label: `${record.trucker} (Trucker)` }
+                    : null,
+            ] as ({ value: string; label: string } | null)[]
+        ).filter((o): o is { value: string; label: string } => o !== null);
+    }, [record]);
+
     if (!record) return null;
 
     return (
@@ -195,7 +213,7 @@ export function TripDetailsModal({
 
                 {/* ══ BUDGET TAB ══ */}
                 <Tabs.Panel value="budget">
-                    <NewBudgetTab form={form} setActiveTab={setActiveTab} />
+                    <NewBudgetTab form={form} setActiveTab={setActiveTab} handleReset={handleReset} />
                 </Tabs.Panel>
 
                 {/* ══ EXPENSES TAB ══ */}
@@ -203,7 +221,9 @@ export function TripDetailsModal({
                     <NewExpensesTab
                         form={form}
                         setActiveTab={setActiveTab}
+                        handleReset={handleReset}
                         handleSave={handleSave}
+                        manpowerOptions={manpowerOptions}
                     />
                 </Tabs.Panel>
             </Tabs>
