@@ -9,6 +9,7 @@ import { bookingDrops, NewBookingDrop } from "../db/schema/bookingDrops";
 import { bookingToHelpers } from "../db/schema/bookingHelpers";
 import { UpdateTripDetailInput } from "../db/schema/booking";
 import IBookingRepository from "./booking.repository.interface";
+import { Input } from "@mantine/core";
 
 export const makeBookingRepository = (database = db): IBookingRepository => {
   return {
@@ -172,6 +173,7 @@ export async function updateTripDetails(data: UpdateTripDetailInput) {
       finishedDeliveryTime: toTs(data.finishDelivery),
       deliveryStatus: data.deliveryStatus,
       tripRemarks: data.tripRemarks ?? null,
+      PODLink: data.PODlink ?? null
     })
     .where(eq(booking.id, data.id));
 }

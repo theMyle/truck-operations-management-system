@@ -95,6 +95,9 @@ export default function BookingRecordsPage() {
           loadingEnd: formatTimeHHMM(b.loadingEndTime),
           departurePickup: formatTimeHHMM(b.pickupDepartureTime),
           finishDelivery: formatTimeHHMM(b.finishedDeliveryTime),
+          podFile: b.PODLink ? b.PODLink.split("/").pop() ?? "" : "",
+          podFileUrl: b.PODLink ?? "",
+          podFileType: ""
         }));
 
         setRecords(mapped);
@@ -192,6 +195,7 @@ export default function BookingRecordsPage() {
       finishDelivery: form.finishDelivery || undefined,
       deliveryStatus: form.deliveryStatus,
       tripRemarks: form.tripRemarks || undefined,
+      PODlink: form.podFileUrl || undefined,
     });
 
     if (result?.serverError) {
