@@ -1,5 +1,5 @@
 "use client";
-
+import Link from "next/link";
 import {
   AppShell,
   Burger,
@@ -161,6 +161,7 @@ export default function DashboardLayout({
                 return (
                   <NavLink
                     key={item.href}
+                    component={Link}
                     label={
                       <Text size="xs" fw={500}>
                         {item.label}
