@@ -25,7 +25,8 @@ import {
   IconTrendingDown,
   IconDownload,
 } from "@tabler/icons-react";
-import { EXPENSE_CATEGORIES, OdoFormData } from "./OdoModal";
+import { EXPENSE_CATEGORIES } from "./ExpensesTab";
+import { NewTripDetailsFormData } from "./TripDetailsModal";
 
 /* ── Review Section Row helper ── */
 function ReviewRow({
@@ -105,6 +106,7 @@ function ReviewSection({
     </Box>
   );
 }
+
 export function ReviewModal({
   opened,
   onClose,
@@ -118,29 +120,25 @@ export function ReviewModal({
   onClose: () => void;
   onDownload: () => void;
   onConfirm: () => void;
-  form: OdoFormData;
+  form: NewTripDetailsFormData;
   record: DispatchRecord | null;
   refNumber: string;
 }) {
   if (!record) return null;
 
-  const budgetAmount = Number(form.budget) || 0;
-  const collectionAmount = Number(form.collectionFromCustomer) || 0;
-  const rfidAmount = Number(form.rfidLoad) || 0;
-  const fuelAmt = Number(form.fuelAmount) || 0;
-  const totalExpenses = form.expenses.reduce(
-    (s, e) => s + (Number(e.amount) || 0),
-    0,
-  );
+  const budgetAmount = form.budget || 0;
+  const collectionAmount = form.collectionFromCustomer || 0;
+  const rfidAmount = form.rfidLoad || 0;
+  const fuelAmt = form.fuelAmount || 0;
+  const totalExpenses = form.expenses.reduce((s, e) => s + (e.amount || 0), 0);
   const grandTotal = totalExpenses + rfidAmount + fuelAmt;
   const totalFunds = budgetAmount + collectionAmount;
   const balance = totalFunds - grandTotal;
   const isOverBudget = balance < 0;
 
-  const totalKm =
-    form.odoStart && form.odoEnd
-      ? Math.max(0, Number(form.odoEnd) - Number(form.odoStart))
-      : null;
+  const start = form.trips[0]?.odoStart || 0;
+  const end = form.trips[form.trips.length - 1]?.odoEnd || 0;
+  const totalKm = Math.max(0, end - start);
 
   const now = new Date();
   const formattedDate = now.toLocaleDateString("en-PH", {
@@ -332,8 +330,8 @@ export function ReviewModal({
             title="Odometer"
             color="violet"
           >
-            <ReviewRow label="ODO Start" value={form.odoStart || "—"} />
-            <ReviewRow label="ODO End" value={form.odoEnd || "—"} />
+            <ReviewRow label="ODO Start" value={String(start)} />
+            <ReviewRow label="ODO End" value={String(end)} />
             {totalKm !== null && (
               <ReviewRow
                 label="Total KM"
@@ -351,7 +349,7 @@ export function ReviewModal({
             {form.tripType === "multiple" && (
               <ReviewRow
                 label="No. of Trips"
-                value={String(form.multipleTrips.length)}
+                value={String(form.trips.length)}
               />
             )}
           </ReviewSection>
@@ -373,13 +371,13 @@ export function ReviewModal({
             <ReviewRow label="From" value={form.budgetFrom || "—"} />
             {rfidAmount > 0 && (
               <ReviewRow
-                label={`RFID Load (${form.rfidPayment === "card" ? "Card" : form.rfidPayment === "cash" ? "Cash" : "—"})`}
+                label={`RFID Load (${form.rfidPaymentType === "card" ? "Card" : form.rfidPaymentType === "cash" ? "Cash" : "—"})`}
                 value={`₱${rfidAmount.toLocaleString("en-PH", { minimumFractionDigits: 2 })}`}
               />
             )}
             {fuelAmt > 0 && (
               <ReviewRow
-                label={`Fuel (${form.fuelPayment === "shell_card" ? "Shell Card" : form.fuelPayment === "cash" ? "Cash" : "—"})`}
+                label={`Fuel (${form.fuelPaymentType === "shell card" ? "Shell Card" : form.fuelPaymentType === "cash" ? "Cash" : "—"})`}
                 value={`₱${fuelAmt.toLocaleString("en-PH", { minimumFractionDigits: 2 })}`}
               />
             )}
@@ -389,18 +387,16 @@ export function ReviewModal({
                 value={`₱${collectionAmount.toLocaleString("en-PH", { minimumFractionDigits: 2 })}`}
               />
             )}
-            {form.cashOnHandReturned && (
+            {form.cashOnHandReturned > 0 && (
               <ReviewRow
                 label="Naibalik na Sukli"
-                value={`₱${Number(form.cashOnHandReturned).toLocaleString("en-PH", { minimumFractionDigits: 2 })} → ${form.kanino || "—"}`}
+                value={`₱${form.cashOnHandReturned.toLocaleString("en-PH", { minimumFractionDigits: 2 })} → ${form.cashOnHandReturnedToWhom || "—"}`}
               />
             )}
-            {form.autoCA && (
-              <ReviewRow
-                label="Auto CA"
-                value={form.autoCA === "yes" ? "Yes" : "No"}
-              />
-            )}
+            <ReviewRow
+              label="Auto CA"
+              value={form.autoCA ? "Yes" : "No"}
+            />
           </ReviewSection>
 
           {/* Expenses */}
@@ -415,20 +411,20 @@ export function ReviewModal({
               <>
                 {form.expenses.map((e, idx) => (
                   <ReviewRow
-                    key={e.id}
-                    label={`${idx + 1}. ${EXPENSE_CATEGORIES.find((c) => c.value === e.category)?.label || "—"}${e.assignedTo ? ` (${e.assignedTo})` : ""}`}
-                    value={`₱${(Number(e.amount) || 0).toLocaleString("en-PH", { minimumFractionDigits: 2 })}`}
+                    key={e.expenseId}
+                    label={`${idx + 1}. ${EXPENSE_CATEGORIES.find((c) => c.value === e.expenseCategory)?.label || "—"}${e.assignedTo ? ` (${e.assignedTo})` : ""}`}
+                    value={`₱${e.amount.toLocaleString("en-PH", { minimumFractionDigits: 2 })}`}
                   />
                 ))}
                 {rfidAmount > 0 && (
                   <ReviewRow
-                    label={`RFID Load (${form.rfidPayment === "card" ? "Card" : "Cash"})`}
+                    label={`RFID Load (${form.rfidPaymentType === "card" ? "Card" : "Cash"})`}
                     value={`₱${rfidAmount.toLocaleString("en-PH", { minimumFractionDigits: 2 })}`}
                   />
                 )}
                 {fuelAmt > 0 && (
                   <ReviewRow
-                    label={`Fuel (${form.fuelPayment === "shell_card" ? "Shell Card" : "Cash"})`}
+                    label={`Fuel (${form.fuelPaymentType === "shell card" ? "Shell Card" : "Cash"})`}
                     value={`₱${fuelAmt.toLocaleString("en-PH", { minimumFractionDigits: 2 })}`}
                   />
                 )}
