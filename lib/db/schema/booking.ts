@@ -80,7 +80,7 @@ export const booking = pgTable("booking", {
 
 export const updateTripDetailSchema = z.object({
   id: z.string().uuid(),
-  pickupDate: z.string(), 
+  pickupDate: z.string(),
   arrivalPickup: z.string().optional(),
   loadingStart: z.string().optional(),
   loadingEnd: z.string().optional(),
@@ -88,6 +88,7 @@ export const updateTripDetailSchema = z.object({
   finishDelivery: z.string().optional(),
   deliveryStatus: z.string(),
   tripRemarks: z.string().optional(),
+  PODlink: z.string().optional(),
 });
 
 export const insertBookingSchema = createInsertSchema(booking);
@@ -97,15 +98,12 @@ export const bookingWithRelationsSchema = selectBookingSchema.extend({
   helpers: z.array(selectHelperSchema).default([]),
 });
 
-
 export type Booking = z.infer<typeof selectBookingSchema>;
 export type NewBooking = z.infer<typeof insertBookingSchema>;
 export type BookingWithRelations = z.infer<typeof bookingWithRelationsSchema>;
-export type UpdateTripDetailInput = z.infer<typeof updateTripDetailSchema>
+export type UpdateTripDetailInput = z.infer<typeof updateTripDetailSchema>;
 
 export const bookingRelations = relations(booking, ({ many }) => ({
   drops: many(bookingDrops),
   helpers: many(bookingToHelpers),
 }));
-
-

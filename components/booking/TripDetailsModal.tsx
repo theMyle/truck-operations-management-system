@@ -15,6 +15,7 @@ import {
   ThemeIcon,
   ActionIcon,
   Tooltip,
+  Alert,
 } from "@mantine/core";
 import { TimeInput } from "@mantine/dates";
 import { DispatchRecord } from "@/app/(app)/constant";
@@ -39,6 +40,8 @@ import {
   IconUser,
   IconX,
 } from "@tabler/icons-react";
+import { uploadFile, replaceFile } from "@/lib/actions/file-upload";
+import { compressImage } from "@/lib/utils/imageUtils";
 
 export interface TripDetailsForm {
   pickUpTime: string;
@@ -132,14 +135,16 @@ function TimeField({
   );
 }
 
-/* ── Main Modal ── */
+/* ── POD Upload Field ── */
 function PodUploadField({
   fileName,
+  isUploading,
   onUploadClick,
   onFileChange,
   onClear,
 }: {
   fileName: string;
+  isUploading: boolean;
   onUploadClick: () => void;
   onFileChange: (file: File | null) => void;
   onClear: () => void;
@@ -160,19 +165,19 @@ function PodUploadField({
       <Box
         role="button"
         tabIndex={0}
-        onClick={onUploadClick}
+        onClick={isUploading ? undefined : onUploadClick}
         onKeyDown={(event) => {
-          if (event.key === "Enter" || event.key === " ") {
+          if (!isUploading && (event.key === "Enter" || event.key === " ")) {
             event.preventDefault();
             onUploadClick();
           }
         }}
         onDragOver={(event) => {
           event.preventDefault();
-          setIsDragging(true);
+          if (!isUploading) setIsDragging(true);
         }}
         onDragLeave={() => setIsDragging(false)}
-        onDrop={handleDrop}
+        onDrop={isUploading ? undefined : handleDrop}
         style={{
           minHeight: 98,
           border: `1px dashed ${
@@ -187,7 +192,8 @@ function PodUploadField({
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          cursor: "pointer",
+          cursor: isUploading ? "not-allowed" : "pointer",
+          opacity: isUploading ? 0.6 : 1,
           transition: "border-color 0.15s ease, background-color 0.15s ease",
         }}
       >
@@ -196,7 +202,7 @@ function PodUploadField({
             <IconUpload size={15} />
           </ThemeIcon>
           <Text style={{ fontSize: "11px" }} fw={800} c="blue.7">
-            Upload File
+            {isUploading ? "Uploading…" : "Upload File"}
           </Text>
           <Text style={{ fontSize: "10px" }} c="dimmed" fw={500}>
             JPG, PNG or WEBP
@@ -242,6 +248,7 @@ function PodUploadField({
               color="blue"
               variant="filled"
               aria-label="Remove POD file"
+              disabled={isUploading}
               onClick={(event) => {
                 event.stopPropagation();
                 onClear();
@@ -256,6 +263,7 @@ function PodUploadField({
   );
 }
 
+/* ── Main Modal ── */
 export function TripDetailsModal({
   opened,
   onClose,
@@ -285,13 +293,20 @@ export function TripDetailsModal({
   );
 
   const [form, setForm] = useState<TripDetailsForm>(initial);
+  // The actual File object for the pending upload — separate from form
+  // because form.podFileUrl is just a blob preview URL (not uploadable)
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const podInputRef = useRef<HTMLInputElement>(null);
 
   const set = (key: keyof TripDetailsForm, val: string) =>
     setForm((prev) => ({ ...prev, [key]: val }));
 
   const handlePodChange = (file: File | null) => {
+    setUploadError(null);
     if (!file) {
+      setPendingFile(null);
       setForm((prev) => ({
         ...prev,
         podFile: "",
@@ -301,9 +316,11 @@ export function TripDetailsModal({
       return;
     }
 
+    setPendingFile(file);
     setForm((prev) => ({
       ...prev,
       podFile: file.name,
+      // blob URL for preview only — gets replaced by real URL on save
       podFileUrl: URL.createObjectURL(file),
       podFileType: file.type,
     }));
@@ -328,12 +345,52 @@ export function TripDetailsModal({
 
   const handleClose = () => {
     setForm(initial);
+    setPendingFile(null);
+    setUploadError(null);
     onClose();
   };
 
-  const handleSave = () => {
-    onSave(record.id, form);
-    onClose();
+  const handleSave = async () => {
+    setIsUploading(true);
+    setUploadError(null);
+
+    try {
+      let finalPodUrl = form.podFileUrl;
+
+      if (pendingFile) {
+        // Compress before upload — retains detail, kills file size
+        const compressed = await compressImage(pendingFile);
+
+        const fd = new FormData();
+        fd.append("file", compressed);
+        fd.append("folder", "pod");
+
+        let res: { success?: boolean; url?: string; error?: string };
+
+        // If record already has a POD URL → replace (deletes old from bucket)
+        if (record.podFileUrl && record.podFileUrl.startsWith("http")) {
+          fd.append("oldUrl", record.podFileUrl);
+          res = await replaceFile(fd);
+        } else {
+          res = await uploadFile(fd);
+        }
+
+        if (res.error || !res.url) {
+          setUploadError(res.error ?? "Upload failed. Try again.");
+          return;
+        }
+
+        finalPodUrl = res.url;
+      }
+
+      onSave(record.id, { ...form, podFileUrl: finalPodUrl });
+      onClose();
+    } catch (err) {
+      setUploadError("Unexpected error during upload.");
+      console.error("POD upload error:", err);
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   return (
@@ -489,10 +546,24 @@ export function TripDetailsModal({
           />
           <PodUploadField
             fileName={form.podFile}
+            isUploading={isUploading}
             onUploadClick={() => podInputRef.current?.click()}
             onFileChange={handlePodChange}
             onClear={() => handlePodChange(null)}
           />
+
+          {/* Upload error inline — user stays on modal to retry */}
+          {uploadError && (
+            <Alert
+              color="red"
+              mt="xs"
+              radius="md"
+              styles={{ message: { fontSize: "11px" } }}
+            >
+              {uploadError}
+            </Alert>
+          )}
+
           <Textarea
             label="Trip Remarks"
             placeholder="Any notes about this trip..."
@@ -511,6 +582,7 @@ export function TripDetailsModal({
           <Button
             variant="light"
             color="gray"
+            disabled={isUploading}
             styles={{
               root: { height: 34 },
               label: { fontSize: "11px", fontWeight: 700 },
@@ -522,14 +594,15 @@ export function TripDetailsModal({
           <Button
             color="blue.6"
             leftSection={<IconTruckDelivery size={14} />}
-            disabled={!isFormValid}
+            disabled={!isFormValid || isUploading}
+            loading={isUploading}
             styles={{
               root: { height: 34 },
               label: { fontSize: "11px", fontWeight: 700 },
             }}
             onClick={handleSave}
           >
-            Save Trip Details
+            {isUploading ? "Saving…" : "Save Trip Details"}
           </Button>
         </Group>
       </Stack>
