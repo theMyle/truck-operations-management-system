@@ -24,6 +24,7 @@ import {
   updateTripDetailsAction,
 } from "@/lib/actions/booking";
 import { formatTime12Hour, formatTimeHHMM } from "@/lib/utils/stringFormat";
+import { BookingModuleSkeleton } from "@/components/ui/ModuleSkeletons";
 
 const PAGE_SIZE = 10;
 
@@ -97,9 +98,9 @@ export default function BookingRecordsPage() {
           loadingEnd: formatTimeHHMM(b.loadingEndTime),
           departurePickup: formatTimeHHMM(b.pickupDepartureTime),
           finishDelivery: formatTimeHHMM(b.finishedDeliveryTime),
-          podFile: b.PODLink ? b.PODLink.split("/").pop() ?? "" : "",
+          podFile: b.PODLink ? (b.PODLink.split("/").pop() ?? "") : "",
           podFileUrl: b.PODLink ?? "",
-          podFileType: ""
+          podFileType: "",
         }));
 
         setRecords(mapped);
@@ -114,13 +115,27 @@ export default function BookingRecordsPage() {
     return records.filter((r) => {
       const matchesSearch =
         !q ||
-        String(r.displayBookingNo || "").toLowerCase().includes(q) ||
-        String(r.clientName || r.client || "").toLowerCase().includes(q) ||
-        String(r.driverName || r.driver || "").toLowerCase().includes(q) ||
-        String(r.plateNo || "").toLowerCase().includes(q) ||
-        String(r.bookingDRNo || r.bookingDr || "").toLowerCase().includes(q) ||
-        String(r.ruta || "").toLowerCase().includes(q) ||
-        String(r.bookedBy || "").toLowerCase().includes(q);
+        String(r.displayBookingNo || "")
+          .toLowerCase()
+          .includes(q) ||
+        String(r.clientName || r.client || "")
+          .toLowerCase()
+          .includes(q) ||
+        String(r.driverName || r.driver || "")
+          .toLowerCase()
+          .includes(q) ||
+        String(r.plateNo || "")
+          .toLowerCase()
+          .includes(q) ||
+        String(r.bookingDRNo || r.bookingDr || "")
+          .toLowerCase()
+          .includes(q) ||
+        String(r.ruta || "")
+          .toLowerCase()
+          .includes(q) ||
+        String(r.bookedBy || "")
+          .toLowerCase()
+          .includes(q);
       const matchesStatus = filters.status
         ? r.status === filters.status
         : r.status !== "Completed";
@@ -234,7 +249,7 @@ export default function BookingRecordsPage() {
       color: form.deliveryStatus === "Completed" ? "green" : "blue",
     });
   };
-  if (isLoading) return null;
+  if (isLoading) return <BookingModuleSkeleton />;
 
   return (
     <>
