@@ -18,6 +18,14 @@ export const makeClientRepository = (database = db): IClientRepository => {
       });
     },
 
+    getByName: async function (name: string): Promise<ClientWithRoutes | null> {
+      const result = await database.query.clients.findFirst({
+        where: (clients, { eq }) => eq(clients.clientName, name),
+        with: { routes: true },
+      });
+      return result ?? null;
+    },
+
     add: async function (
       client: NewClient,
       routes: RouteInput[],

@@ -3,6 +3,7 @@ import { Client, ClientWithRoutes, NewClient } from "../db/schema";
 export type RouteInput = { route: string };
 export default interface IClientRepository {
   getAll(): Promise<ClientWithRoutes[]>;
+  getByName(name: string): Promise<ClientWithRoutes | null>;
   add(client: NewClient, routes: RouteInput[]): Promise<Client>;
   update(
     id: string,

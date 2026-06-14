@@ -20,6 +20,10 @@ export const getDriverAction = actionClient.action(async () => {
 export const createDriverAction = actionClient
     .inputSchema(driverInputSchema)
     .action(async ({ parsedInput }) => {
+        const existingDriver = await driverRepository.getByName(parsedInput.driverName);
+        if (existingDriver) {
+            throw new Error(`A driver with the name "${parsedInput.driverName}" already exists.`);
+        }
         const newDriver = await driverRepository.add(parsedInput);
         revalidatePath("/registration");
         return { success: true, data: newDriver };

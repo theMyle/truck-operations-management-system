@@ -26,6 +26,12 @@ export const createClientAction = actionClient
   .inputSchema(clientInputSchema)
   .action(async ({ parsedInput }) => {
     const { routes, ...clientData } = parsedInput;
+
+    const existingClient = await clientRepository.getByName(clientData.clientName);
+    if (existingClient) {
+      throw new Error(`A client with the name "${clientData.clientName}" already exists.`);
+    }
+
     const newClient = await clientRepository.add(clientData, routes ?? []);
     revalidatePath("/registration");
     return { success: true, data: newClient };
