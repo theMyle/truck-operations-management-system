@@ -9,12 +9,12 @@ import { bookingDrops, NewBookingDrop } from "../db/schema/bookingDrops";
 import { bookingToHelpers } from "../db/schema/bookingHelpers";
 import { UpdateTripDetailInput } from "../db/schema/booking";
 import IBookingRepository from "./booking.repository.interface";
-import { Input } from "@mantine/core";
 
 export const makeBookingRepository = (database = db): IBookingRepository => {
   return {
-    getAll: async function (): Promise<BookingWithRelations[]> {
+    getAll: async function (deliveryStatus?: string): Promise<BookingWithRelations[]> {
       const bookings = await database.query.booking.findMany({
+        where: deliveryStatus ? eq(booking.deliveryStatus, deliveryStatus) : undefined,
         with: {
           drops: true,
           helpers: {

@@ -304,8 +304,7 @@ export default function DispatchRecordsPage() {
 
   useEffect(() => {
     async function loadBookings() {
-      const res = await getAllBookingAction();
-      console.log(res)
+      const res = await getAllBookingAction({ deliveryStatus: "Completed" });
       if (res?.data) {
         const mapped = res.data.map((b) => ({
           id: b.id,

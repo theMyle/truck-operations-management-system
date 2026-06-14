@@ -12,6 +12,7 @@ import {
 } from "../validations/booking";
 import { revalidatePath } from "next/cache";
 import { updateTripDetailSchema } from "../db/schema/booking";
+import { z } from "zod";
 
 export const createBookingAction = actionClient
   .inputSchema(createBookingActionSchema)
@@ -29,14 +30,16 @@ export const createBookingAction = actionClient
     }
   });
 
-export const getAllBookingAction = actionClient.action(async () => {
-  try {
-    const bookings = await bookingRepository.getAll();
-    return bookings;
-  } catch (error) {
-    console.log(error);
-  }
-});
+export const getAllBookingAction = actionClient
+  .inputSchema(z.object({ deliveryStatus: z.string().optional() }).optional())
+  .action(async ({ parsedInput }) => {
+    try {
+      const bookings = await bookingRepository.getAll(parsedInput?.deliveryStatus);
+      return bookings;
+    } catch (error) {
+      console.log(error);
+    }
+  });
 
 export const updateBookingAction = actionClient
   .inputSchema(updateBookingActionSchema)
