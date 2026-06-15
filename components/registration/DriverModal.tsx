@@ -67,8 +67,8 @@ export function DriverModal({ opened, onClose, driver }: Props) {
       form.reset();
       onClose();
     },
-    onError: () => {
-      notifications.show({ message: "Failed to add driver.", color: "red" });
+    onError: ({ error }) => {
+      notifications.show({ message: error.serverError || "Failed to add driver.", color: "red" });
     },
   });
 
@@ -77,8 +77,8 @@ export function DriverModal({ opened, onClose, driver }: Props) {
       notifications.show({ message: "Driver updated!", color: "green" });
       onClose();
     },
-    onError: () => {
-      notifications.show({ message: "Failed to update driver.", color: "red" });
+    onError: ({ error }) => {
+      notifications.show({ message: error.serverError || "Failed to update driver.", color: "red" });
     },
   });
 

@@ -51,8 +51,8 @@ export function ClientModal({ opened, onClose, client }: Props) {
       form.reset();
       onClose();
     },
-    onError: () =>
-      notifications.show({ message: "Failed to add client.", color: "red" }),
+    onError: ({ error }) =>
+      notifications.show({ message: error.serverError || "Failed to add client.", color: "red" }),
   });
 
   const updateAction = useAction(updateClientAction, {
@@ -60,8 +60,8 @@ export function ClientModal({ opened, onClose, client }: Props) {
       notifications.show({ message: "Client updated!", color: "green" });
       onClose();
     },
-    onError: () =>
-      notifications.show({ message: "Failed to update client.", color: "red" }),
+    onError: ({ error }) =>
+      notifications.show({ message: error.serverError || "Failed to update client.", color: "red" }),
   });
 
   const handleSubmit = form.onSubmit((values) => {

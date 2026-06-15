@@ -20,6 +20,10 @@ export const getHelperAction = actionClient.action(async () => {
 export const createHelperAction = actionClient
     .inputSchema(helperInputSchema)
     .action(async ({ parsedInput }) => {
+        const existingHelper = await helperRepository.getByName(parsedInput.helperName);
+        if (existingHelper) {
+            throw new Error(`A helper with the name "${parsedInput.helperName}" already exists.`);
+        }
         const newHelper = await helperRepository.add(parsedInput);
         revalidatePath("/registration");
         return { success: true, data: newHelper };

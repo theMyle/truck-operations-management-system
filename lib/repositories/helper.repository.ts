@@ -9,6 +9,11 @@ export const makeHelperRepository = (database = db): IHelperRepository => {
             return await database.select().from(helpers);
         },
 
+        getByName: async function (name: string): Promise<Helper | null> {
+            const [helper] = await database.select().from(helpers).where(eq(helpers.helperName, name)).limit(1);
+            return helper ?? null;
+        },
+
         add: async function (helper: NewHelper): Promise<Helper> {
             const [newHelper] = await database.insert(helpers).values(helper).returning();
             return newHelper;

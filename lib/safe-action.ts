@@ -1,6 +1,10 @@
 import { createSafeActionClient } from "next-safe-action";
 
-export const actionClient = createSafeActionClient().use(async ({ next }) => {
+export const actionClient = createSafeActionClient({
+    handleServerError(e) {
+        return e.message;
+    }
+}).use(async ({ next }) => {
     if (process.env.IS_TESTING === "true") {
         return next({
             ctx: {

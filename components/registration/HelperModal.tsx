@@ -67,8 +67,8 @@ export function HelperModal({ opened, onClose, helper }: Props) {
       form.reset();
       onClose();
     },
-    onError: () => {
-      notifications.show({ message: "Failed to add helper.", color: "red" });
+    onError: ({ error }) => {
+      notifications.show({ message: error.serverError || "Failed to add helper.", color: "red" });
     },
   });
 
@@ -77,8 +77,8 @@ export function HelperModal({ opened, onClose, helper }: Props) {
       notifications.show({ message: "Helper updated!", color: "green" });
       onClose();
     },
-    onError: () => {
-      notifications.show({ message: "Failed to update helper.", color: "red" });
+    onError: ({ error }) => {
+      notifications.show({ message: error.serverError || "Failed to update helper.", color: "red" });
     },
   });
 

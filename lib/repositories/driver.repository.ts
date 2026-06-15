@@ -9,6 +9,11 @@ export const makeDriverRepository = (database = db): IDriverRepository => {
             return await database.select().from(drivers);
         },
 
+        getByName: async function (name: string): Promise<Driver | null> {
+            const [driver] = await database.select().from(drivers).where(eq(drivers.driverName, name)).limit(1);
+            return driver ?? null;
+        },
+
         add: async function (driver: NewDriver): Promise<Driver> {
             const [newDriver] = await database.insert(drivers).values(driver).returning();
             return newDriver;

@@ -54,7 +54,8 @@ export default function BookingRecordsPage() {
 
   useEffect(() => {
     async function loadBookings() {
-      const res = await getAllBookingAction();
+      const res = await getAllBookingAction({});
+      console.log(res);
 
       if (res?.data) {
         const mapped = res.data.map((b) => ({

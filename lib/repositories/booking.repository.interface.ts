@@ -2,7 +2,7 @@ import { BookingWithRelations, NewBooking } from "../db/schema/booking";
 import { NewBookingDrop } from "../db/schema/bookingDrops";
 
 export default interface IBookingRepository {
-    getAll(): Promise<BookingWithRelations[]>,
+    getAll(deliveryStatus?: string): Promise<BookingWithRelations[]>,
 
     add(
         booking: NewBooking,
