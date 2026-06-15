@@ -37,7 +37,7 @@ import { useDispatch } from "../context/dispatch-context";
 import { TripDetailsModal } from "@/components/trip-logs/TripDetailsModal";
 import type { NewTripDetailsFormData } from "@/components/trip-logs/TripDetailsModal";
 import { DispatchRecord } from "@/app/(app)/constant";
-import { getAllBookingAction, deleteBookingAction } from "@/lib/actions/booking";
+import { getAllBookingAction, deleteBookingAction, updateTripDetailAction } from "@/lib/actions/booking";
 import { formatTime12Hour, formatTimeHHMM } from "@/lib/utils/stringFormat";
 import { TripLogsTable } from "@/components/trip-logs/TripLogsTable";
 import { TripLogsModuleSkeleton } from "@/components/ui/ModuleSkeletons";
@@ -295,11 +295,9 @@ export default function DispatchRecordsPage() {
   const [deleteRecord, setDeleteRecord] = useState<DispatchRecord | null>(null);
   const [deleteOpened, setDeleteOpened] = useState(false);
 
-  const [expandedRow, setExpandedRow] = useState<string | number | null>(null);
-
-  const [odoRecord, setOdoRecord] = useState<DispatchRecord | null>(null);
-  const [odoOpened, setOdoOpened] = useState(false);
-  const [odoData, setOdoData] = useState<Record<string | number, NewTripDetailsFormData>>({});
+  const [seletectedTrip, setSeletectedTrip] = useState<DispatchRecord | null>(null);
+  const [detailsOpened, setDetailsOpened] = useState(false);
+  const [detailsData, setDetailsData] = useState<Record<string | number, NewTripDetailsFormData>>({});
   const [page, setPage] = useState(1);
   const { setEditingRecord } = useDispatch();
 
@@ -353,7 +351,51 @@ export default function DispatchRecordsPage() {
           podFileType: ""
         }));
 
-        // Set all booking records for logs so they can be viewed and configured
+        // Populate Odometer & Budget & Expenses initial data from database
+        const initialOdoData: Record<string | number, NewTripDetailsFormData> = {};
+        res.data.forEach((b) => {
+          initialOdoData[b.id] = {
+            tripType: b.odoDetails.length > 1 ? "multiple" : "single",
+            trips: b.odoDetails.length > 0
+              ? b.odoDetails.map((odo) => ({
+                tripNumber: odo.tripIndex,
+                odoStart: odo.odoStart,
+                odoEnd: odo.odoEnd,
+              }))
+              : [{ tripNumber: 1, odoStart: 0, odoEnd: 0 }],
+            totalKm: b.odoDetails.length > 0
+              ? b.odoDetails[b.odoDetails.length - 1].odoEnd - b.odoDetails[0].odoStart
+              : 0,
+            budget: Number(b.budget || 0),
+            budgetFrom: b.budgetFrom || "",
+            rfidLoad: Number(b.rfidLoad || 0),
+            rfidPaymentType: (b.rfidPaymentType as "cash" | "card") || "cash",
+            fuelAmount: Number(b.fuel || 0),
+            fuelPaymentType: b.fuelPaymentType === "card" ? "shell card" : "cash",
+            collectionFromCustomer: Number(b.customerCollection || 0),
+            cashOnHandReturned: Number(b.cashOnHandReturned || 0),
+            cashOnHandReturnedToWhom: b.cashOnHandReturnedTo || "",
+            autoCA: b.autoCash || false,
+            driverRate: Number(b.driverRate || 0),
+            helperRate: Number(b.helperRate || 0),
+            expenses: b.expenses.map((exp, idx) => {
+              let category = exp.expenseType;
+              let assignedTo = "";
+              if (exp.expenseType.startsWith("Cash Advance, ")) {
+                category = "cash_advance";
+                assignedTo = exp.expenseType.replace("Cash Advance, ", "").split(" (")[0];
+              }
+              return {
+                expenseId: idx + 1,
+                expenseCategory: category,
+                amount: Number(exp.amount),
+                assignedTo,
+              };
+            }),
+          };
+        });
+
+        setDetailsData(initialOdoData);
         setRecords(mapped);
       }
       setIsLoading(false);
@@ -419,6 +461,73 @@ export default function DispatchRecordsPage() {
     });
   };
 
+  const handleSaveTripDetails = async (data: NewTripDetailsFormData) => {
+    if (!seletectedTrip) return;
+
+    // Map the form values first before passing to the action
+    const payload = {
+      id: String(seletectedTrip.id),
+      budget: String(data.budget),
+      budgetFrom: data.budgetFrom,
+      rfidLoad: String(data.rfidLoad),
+      rfidPaymentType: data.rfidPaymentType,
+      fuel: String(data.fuelAmount),
+      fuelPaymentType: data.fuelPaymentType === "shell card" ? ("card" as const) : ("cash" as const),
+      customerCollection: String(data.collectionFromCustomer),
+      cashOnHandReturned: String(data.cashOnHandReturned),
+      cashOnHandReturnedTo: data.cashOnHandReturnedToWhom,
+      autoCash: data.autoCA,
+      driverRate: String(data.driverRate),
+      helperRate: String(data.helperRate),
+      odoDetails: data.trips.map((t) => ({
+        tripIndex: t.tripNumber,
+        odoStart: t.odoStart,
+        odoEnd: t.odoEnd,
+      })),
+      expenses: data.expenses.map((e, index) => {
+        let expenseType = e.expenseCategory;
+        if (e.expenseCategory === "cash_advance" && e.assignedTo) {
+          const isDriver = e.assignedTo === seletectedTrip.driverName || e.assignedTo === seletectedTrip.driver;
+          const isHelper = seletectedTrip.helper && seletectedTrip.helper.includes(e.assignedTo);
+          const isTrucker = e.assignedTo === seletectedTrip.trucker;
+
+          const role = isDriver ? "Driver" : isHelper ? "Helper" : isTrucker ? "Trucker" : "";
+          const suffix = role ? ` (${role})` : "";
+          expenseType = `Cash Advance, ${e.assignedTo}${suffix}`;
+        }
+        return {
+          entryIndex: index + 1,
+          expenseType,
+          amount: String(e.amount),
+        };
+      }),
+    };
+
+    const result = await updateTripDetailAction(payload);
+
+    if (result?.serverError) {
+      notifications.show({
+        title: "Error saving details",
+        message: result.serverError,
+        color: "red",
+      });
+      return;
+    }
+
+    // Update local state and trigger refresh
+    setDetailsData((prev) => ({ ...prev, [seletectedTrip.id]: data }));
+    setDetailsOpened(false);
+    notifications.show({
+      title: "Saved",
+      message: `Details for #${seletectedTrip.id} saved.`,
+      color: "blue",
+    });
+
+    // Re-load bookings to sync with DB
+    window.location.reload();
+  };
+
+
   useEffect(() => {
     setPage(1);
   }, [search]);
@@ -458,19 +567,11 @@ export default function DispatchRecordsPage() {
       />
 
       <TripDetailsModal
-        opened={odoOpened}
-        onClose={() => setOdoOpened(false)}
-        record={odoRecord}
-        initialData={odoRecord ? odoData[odoRecord.id] : undefined}
-        onSave={(data) => {
-          setOdoData((prev) => ({ ...prev, [odoRecord!.id]: data }));
-          setOdoOpened(false);
-          notifications.show({
-            title: "Saved",
-            message: `Details for #${odoRecord!.id} saved.`,
-            color: "blue",
-          });
-        }}
+        opened={detailsOpened}
+        onClose={() => setDetailsOpened(false)}
+        record={seletectedTrip}
+        initialData={seletectedTrip ? detailsData[seletectedTrip.id] : undefined}
+        onSave={handleSaveTripDetails}
       />
 
       <ScrollArea h="calc(100vh - 72px)" scrollbars="y">
@@ -604,8 +705,8 @@ export default function DispatchRecordsPage() {
             pageSize={PAGE_SIZE}
             onPageChange={setPage}
             onRowClick={(record) => {
-              setOdoRecord(record);
-              setOdoOpened(true);
+              setSeletectedTrip(record);
+              setDetailsOpened(true);
             }}
             onView={handleView}
             onEdit={handleEdit}

@@ -41,13 +41,15 @@ export const EXPENSE_CATEGORIES = [
   { value: "repairs_maintenance", label: "Repairs & Maintenance Supply" },
 ];
 
-const CATEGORY_COLORS: Record<string, string> = {
+export const CATEGORY_COLORS: Record<string, string> = {
   cash_advance: "violet",
   toll_fee: "cyan",
   cash_out_fee: "orange",
   transportation_penalties: "red",
   repairs_maintenance: "teal",
 };
+
+import { ExpensesSummary } from "./ExpensesSummary";
 
 export function NewExpensesTab({
   form,
@@ -56,196 +58,10 @@ export function NewExpensesTab({
   handleSave,
   manpowerOptions,
 }: NewExpensesTabProps) {
-  const budgetAmount = form.values.budget || 0;
-  const collectionAmount = form.values.collectionFromCustomer || 0;
-  const rfidAmount = form.values.rfidLoad || 0;
-  const fuelAmt = form.values.fuelAmount || 0;
-
-  const totalExpenses = useMemo(
-    () => form.values.expenses.reduce((s, e) => s + (e.amount || 0), 0),
-    [form.values.expenses],
-  );
-
-  const grandTotal = totalExpenses + rfidAmount + fuelAmt;
-  const totalFunds = budgetAmount + collectionAmount;
-  const balance = totalFunds - grandTotal;
-  const isOverBudget = balance < 0;
-  const spentPct =
-    totalFunds > 0 ? Math.min((grandTotal / totalFunds) * 100, 100) : 0;
-
   return (
     <Stack gap="sm">
       {/* Real-time Budget Summary */}
-      {totalFunds > 0 && (
-        <Paper
-          withBorder
-          radius="md"
-          p="sm"
-          bg={isOverBudget ? "red.0" : "green.0"}
-        >
-          <Group justify="space-between" align="flex-start" wrap="nowrap">
-            <Stack gap={4} style={{ flex: 1 }}>
-              <Text
-                style={{ fontSize: "9px" }}
-                fw={800}
-                tt="uppercase"
-                lts={1}
-                c={isOverBudget ? "red.7" : "green.7"}
-              >
-                Budget Summary
-              </Text>
-
-              <Group justify="space-between">
-                <Text style={{ fontSize: "10px" }} c="gray.7" fw={600}>
-                  Budget Given
-                </Text>
-                <Text style={{ fontSize: "10px" }} fw={700}>
-                  ₱{budgetAmount.toLocaleString("en-PH", { minimumFractionDigits: 2 })}
-                </Text>
-              </Group>
-
-              {collectionAmount > 0 && (
-                <Group justify="space-between">
-                  <Text style={{ fontSize: "10px" }} c="gray.7" fw={600}>
-                    Collection from Customer
-                  </Text>
-                  <Text style={{ fontSize: "10px" }} fw={700}>
-                    + ₱{collectionAmount.toLocaleString("en-PH", { minimumFractionDigits: 2 })}
-                  </Text>
-                </Group>
-              )}
-
-              {collectionAmount > 0 && (
-                <Group justify="space-between">
-                  <Text style={{ fontSize: "10px" }} c="gray.7" fw={600}>
-                    Total Funds
-                  </Text>
-                  <Text style={{ fontSize: "10px" }} fw={700} c="blue.7">
-                    ₱{totalFunds.toLocaleString("en-PH", { minimumFractionDigits: 2 })}
-                  </Text>
-                </Group>
-              )}
-
-              {Object.entries(
-                form.values.expenses.reduce<Record<string, number>>((acc, e) => {
-                  if (!e.expenseCategory) return acc;
-                  acc[e.expenseCategory] = (acc[e.expenseCategory] || 0) + (e.amount || 0);
-                  return acc;
-                }, {}),
-              ).map(([cat, amt]) => (
-                <Group key={cat} justify="space-between">
-                  <Badge
-                    size="xs"
-                    variant="dot"
-                    color={CATEGORY_COLORS[cat] || "gray"}
-                    styles={{ label: { fontSize: "9px" } }}
-                  >
-                    {EXPENSE_CATEGORIES.find((c) => c.value === cat)?.label || cat}
-                  </Badge>
-                  <Text style={{ fontSize: "10px" }} fw={600} c="gray.7">
-                    — ₱{amt.toLocaleString("en-PH", { minimumFractionDigits: 2 })}
-                  </Text>
-                </Group>
-              ))}
-
-              {rfidAmount > 0 && (
-                <Group justify="space-between">
-                  <Badge
-                    size="xs"
-                    variant="dot"
-                    color="blue"
-                    styles={{ label: { fontSize: "9px" } }}
-                  >
-                    RFID Load ({form.values.rfidPaymentType})
-                  </Badge>
-                  <Text style={{ fontSize: "10px" }} fw={600} c="gray.7">
-                    — ₱{rfidAmount.toLocaleString("en-PH", { minimumFractionDigits: 2 })}
-                  </Text>
-                </Group>
-              )}
-
-              {fuelAmt > 0 && (
-                <Group justify="space-between">
-                  <Badge
-                    size="xs"
-                    variant="dot"
-                    color="yellow"
-                    styles={{ label: { fontSize: "9px" } }}
-                  >
-                    Fuel ({form.values.fuelPaymentType})
-                  </Badge>
-                  <Text style={{ fontSize: "10px" }} fw={600} c="gray.7">
-                    — ₱{fuelAmt.toLocaleString("en-PH", { minimumFractionDigits: 2 })}
-                  </Text>
-                </Group>
-              )}
-
-              <Divider size="xs" />
-
-              <Group justify="space-between">
-                <Text style={{ fontSize: "10px" }} c="gray.7" fw={700}>
-                  Total Expenses
-                </Text>
-                <Text
-                  style={{ fontSize: "10px" }}
-                  fw={800}
-                  c={isOverBudget ? "red.6" : "gray.8"}
-                >
-                  — ₱{grandTotal.toLocaleString("en-PH", { minimumFractionDigits: 2 })}
-                </Text>
-              </Group>
-
-              <Group
-                justify="space-between"
-                style={{
-                  borderTop: `2px solid var(--mantine-color-${isOverBudget ? "red" : "green"}-4)`,
-                  paddingTop: 6,
-                }}
-              >
-                <Group gap={4}>
-                  {isOverBudget ? (
-                    <IconTrendingUp size={12} color="var(--mantine-color-red-6)" />
-                  ) : (
-                    <IconTrendingDown size={12} color="var(--mantine-color-green-6)" />
-                  )}
-                  <Text
-                    style={{ fontSize: "11px" }}
-                    fw={800}
-                    c={isOverBudget ? "red.7" : "green.7"}
-                  >
-                    {isOverBudget ? "Over Budget" : "CASH ONHAND RETURNED"}
-                  </Text>
-                </Group>
-                <Text
-                  style={{ fontSize: "13px" }}
-                  fw={900}
-                  c={isOverBudget ? "red.7" : "green.7"}
-                >
-                  ₱{Math.abs(balance).toLocaleString("en-PH", { minimumFractionDigits: 2 })}
-                </Text>
-              </Group>
-            </Stack>
-
-            <RingProgress
-              size={70}
-              thickness={6}
-              roundCaps
-              sections={[{ value: spentPct, color: isOverBudget ? "red" : "green" }]}
-              label={
-                <Text
-                  ta="center"
-                  style={{ fontSize: "9px" }}
-                  fw={800}
-                  c={isOverBudget ? "red.7" : "green.7"}
-                >
-                  {Math.round(spentPct)}%
-                </Text>
-              }
-            />
-          </Group>
-        </Paper>
-      )}
-
+      <ExpensesSummary formValues={form.values} />
 
       <Divider
         label={
