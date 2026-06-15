@@ -77,7 +77,7 @@ export const booking = pgTable("booking", {
     withTimezone: true,
   }),
 
-  deliveryStatus: text("deliveryStatus"),
+  deliveryStatus: text("deliveryStatus").default("pending"),
   PODLink: text("PODLink"),
   tripRemarks: text("tripRemarks"),
 

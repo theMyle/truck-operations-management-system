@@ -36,6 +36,27 @@
       "when": 1781337884517,
       "tag": "0004_nappy_blizzard",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1781510908334,
+      "tag": "0005_secret_talkback",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1781511029585,
+      "tag": "0006_spooky_thunderbolts",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1781511105625,
+      "tag": "0007_fantastic_yellow_claw",
+      "breakpoints": true
     }
   ]
 }

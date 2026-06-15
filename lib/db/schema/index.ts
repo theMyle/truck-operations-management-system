@@ -7,6 +7,6 @@ export * from "./dispatch";
 export * from "./booking";
 export * from "./bookingDrops";
 export * from "./bookingHelpers";
-export * from "./tripDetails";
 export * from "./tripOdo";
 export * from "./tripExpense";
+

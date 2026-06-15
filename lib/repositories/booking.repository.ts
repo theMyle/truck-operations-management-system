@@ -30,9 +30,9 @@ export const makeBookingRepository = (database = db): IBookingRepository => {
       return bookings.map((b) => ({
         ...b,
         helpers: b.helpers.map((h) => h.helper),
-        odoDetails: b.odoDetails || [],
-        expenses: b.expenses || [],
-      }));
+        odoDetails: (b.odoDetails || []) as any,
+        expenses: (b.expenses || []) as any,
+      })) as unknown as BookingWithRelations[];
     },
 
     add: async function (
@@ -92,11 +92,12 @@ export const makeBookingRepository = (database = db): IBookingRepository => {
         return {
           ...fullBooking,
           helpers: fullBooking.helpers.map((h) => h.helper),
-          odoDetails: fullBooking.odoDetails || [],
-          expenses: fullBooking.expenses || [],
-        };
+          odoDetails: (fullBooking.odoDetails || []) as any,
+          expenses: (fullBooking.expenses || []) as any,
+        } as unknown as BookingWithRelations;
       });
     },
+
     update: async function (
       id: string,
       bookingData: Partial<NewBooking>,
@@ -148,10 +149,32 @@ export const makeBookingRepository = (database = db): IBookingRepository => {
         return {
           ...updatedBooking,
           helpers: updatedBooking.helpers.map((h) => h.helper),
-          odoDetails: updatedBooking.odoDetails || [],
-          expenses: updatedBooking.expenses || [],
-        };
+          odoDetails: (updatedBooking.odoDetails || []) as any,
+          expenses: (updatedBooking.expenses || []) as any,
+        } as unknown as BookingWithRelations;
       });
+    },
+
+    updateTripDetails: async function (data: UpdateTripMonitoringInput): Promise<void> {
+      const toTs = (time?: string): Date | null => {
+        if (!time || !data.pickupDate) return null;
+        const d = new Date(`${data.pickupDate}T${time}:00`);
+        return isNaN(d.getTime()) ? null : d;
+      };
+
+      await database
+        .update(booking)
+        .set({
+          pickupArrivalTime: toTs(data.arrivalPickup),
+          loadingStartTime: toTs(data.loadingStart),
+          loadingEndTime: toTs(data.loadingEnd),
+          pickupDepartureTime: toTs(data.departurePickup),
+          finishedDeliveryTime: toTs(data.finishDelivery),
+          deliveryStatus: data.deliveryStatus,
+          tripRemarks: data.tripRemarks ?? null,
+          PODLink: data.PODLink ?? null
+        })
+        .where(eq(booking.id, data.id));
     },
 
     delete: async function (id: string): Promise<boolean> {
@@ -167,27 +190,9 @@ export const makeBookingRepository = (database = db): IBookingRepository => {
   };
 };
 
-export async function updateTripDetails(data: UpdateTripMonitoringInput) {
-  // DB uses timestamp, form gives "HH:mm" — combine with pickup date
-  const toTs = (time?: string): Date | null => {
-    if (!time || !data.pickupDate) return null;
-    const d = new Date(`${data.pickupDate}T${time}:00`);
-    return isNaN(d.getTime()) ? null : d;
-  };
+export const bookingRepository = makeBookingRepository();
 
-  return db
-    .update(booking)
-    .set({
-      pickupArrivalTime: toTs(data.arrivalPickup),
-      loadingStartTime: toTs(data.loadingStart),
-      loadingEndTime: toTs(data.loadingEnd),
-      pickupDepartureTime: toTs(data.departurePickup),
-      finishedDeliveryTime: toTs(data.finishDelivery),
-      deliveryStatus: data.deliveryStatus,
-      tripRemarks: data.tripRemarks ?? null,
-      PODLink: data.PODLink ?? null
-    })
-    .where(eq(booking.id, data.id));
+export async function updateTripDetails(data: UpdateTripMonitoringInput) {
+  return bookingRepository.updateTripDetails(data);
 }
 
-export const bookingRepository = makeBookingRepository();
