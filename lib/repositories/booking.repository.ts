@@ -1,14 +1,18 @@
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { db } from "../db";
 import {
   booking,
   BookingWithRelations,
   NewBooking,
+  UpdateTripMonitoringInput,
+  UpdateTripDetailsInput,
 } from "../db/schema/booking";
 import { bookingDrops, NewBookingDrop } from "../db/schema/bookingDrops";
 import { bookingToHelpers } from "../db/schema/bookingHelpers";
-import { UpdateTripMonitoringInput } from "../db/schema/booking";
+import { tripOdoDetails } from "../db/schema/tripOdo";
+import { tripExpenses } from "../db/schema/tripExpense";
 import IBookingRepository from "./booking.repository.interface";
+
 
 export const makeBookingRepository = (database = db): IBookingRepository => {
   return {
@@ -177,6 +181,105 @@ export const makeBookingRepository = (database = db): IBookingRepository => {
         .where(eq(booking.id, data.id));
     },
 
+    updateTripFinanceOdo: async function (data: UpdateTripDetailsInput): Promise<void> {
+      await database.transaction(async (tx) => {
+        // 1. Update budget and rates on booking table
+        await tx
+          .update(booking)
+          .set({
+            budget: data.budget ?? null,
+            budgetFrom: data.budgetFrom ?? null,
+            rfidLoad: data.rfidLoad ?? null,
+            rfidPaymentType: data.rfidPaymentType ?? null,
+            fuel: data.fuel ?? null,
+            fuelPaymentType: data.fuelPaymentType ?? null,
+            customerCollection: data.customerCollection ?? null,
+            cashOnHandReturned: data.cashOnHandReturned ?? null,
+            cashOnHandReturnedTo: data.cashOnHandReturnedTo ?? null,
+            autoCash: data.autoCash ?? false,
+            driverRate: data.driverRate ?? null,
+            helperRate: data.helperRate ?? null,
+          })
+          .where(eq(booking.id, data.id));
+
+        // 2. Sync Odometer Details
+        if (data.odoDetails !== undefined) {
+          const existingOdos = await tx.query.tripOdoDetails.findMany({
+            where: eq(tripOdoDetails.bookingId, data.id),
+          });
+          const existingOdoIds = existingOdos.map((o) => o.id);
+          const incomingOdoIds = data.odoDetails
+            .map((o) => o.id)
+            .filter((id): id is string => !!id);
+
+          const odosToDelete = existingOdoIds.filter((id) => !incomingOdoIds.includes(id));
+          if (odosToDelete.length > 0) {
+            await tx
+              .delete(tripOdoDetails)
+              .where(inArray(tripOdoDetails.id, odosToDelete));
+          }
+
+          for (const odo of data.odoDetails) {
+            if (odo.id) {
+              await tx
+                .update(tripOdoDetails)
+                .set({
+                  tripIndex: odo.tripIndex,
+                  odoStart: odo.odoStart,
+                  odoEnd: odo.odoEnd,
+                })
+                .where(eq(tripOdoDetails.id, odo.id));
+            } else {
+              await tx.insert(tripOdoDetails).values({
+                bookingId: data.id,
+                tripIndex: odo.tripIndex,
+                odoStart: odo.odoStart,
+                odoEnd: odo.odoEnd,
+              });
+            }
+          }
+        }
+
+        // 3. Sync Expenses
+        if (data.expenses !== undefined) {
+          const existingExpenses = await tx.query.tripExpenses.findMany({
+            where: eq(tripExpenses.bookingId, data.id),
+          });
+          const existingExpenseIds = existingExpenses.map((e) => e.id);
+          const incomingExpenseIds = data.expenses
+            .map((e) => e.id)
+            .filter((id): id is string => !!id);
+
+          const expensesToDelete = existingExpenseIds.filter((id) => !incomingExpenseIds.includes(id));
+          if (expensesToDelete.length > 0) {
+            await tx
+              .delete(tripExpenses)
+              .where(inArray(tripExpenses.id, expensesToDelete));
+          }
+
+          for (const exp of data.expenses) {
+            if (exp.id) {
+              await tx
+                .update(tripExpenses)
+                .set({
+                  entryIndex: exp.entryIndex,
+                  expenseType: exp.expenseType,
+                  amount: exp.amount,
+                })
+                .where(eq(tripExpenses.id, exp.id));
+            } else {
+              await tx.insert(tripExpenses).values({
+                bookingId: data.id,
+                entryIndex: exp.entryIndex,
+                expenseType: exp.expenseType,
+                amount: exp.amount,
+              });
+            }
+          }
+        }
+      });
+    },
+
     delete: async function (id: string): Promise<boolean> {
       await database.transaction(async (tx) => {
         await tx.delete(bookingDrops).where(eq(bookingDrops.bookingId, id));
@@ -192,7 +295,4 @@ export const makeBookingRepository = (database = db): IBookingRepository => {
 
 export const bookingRepository = makeBookingRepository();
 
-export async function updateTripDetails(data: UpdateTripMonitoringInput) {
-  return bookingRepository.updateTripDetails(data);
-}
 

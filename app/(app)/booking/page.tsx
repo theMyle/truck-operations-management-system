@@ -21,7 +21,7 @@ import { useDispatchPrint } from "@/app/hooks/useDispatchPrint";
 import {
   deleteBookingAction,
   getAllBookingAction,
-  updateTripDetailsAction,
+  updateTripMonitoringAction,
 } from "@/lib/actions/booking";
 import { formatTime12Hour, formatTimeHHMM } from "@/lib/utils/stringFormat";
 import { BookingModuleSkeleton } from "@/components/ui/ModuleSkeletons";
@@ -207,7 +207,7 @@ export default function BookingRecordsPage() {
   ) => {
     const source = records.find((r) => r.id === id);
 
-    const result = await updateTripDetailsAction({
+    const result = await updateTripMonitoringAction({
       id: String(id),
       pickupDate: source?.pickUpDate ?? "",
       arrivalPickup: form.arrivalPickup || undefined,

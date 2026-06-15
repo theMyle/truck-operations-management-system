@@ -1,4 +1,4 @@
-import { BookingWithRelations, NewBooking, UpdateTripMonitoringInput } from "../db/schema/booking";
+import { BookingWithRelations, NewBooking, UpdateTripMonitoringInput, UpdateTripDetailsInput } from "../db/schema/booking";
 import { NewBookingDrop } from "../db/schema/bookingDrops";
 
 export default interface IBookingRepository {
@@ -19,5 +19,7 @@ export default interface IBookingRepository {
 
     updateTripDetails(data: UpdateTripMonitoringInput): Promise<void>,
 
+    updateTripFinanceOdo(data: UpdateTripDetailsInput): Promise<void>,
+
     delete(id: string): Promise<boolean>,
-}
+}

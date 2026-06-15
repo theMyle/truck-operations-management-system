@@ -3,7 +3,6 @@
 import { actionClient } from "../safe-action";
 import {
   bookingRepository,
-  updateTripDetails,
 } from "../repositories/booking.repository";
 import {
   createBookingActionSchema,
@@ -11,7 +10,7 @@ import {
   deleteBookingActionSchema,
 } from "../validations/booking";
 import { revalidatePath } from "next/cache";
-import { updateTripMonitoringSchema } from "../db/schema/booking";
+import { updateTripMonitoringSchema, updateTripDetailsSchema } from "../db/schema/booking";
 import { z } from "zod";
 
 export const createBookingAction = actionClient
@@ -82,8 +81,14 @@ export const deleteBookingAction = actionClient
     }
   });
 
-export const updateTripDetailsAction = actionClient
+export const updateTripMonitoringAction = actionClient
   .schema(updateTripMonitoringSchema)
   .action(async ({ parsedInput }) => {
-    await updateTripDetails(parsedInput);
+    await bookingRepository.updateTripDetails(parsedInput);
+  });
+
+export const updateTripDetailAction = actionClient
+  .schema(updateTripDetailsSchema)
+  .action(async ({ parsedInput }) => {
+    await bookingRepository.updateTripFinanceOdo(parsedInput);
   });
