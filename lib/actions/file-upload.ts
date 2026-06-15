@@ -9,19 +9,20 @@ import { supabaseAdmin } from "@/lib/supabase";
 export async function uploadFile(formData: FormData) {
   try {
     const file = formData.get("file") as File | null;
-    const folder = formData.get("folder") as string || "misc";
-    
+    const folder = (formData.get("folder") as string) || "misc";
+
     if (!file) {
       return { error: "No file provided" };
     }
 
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
-    
+
     // Generate a unique filename and construct the dynamic path
-    const uniqueId = crypto.randomUUID();
-    const fileExtension = file.name.split('.').pop() || 'png';
-    const filePath = `${folder}/${uniqueId}.${fileExtension}`;
+    const customName = formData.get("name") as string | null;
+    const fileExtension = file.name.split(".").pop() || "png";
+    const fileName = customName ?? `${crypto.randomUUID()}.${fileExtension}`;
+    const filePath = `${folder}/${fileName}`;
 
     // Upload to Supabase Storage 'images' bucket using the Admin Client
     const { data, error } = await supabaseAdmin.storage
@@ -36,9 +37,9 @@ export async function uploadFile(formData: FormData) {
     }
 
     // Get the Public URL
-    const { data: { publicUrl } } = supabaseAdmin.storage
-      .from("images")
-      .getPublicUrl(data.path);
+    const {
+      data: { publicUrl },
+    } = supabaseAdmin.storage.from("images").getPublicUrl(data.path);
 
     return { success: true, url: publicUrl, path: data.path };
   } catch (err) {
@@ -52,13 +53,15 @@ export async function uploadFile(formData: FormData) {
  */
 export async function deleteFileFromUrl(url: string | null | undefined) {
   if (!url) return;
-  
+
   try {
     const bucketString = "/storage/v1/object/public/images/";
     if (url.includes(bucketString)) {
       const path = url.split(bucketString)[1];
       if (path) {
-        const { error } = await supabaseAdmin.storage.from("images").remove([path]);
+        const { error } = await supabaseAdmin.storage
+          .from("images")
+          .remove([path]);
         if (error) {
           console.error("Failed to delete file:", error);
         }

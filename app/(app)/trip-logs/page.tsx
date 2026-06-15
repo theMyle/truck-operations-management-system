@@ -40,6 +40,7 @@ import { DispatchRecord } from "@/app/(app)/constant";
 import { getAllBookingAction, deleteBookingAction } from "@/lib/actions/booking";
 import { formatTime12Hour, formatTimeHHMM } from "@/lib/utils/stringFormat";
 import { TripLogsTable } from "@/components/trip-logs/TripLogsTable";
+import { TripLogsModuleSkeleton } from "@/components/ui/ModuleSkeletons";
 
 /* ── Status badge helper ── */
 const statusColor: Record<DispatchRecord["status"], string> = {
@@ -439,7 +440,7 @@ export default function DispatchRecordsPage() {
     backgroundColor: "var(--mantine-color-gray-0)",
   };
 
-  if (isLoading) return null;
+  if (isLoading) return <TripLogsModuleSkeleton />;
 
   return (
     <>

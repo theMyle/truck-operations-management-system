@@ -74,7 +74,10 @@ export const deliveryStatusColor: Record<string, string> = {
   "Cancel/No Show": "gray",
 };
 
-export const STATUS_META: Record<string, { color: string; icon: React.ReactNode }> = {
+export const STATUS_META: Record<
+  string,
+  { color: string; icon: React.ReactNode }
+> = {
   Completed: { color: "green", icon: <IconCheck size={11} /> },
   "Foul Trip": { color: "red", icon: <IconX size={11} /> },
   Incomplete: { color: "orange", icon: <IconAlertTriangle size={11} /> },
@@ -358,16 +361,30 @@ export function TripDetailsModal({
       let finalPodUrl = form.podFileUrl;
 
       if (pendingFile) {
-        // Compress before upload — retains detail, kills file size
         const compressed = await compressImage(pendingFile);
+
+        // e.g. "Lazada_2025-06-13_DR-00421.jpg"
+        const safeName = [
+          record.clientName ?? record.client,
+          record.pickUpDate ?? record.date,
+          record.bookingDRNo ?? record.bookingDr,
+        ]
+          .map((s) =>
+            String(s ?? "")
+              .replace(/[^a-zA-Z0-9-]/g, "_")
+              .trim(),
+          )
+          .join("_");
+
+        const ext = compressed.name.split(".").pop() ?? "jpg";
 
         const fd = new FormData();
         fd.append("file", compressed);
         fd.append("folder", "pod");
+        fd.append("name", `${safeName}.${ext}`); // ← custom name
 
         let res: { success?: boolean; url?: string; error?: string };
 
-        // If record already has a POD URL → replace (deletes old from bucket)
         if (record.podFileUrl && record.podFileUrl.startsWith("http")) {
           fd.append("oldUrl", record.podFileUrl);
           res = await replaceFile(fd);

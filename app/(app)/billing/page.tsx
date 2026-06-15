@@ -39,10 +39,14 @@ import {
   IconX,
 } from "@tabler/icons-react";
 
-import { useDispatch } from "../context/dispatch-context";
 import { DispatchRecord } from "../constant";
 import { usePodDownload, type PodRecord } from "@/app/hooks/usePodDownload";
 import { SummaryCard } from "@/components/billing/SummaryCard";
+import { getBillingRecordsAction } from "@/lib/actions/billing";
+import {
+  BILLING_TABLE_HEADERS,
+} from "@/components/ui/ModuleSkeletons";
+import { TableSkeleton } from "@/components/ui/TableSkeleton";
 
 export type BillingRecord = DispatchRecord & {
   tripRate?: string | number;
@@ -121,7 +125,7 @@ function PodCell({
   record: BillingRecord;
   onView: (record: BillingRecord) => void;
 }) {
-  if (!record.podFile) {
+  if (!record.podFileUrl) {
     return (
       <Group gap={4} wrap="nowrap">
         <IconPhotoOff size={11} color="var(--mantine-color-gray-4)" />
@@ -150,15 +154,17 @@ function PodCell({
       }}
     >
       <IconFileInvoice size={11} />
-      {record.podFile}
+      {record.podFile || "View POD"}
     </Box>
   );
 }
 
 export default function BillingModule() {
-  const { bookingRecords: allRecords } = useDispatch();
   const { downloadPODs, downloading, progress } = usePodDownload();
-  const records = allRecords as BillingRecord[];
+
+  // ── DB records — fetched on Generate, not on mount ──
+  const [records, setRecords] = useState<BillingRecord[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
 
   const [filterModalOpen, setFilterModalOpen] = useState(true);
   const [pendingFilters, setPendingFilters] = useState<BillingFilters>({
@@ -166,31 +172,18 @@ export default function BillingModule() {
     from: null,
     to: null,
   });
-  const [activeFilters, setActiveFilters] = useState<BillingFilters | null>(
-    null,
-  );
+  const [activeFilters, setActiveFilters] = useState<BillingFilters | null>(null);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
   const [fleetFilter, setFleetFilter] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [podPreview, setPodPreview] = useState<BillingRecord | null>(null);
-  const [imgError, setImgError] = useState(false);
-  const podPreviewFile = podPreview?.podFile ?? null;
-  const podPreviewSrc = podPreview?.podFileUrl
-    ? podPreview.podFileUrl
-    : podPreviewFile
-      ? `/uploads/pods/${podPreviewFile}`
-      : "";
-
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setImgError(false);
-  }, [podPreviewFile, podPreviewSrc]);
 
   useEffect(() => {
     startTransition(() => setPage(1));
   }, [search, statusFilter, fleetFilter, activeFilters]);
 
+  // Client options derived from already-loaded records
   const clientOptions = useMemo(() => {
     const unique = Array.from(new Set(records.map((r) => r.client))).sort();
     return [
@@ -199,27 +192,17 @@ export default function BillingModule() {
     ];
   }, [records]);
 
-  const billingRecords = useMemo<BillingRecord[]>(() => {
-    if (!activeFilters) return [];
-    return records.filter((r) => {
-      const matchClient =
-        !activeFilters.client || r.client === activeFilters.client;
-      const matchFrom = !activeFilters.from || r.date >= activeFilters.from;
-      const matchTo = !activeFilters.to || r.date <= activeFilters.to;
-      return matchClient && matchFrom && matchTo;
-    });
-  }, [records, activeFilters]);
-
+  // Client-side search + status + fleet filter on top of DB results
   const filtered = useMemo(() => {
     const q = search.toLowerCase().trim();
-    return billingRecords.filter((r) => {
+    return records.filter((r) => {
       const matchSearch =
         !q || Object.values(r).some((v) => String(v).toLowerCase().includes(q));
       const matchStatus = !statusFilter || r.status === statusFilter;
       const matchFleet = !fleetFilter || r.unit === fleetFilter;
       return matchSearch && matchStatus && matchFleet;
     });
-  }, [billingRecords, search, statusFilter, fleetFilter]);
+  }, [records, search, statusFilter, fleetFilter]);
 
   const paginated = useMemo(
     () => filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
@@ -228,28 +211,47 @@ export default function BillingModule() {
 
   const stats = useMemo(
     () => ({
-      totalRate: billingRecords.reduce(
-        (s, r) => s + (Number(r.tripRate) || 0),
-        0,
-      ),
-      totalDrops: billingRecords.reduce((s, r) => s + (r.noOfDrops || 0), 0),
-      completed: billingRecords.filter((r) => r.status === "Completed").length,
-      withPod: billingRecords.filter((r) => Boolean(r.podFile)).length,
+      totalRate: records.reduce((s, r) => s + (Number(r.tripRate) || 0), 0),
+      totalDrops: records.reduce((s, r) => s + (r.noOfDrops || 0), 0),
+      completed: records.filter((r) => r.status === "Completed").length,
+      withPod: records.filter((r) => Boolean(r.podFileUrl)).length,
     }),
-    [billingRecords],
+    [records],
   );
 
   const billingLabel = activeFilters
     ? [
         activeFilters.client || "All Clients",
         `${formatDate(activeFilters.from)} → ${formatDate(activeFilters.to)}`,
-        `${billingRecords.length} trip${billingRecords.length !== 1 ? "s" : ""}`,
+        `${records.length} trip${records.length !== 1 ? "s" : ""}`,
       ].join(" · ")
     : "";
 
-  const handleGenerate = useCallback(() => {
+  // ── Generate: fetch from DB with server-side filters ──
+  const handleGenerate = useCallback(async () => {
+    setIsLoading(true);
+    setRecords([]);
+
+    const result = await getBillingRecordsAction({
+      client: pendingFilters.client ?? undefined,
+      from: pendingFilters.from ?? undefined,
+      to: pendingFilters.to ?? undefined,
+    });
+
+    if (result?.serverError) {
+      notifications.show({
+        title: "Failed to load billing records",
+        message: result.serverError,
+        color: "red",
+      });
+      setIsLoading(false);
+      return;
+    }
+
+    setRecords((result?.data as BillingRecord[]) ?? []);
     setActiveFilters({ ...pendingFilters });
     setFilterModalOpen(false);
+    setIsLoading(false);
   }, [pendingFilters]);
 
   const handleDownloadPODs = useCallback(async () => {
@@ -290,7 +292,7 @@ export default function BillingModule() {
         `"${r.dropOffLocation || ""}"`,
         r.tripRate ?? "",
         r.status,
-        r.podFile ?? "",
+        r.podFileUrl ?? "",   // use the real Supabase URL in CSV
       ].join(","),
     );
     const csv = [headers.join(","), ...rows].join("\n");
@@ -379,6 +381,7 @@ export default function BillingModule() {
               <Button
                 variant="default"
                 size="xs"
+                disabled={isLoading}
                 onClick={() => setFilterModalOpen(false)}
               >
                 Cancel
@@ -386,16 +389,17 @@ export default function BillingModule() {
             )}
             <Button
               size="xs"
-              leftSection={<IconReceipt size={13} />}
+              leftSection={isLoading ? undefined : <IconReceipt size={13} />}
+              loading={isLoading}
               onClick={handleGenerate}
             >
-              Generate
+              {isLoading ? "Loading..." : "Generate"}
             </Button>
           </Group>
         </Stack>
       </Modal>
 
-      {/* POD Viewer Modal */}
+      {/* POD Viewer Modal — uses Supabase URL directly, no local fallback */}
       <Modal
         opened={!!podPreview}
         onClose={() => setPodPreview(null)}
@@ -403,29 +407,18 @@ export default function BillingModule() {
           <Group gap={8}>
             <IconFileInvoice size={16} color="var(--mantine-color-blue-6)" />
             <Text fw={700} size="sm">
-              {podPreviewFile}
+              {podPreview?.podFile || "POD"}
             </Text>
           </Group>
         }
         centered
         size="lg"
       >
-        {imgError ? (
-          <Stack align="center" gap="sm" py="xl">
-            <IconPhotoOff size={40} color="var(--mantine-color-gray-4)" />
-            <Text size="sm" c="dimmed" fw={500}>
-              Image not available in demo mode
-            </Text>
-            <Text size="xs" c="dimmed">
-              In production, this displays the actual POD file.
-            </Text>
-          </Stack>
-        ) : (
+        {podPreview?.podFileUrl ? (
           <Box
             component="img"
-            src={podPreviewSrc}
-            alt={podPreviewFile ?? "POD"}
-            onError={() => setImgError(true)}
+            src={podPreview.podFileUrl}
+            alt={podPreview.podFile ?? "POD"}
             style={{
               maxWidth: "100%",
               maxHeight: "70vh",
@@ -435,6 +428,13 @@ export default function BillingModule() {
               margin: "0 auto",
             }}
           />
+        ) : (
+          <Stack align="center" gap="sm" py="xl">
+            <IconPhotoOff size={40} color="var(--mantine-color-gray-4)" />
+            <Text size="sm" c="dimmed" fw={500}>
+              No POD image available
+            </Text>
+          </Stack>
         )}
       </Modal>
 
@@ -490,7 +490,7 @@ export default function BillingModule() {
                 label={
                   downloading
                     ? `Zipping… ${progress}%`
-                    : `Download ${filtered.filter((r) => r.podFile).length} POD(s) as ZIP`
+                    : `Download ${filtered.filter((r) => r.podFileUrl).length} POD(s) as ZIP`
                 }
                 withArrow
               >
@@ -503,7 +503,7 @@ export default function BillingModule() {
                   styles={{ label: { fontSize: "10px", fontWeight: 700 } }}
                   onClick={handleDownloadPODs}
                   loading={downloading}
-                  disabled={!filtered.some((r) => r.podFile)}
+                  disabled={!filtered.some((r) => r.podFileUrl)}
                 >
                   {downloading ? `${progress}%` : "Download PODs"}
                 </Button>
@@ -526,7 +526,7 @@ export default function BillingModule() {
             <SimpleGrid cols={3} spacing="sm">
               <SummaryCard
                 label="Total Trips"
-                value={billingRecords.length}
+                value={records.length}
                 sub="in period"
               />
               <SummaryCard
@@ -540,7 +540,7 @@ export default function BillingModule() {
                   <Text size="xl" fw={500} component="span">
                     {stats.withPod}
                     <Text size="sm" c="dimmed" fw={400} component="span">
-                      /{billingRecords.length}
+                      /{records.length}
                     </Text>
                   </Text>
                 }
@@ -600,19 +600,26 @@ export default function BillingModule() {
           </Group>
 
           {/* Table */}
-          <Paper withBorder radius="md" p={0} style={{ overflow: "hidden" }}>
-            <ScrollArea
-              scrollbars="xy"
-              type="always"
-              scrollbarSize={4}
-              mah={500}
-            >
-              <Table
-                striped
-                highlightOnHover
-                withColumnBorders
-                style={{ minWidth: 1400 }}
+          {isLoading ? (
+            <TableSkeleton
+              rows={9}
+              headers={BILLING_TABLE_HEADERS}
+              minWidth={1400}
+            />
+          ) : (
+            <Paper withBorder radius="md" p={0} style={{ overflow: "hidden" }}>
+              <ScrollArea
+                scrollbars="xy"
+                type="always"
+                scrollbarSize={4}
+                mah={500}
               >
+                <Table
+                  striped
+                  highlightOnHover
+                  withColumnBorders
+                  style={{ minWidth: 1400 }}
+                >
                 <Table.Thead>
                   <Table.Tr>
                     {[
@@ -650,8 +657,7 @@ export default function BillingModule() {
                             color="var(--mantine-color-gray-4)"
                           />
                           <Text size="xs" c="dimmed" fw={500}>
-                            Set your filters above to generate a billing
-                            statement
+                            Set filters above to generate a billing statement
                           </Text>
                         </Stack>
                       </Table.Td>
@@ -766,7 +772,8 @@ export default function BillingModule() {
                   {filtered.length
                     ? Math.min((page - 1) * PAGE_SIZE + 1, filtered.length)
                     : 0}{" "}
-                  of {filtered.length} record{filtered.length !== 1 ? "s" : ""}
+                  of {filtered.length} record
+                  {filtered.length !== 1 ? "s" : ""}
                   {search ? ` matching "${search}"` : ""}
                 </Text>
                 <Pagination
@@ -781,7 +788,8 @@ export default function BillingModule() {
                 />
               </Group>
             </Box>
-          </Paper>
+            </Paper>
+          )}
         </Stack>
       </ScrollArea>
     </>
