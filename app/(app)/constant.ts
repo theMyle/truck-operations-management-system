@@ -37,6 +37,7 @@ export interface DispatchRecord {
   tripRemarks?: string;
   rawDrops?: { locationName: string }[];
   truckerRate?: string;
+  rawHelpers?: Array<{ id: string; helperName: string }>;
 }
 
 export const MOCK_RECORDS: DispatchRecord[] = [

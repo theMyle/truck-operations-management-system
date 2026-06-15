@@ -11,6 +11,7 @@ import {
   Text,
   Button,
   ThemeIcon,
+  Badge,
 } from "@mantine/core";
 import {
   IconCheck,
@@ -18,12 +19,15 @@ import {
   IconAlertTriangle,
   IconCalendar,
   IconUser,
+  IconUsers,
   IconRoute,
   IconCurrencyPeso,
   IconReceipt,
   IconTrendingUp,
   IconTrendingDown,
   IconDownload,
+  IconWallet,
+  IconCircleCheck,
 } from "@tabler/icons-react";
 import { EXPENSE_CATEGORIES } from "./ExpensesTab";
 import { NewTripDetailsFormData } from "./TripDetailsModal";
@@ -126,16 +130,43 @@ export function ReviewModal({
 }) {
   if (!record) return null;
 
+  // ── Financials ──
   const budgetAmount = form.budget || 0;
   const collectionAmount = form.collectionFromCustomer || 0;
   const rfidAmount = form.rfidLoad || 0;
   const fuelAmt = form.fuelAmount || 0;
+  const driverRateAmt = form.driverRate || 0;
+  const helperRatesTotal = (form.helperRates || []).reduce(
+    (s, h) => s + (h.rate || 0),
+    0,
+  );
+  const manpowerTotal = driverRateAmt + helperRatesTotal;
   const totalExpenses = form.expenses.reduce((s, e) => s + (e.amount || 0), 0);
-  const grandTotal = totalExpenses + rfidAmount + fuelAmt;
+  const grandTotal =
+    totalExpenses + rfidAmount + fuelAmt + driverRateAmt + helperRatesTotal;
   const totalFunds = budgetAmount + collectionAmount;
   const balance = totalFunds - grandTotal;
   const isOverBudget = balance < 0;
 
+  // ── Cash liquidation ──
+  const returnedAmount = form.cashOnHandReturned || 0;
+  const discrepancy = returnedAmount - balance;
+  const hasDiscrepancy =
+    !isOverBudget && returnedAmount > 0 && Math.abs(discrepancy) > 0.01;
+
+  // ── Net income ──
+  const tripRateAmt = Number(record?.tripRate) || 0;
+  
+
+  const allRate = tripRateAmt + driverRateAmt + helperRatesTotal
+  const allExpense =
+    totalExpenses -
+    rfidAmount -
+    fuelAmt;
+
+  const netIncome = allRate - allExpense;
+
+  // ── Odometer ──
   const start = form.trips[0]?.odoStart || 0;
   const end = form.trips[form.trips.length - 1]?.odoEnd || 0;
   const totalKm = Math.max(0, end - start);
@@ -152,6 +183,23 @@ export function ReviewModal({
     second: "2-digit",
     hour12: true,
   });
+
+  // ── Status chip state ──
+  const chipColor = isOverBudget ? "red" : hasDiscrepancy ? "orange" : "green";
+  const chipIcon = isOverBudget ? (
+    <IconAlertTriangle size={13} color={`var(--mantine-color-red-6)`} />
+  ) : hasDiscrepancy ? (
+    <IconAlertTriangle size={13} color={`var(--mantine-color-orange-6)`} />
+  ) : (
+    <IconCheck size={13} color={`var(--mantine-color-green-6)`} />
+  );
+  const chipLabel = isOverBudget
+    ? `Over budget by ₱${Math.abs(balance).toLocaleString("en-PH", { minimumFractionDigits: 2 })}`
+    : hasDiscrepancy
+      ? `Cash discrepancy: ₱${Math.abs(discrepancy).toLocaleString("en-PH", { minimumFractionDigits: 2 })} ${discrepancy > 0 ? "over" : "short"}`
+      : returnedAmount > 0
+        ? `Cash reconciled — expected ₱${balance.toLocaleString("en-PH", { minimumFractionDigits: 2 })}`
+        : `Expected cash return: ₱${balance.toLocaleString("en-PH", { minimumFractionDigits: 2 })}`;
 
   return (
     <Modal
@@ -269,30 +317,22 @@ export function ReviewModal({
         </Group>
       </Box>
 
-      {/* ── Status chip ── */}
+      {/* ── Status chip (3 states: over-budget / discrepancy / OK) ── */}
       <Box
         style={{
-          background: isOverBudget
-            ? "var(--mantine-color-red-0)"
-            : "var(--mantine-color-green-0)",
-          borderBottom: `1px solid var(--mantine-color-${isOverBudget ? "red" : "green"}-2)`,
+          background: `var(--mantine-color-${chipColor}-0)`,
+          borderBottom: `1px solid var(--mantine-color-${chipColor}-2)`,
           padding: "8px 24px",
         }}
       >
         <Group gap={6}>
-          {isOverBudget ? (
-            <IconAlertTriangle size={13} color="var(--mantine-color-red-6)" />
-          ) : (
-            <IconCheck size={13} color="var(--mantine-color-green-6)" />
-          )}
+          {chipIcon}
           <Text
             style={{ fontSize: "10px" }}
             fw={700}
-            c={isOverBudget ? "red.6" : "green.6"}
+            c={`${chipColor}.6`}
           >
-            {isOverBudget
-              ? `Over budget by ₱${Math.abs(balance).toLocaleString("en-PH", { minimumFractionDigits: 2 })}`
-              : `Cash on hand to return: ₱${balance.toLocaleString("en-PH", { minimumFractionDigits: 2 })}`}
+            {chipLabel}
           </Text>
         </Group>
       </Box>
@@ -306,7 +346,7 @@ export function ReviewModal({
             title="Trip Information"
             color="blue"
           >
-            <ReviewRow label="Trip #" value={`#${record.id}`} />
+            <ReviewRow label="Trip #" value={`#${record.displayBookingNo}`} />
             <ReviewRow label="Date" value={record.date} />
             <ReviewRow label="Client" value={record.client} />
             <ReviewRow label="Route" value={record.ruta || "—"} />
@@ -320,7 +360,14 @@ export function ReviewModal({
             color="indigo"
           >
             <ReviewRow label="Driver" value={record.driver || "—"} />
-            <ReviewRow label="Helper" value={record.helper || "—"} />
+            <ReviewRow
+              label="Helper(s)"
+              value={
+                record.rawHelpers?.map((h) => h.helperName).join(", ") ||
+                record.helper ||
+                "—"
+              }
+            />
             <ReviewRow label="Trucker" value={record.trucker || "—"} />
           </ReviewSection>
 
@@ -387,17 +434,45 @@ export function ReviewModal({
                 value={`₱${collectionAmount.toLocaleString("en-PH", { minimumFractionDigits: 2 })}`}
               />
             )}
-            {form.cashOnHandReturned > 0 && (
+            {returnedAmount > 0 && (
               <ReviewRow
-                label="Naibalik na Sukli"
-                value={`₱${form.cashOnHandReturned.toLocaleString("en-PH", { minimumFractionDigits: 2 })} → ${form.cashOnHandReturnedToWhom || "—"}`}
+                label="Driver's Cash Turnover"
+                value={`₱${returnedAmount.toLocaleString("en-PH", { minimumFractionDigits: 2 })} → ${form.cashOnHandReturnedToWhom || "—"}`}
               />
             )}
-            <ReviewRow
-              label="Auto CA"
-              value={form.autoCA ? "Yes" : "No"}
-            />
+            <ReviewRow label="Auto CA" value={form.autoCA ? "Yes" : "No"} />
           </ReviewSection>
+
+          {/* Manpower Rates (conditional) */}
+          {manpowerTotal > 0 && (
+            <ReviewSection
+              icon={<IconUsers size={11} />}
+              title="Manpower Rates"
+              color="grape"
+            >
+              {driverRateAmt > 0 && (
+                <ReviewRow
+                  label={`Driver (${form.driverName || record.driver || "—"})`}
+                  value={`₱${driverRateAmt.toLocaleString("en-PH", { minimumFractionDigits: 2 })}`}
+                />
+              )}
+              {(form.helperRates || [])
+                .filter((h) => h.rate > 0)
+                .map((h, idx) => (
+                  <ReviewRow
+                    key={idx}
+                    label={`Helper (${h.helperName})`}
+                    value={`₱${h.rate.toLocaleString("en-PH", { minimumFractionDigits: 2 })}`}
+                  />
+                ))}
+              <ReviewRow
+                label="Total Manpower Cost"
+                value={`₱${manpowerTotal.toLocaleString("en-PH", { minimumFractionDigits: 2 })}`}
+                highlight
+                color="grape"
+              />
+            </ReviewSection>
+          )}
 
           {/* Expenses */}
           <ReviewSection
@@ -405,7 +480,9 @@ export function ReviewModal({
             title="Expenses"
             color="orange"
           >
-            {form.expenses.length === 0 && rfidAmount === 0 && fuelAmt === 0 ? (
+            {form.expenses.length === 0 &&
+            rfidAmount === 0 &&
+            fuelAmt === 0 ? (
               <ReviewRow label="No expenses recorded" value="—" />
             ) : (
               <>
@@ -446,6 +523,36 @@ export function ReviewModal({
             )}
           </ReviewSection>
 
+          {/* Net Income (conditional — only if trip rate exists) */}
+          {tripRateAmt > 0 && (
+            <ReviewSection
+              icon={
+                netIncome >= 0 ? (
+                  <IconTrendingUp size={11} />
+                ) : (
+                  <IconTrendingDown size={11} />
+                )
+              }
+              title="Profitability"
+              color={netIncome >= 0 ? "blue" : "red"}
+            >
+              <ReviewRow
+                label="Trip Rate (Billed)"
+                value={`₱${tripRateAmt.toLocaleString("en-PH", { minimumFractionDigits: 2 })}`}
+              />
+              <ReviewRow
+                label="Total Costs"
+                value={`₱${grandTotal.toLocaleString("en-PH", { minimumFractionDigits: 2 })}`}
+              />
+              <ReviewRow
+                label="Net Income"
+                value={`${netIncome < 0 ? "−" : ""}₱${Math.abs(netIncome).toLocaleString("en-PH", { minimumFractionDigits: 2 })}`}
+                highlight
+                color={netIncome >= 0 ? "blue" : "red"}
+              />
+            </ReviewSection>
+          )}
+
           {/* Financial summary pill */}
           <Paper
             radius="md"
@@ -457,41 +564,81 @@ export function ReviewModal({
               border: `1px solid var(--mantine-color-${isOverBudget ? "red" : "green"}-3)`,
             }}
           >
-            <Group justify="space-between" align="center">
+            <Group justify="space-between" align="flex-start">
               <Box>
-                <Text
-                  style={{ fontSize: "9px" }}
-                  fw={800}
-                  tt="uppercase"
-                  lts={1}
-                  c={isOverBudget ? "red.6" : "green.6"}
-                  mb={2}
-                >
-                  {isOverBudget ? "Over Budget" : "Cash On Hand Returned"}
-                </Text>
-                <Group gap={4}>
+                <Group gap={5} mb={2}>
                   {isOverBudget ? (
                     <IconTrendingUp
-                      size={16}
+                      size={13}
                       color="var(--mantine-color-red-6)"
                     />
                   ) : (
-                    <IconTrendingDown
-                      size={16}
+                    <IconWallet
+                      size={13}
                       color="var(--mantine-color-green-6)"
                     />
                   )}
                   <Text
-                    style={{ fontSize: "20px" }}
-                    fw={900}
-                    c={isOverBudget ? "red.7" : "green.7"}
+                    style={{ fontSize: "9px" }}
+                    fw={800}
+                    tt="uppercase"
+                    lts={1}
+                    c={isOverBudget ? "red.6" : "green.6"}
                   >
-                    ₱
-                    {Math.abs(balance).toLocaleString("en-PH", {
-                      minimumFractionDigits: 2,
-                    })}
+                    {isOverBudget ? "Over Budget" : "Expected Cash Return"}
                   </Text>
                 </Group>
+
+                <Text
+                  style={{ fontSize: "20px" }}
+                  fw={900}
+                  c={isOverBudget ? "red.7" : "green.7"}
+                >
+                  ₱
+                  {Math.abs(balance).toLocaleString("en-PH", {
+                    minimumFractionDigits: 2,
+                  })}
+                </Text>
+
+                {/* Discrepancy / reconciled indicator */}
+                {!isOverBudget && returnedAmount > 0 && (
+                  <Box mt={6}>
+                    {hasDiscrepancy ? (
+                      <Badge
+                        color="orange"
+                        size="sm"
+                        variant="light"
+                        leftSection={
+                          <IconAlertTriangle
+                            size={10}
+                            color="var(--mantine-color-orange-6)"
+                          />
+                        }
+                        styles={{ label: { fontSize: "9px" } }}
+                      >
+                        ₱
+                        {Math.abs(discrepancy).toLocaleString("en-PH", {
+                          minimumFractionDigits: 2,
+                        })}{" "}
+                        {discrepancy > 0 ? "OVER" : "SHORT"}
+                      </Badge>
+                    ) : (
+                      <Group gap={4}>
+                        <IconCircleCheck
+                          size={12}
+                          color="var(--mantine-color-teal-6)"
+                        />
+                        <Text
+                          style={{ fontSize: "9px" }}
+                          fw={700}
+                          c="teal.7"
+                        >
+                          Remittance reconciled
+                        </Text>
+                      </Group>
+                    )}
+                  </Box>
+                )}
               </Box>
 
               <Box ta="right">
