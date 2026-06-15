@@ -246,6 +246,7 @@ export function NewExpensesTab({
         </Paper>
       )}
 
+
       <Divider
         label={
           <Text style={{ fontSize: "9px" }} tt="uppercase" lts={1} c="dimmed">
@@ -255,12 +256,47 @@ export function NewExpensesTab({
         labelPosition="left"
       />
 
-      <Stack gap="xs">
-        {form.values.expenses.length === 0 && (
-          <Text style={{ fontSize: "11px" }} c="dimmed" ta="center" py="xs">
-            No expenses added yet.
+      {/* Personnel Expense */}
+      <Paper withBorder radius="sm" p="sm">
+        <Group justify="space-between" mb={6} wrap="nowrap">
+          <Text
+            style={{ fontSize: "9px" }}
+            fw={800}
+            tt="uppercase"
+            lts={1}
+            c="blue.7"
+          >
+            Personnel Expense
           </Text>
-        )}
+        </Group>
+        <SimpleGrid cols={2} spacing="sm">
+          <TextInput
+            label="Driver Rate (₱)"
+            placeholder="0.00"
+            type="number"
+            size="xs"
+            value={form.values.driverRate || ""}
+            onChange={(e) =>
+              form.setFieldValue("driverRate", Number(e.currentTarget.value))
+            }
+            error={form.errors.driverRate}
+          />
+          <TextInput
+            label="Helper Rate (₱)"
+            placeholder="0.00"
+            type="number"
+            size="xs"
+            value={form.values.helperRate || ""}
+            onChange={(e) =>
+              form.setFieldValue("helperRate", Number(e.currentTarget.value))
+            }
+            error={form.errors.helperRate}
+          />
+        </SimpleGrid>
+      </Paper>
+
+      <Stack gap="xs">
+
 
         {form.values.expenses.map((expense, idx) => {
           return (

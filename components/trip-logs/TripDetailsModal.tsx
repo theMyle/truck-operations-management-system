@@ -43,6 +43,8 @@ export interface NewTripDetailsFormData {
     autoCA: boolean;
 
     // expenses
+    driverRate: number;
+    helperRate: number;
     expenses: Expenses[];
 }
 
@@ -60,6 +62,8 @@ const defaultForm = (): NewTripDetailsFormData => ({
     cashOnHandReturned: 0,
     cashOnHandReturnedToWhom: "",
     autoCA: false,
+    driverRate: 0,
+    helperRate: 0,
     expenses: [],
 });
 
