@@ -11,7 +11,7 @@ import {
   deleteBookingActionSchema,
 } from "../validations/booking";
 import { revalidatePath } from "next/cache";
-import { updateTripDetailSchema } from "../db/schema/booking";
+import { updateTripMonitoringSchema } from "../db/schema/booking";
 import { z } from "zod";
 
 export const createBookingAction = actionClient
@@ -83,7 +83,7 @@ export const deleteBookingAction = actionClient
   });
 
 export const updateTripDetailsAction = actionClient
-  .schema(updateTripDetailSchema)
+  .schema(updateTripMonitoringSchema)
   .action(async ({ parsedInput }) => {
     await updateTripDetails(parsedInput);
   });

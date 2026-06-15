@@ -1,21 +1,9 @@
-import { pgTable } from "drizzle-orm/pg-core";
+import { boolean, decimal, integer, pgTable, text, uuid } from "drizzle-orm/pg-core";
 
 export const tripDetails = pgTable("tripDetails", {
     // ** Trip Details **
-    // odoStart
-    // odoEnd
-    // TODO for multiple trips
+    // id
+    // booking (reference to the trip or booking) on cascade delete
 
-    // budget
-    // budgetFrom
-    // rfidLoad
-    // rfidPayment (card/cash)
-    // fuel 
-    // fuelPayment (card/cash)
-
-    // customerCollection
-    // cashOnHandReturned
-    // cashOnHandReturnedTo
-
-    // autoCa (bool)
 });
+

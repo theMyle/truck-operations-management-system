@@ -7,6 +7,7 @@ import {
   date,
   integer,
   serial,
+  boolean,
 } from "drizzle-orm/pg-core";
 import { clients } from "./clients";
 import { trucks } from "./trucks";
@@ -17,6 +18,8 @@ import { bookingDrops, selectBookingDropSchema } from "./bookingDrops";
 import { selectHelperSchema } from "./helpers";
 import { bookingToHelpers } from "./bookingHelpers";
 import { relations } from "drizzle-orm";
+import { tripOdoDetails, selectTripOdoDetailSchema, insertTripOdoDetailSchema } from "./tripOdo";
+import { tripExpenses, selectTripExpenseSchema, insertTripExpenseSchema } from "./tripExpense";
 
 export const booking = pgTable("booking", {
   // ** Booking **
@@ -77,9 +80,29 @@ export const booking = pgTable("booking", {
   deliveryStatus: text("deliveryStatus"),
   PODLink: text("PODLink"),
   tripRemarks: text("tripRemarks"),
+
+  // ** ODO DETAILS **
+  // tripOdoDetails[]
+
+  // ** BUDGET **
+  budget: decimal("budget", { precision: 10, scale: 2 }),
+  budgetFrom: text("budgetFrom"),
+  rfidLoad: decimal("rfidLoad", { precision: 10, scale: 2 }),
+  rfidPaymentType: text('rfidPaymentType', { enum: ['cash', 'card'] }),
+  fuel: decimal("fuel", { precision: 10, scale: 2 }),
+  fuelPaymentType: text('fuelPaymentType', { enum: ['cash', 'card'] }),
+  customerCollection: decimal("customerCollection", { precision: 10, scale: 2 }),
+  cashOnHandReturned: decimal("cashOnHandReturned", { precision: 10, scale: 2 }),
+  cashOnHandReturnedTo: text('cashOnHandReturnedTo'),
+  autoCash: boolean("autoCash").default(false),
+
+  // ** EXPENSES **  (from trip expenses)
+  // tripExpenses[]
+  driverRate: decimal("driverRate", { precision: 10, scale: 2 }),
+  helperRate: decimal("helperRate", { precision: 10, scale: 2 }),
 });
 
-export const updateTripDetailSchema = z.object({
+export const updateTripMonitoringSchema = z.object({
   id: z.string().uuid(),
   pickupDate: z.string(),
   arrivalPickup: z.string().optional(),
@@ -100,14 +123,55 @@ export const selectBookingSchema = createSelectSchema(booking);
 export const bookingWithRelationsSchema = selectBookingSchema.extend({
   drops: z.array(selectBookingDropSchema).default([]),
   helpers: z.array(selectHelperSchema).default([]),
+  odoDetails: z.array(selectTripOdoDetailSchema).default([]),
+  expenses: z.array(selectTripExpenseSchema).default([]),
 });
 
 export type Booking = z.infer<typeof selectBookingSchema>;
 export type NewBooking = z.infer<typeof insertBookingSchema>;
 export type BookingWithRelations = z.infer<typeof bookingWithRelationsSchema>;
-export type UpdateTripDetailInput = z.infer<typeof updateTripDetailSchema>;
+export type UpdateTripMonitoringInput = z.infer<typeof updateTripMonitoringSchema>;
+
+export const updateTripDetailsSchema = z.object({
+  id: z.string().uuid(),
+
+  // Budget / rates
+  budget: z.string().nullable().optional(),
+  budgetFrom: z.string().nullable().optional(),
+  rfidLoad: z.string().nullable().optional(),
+  rfidPaymentType: z.enum(['cash', 'card']).nullable().optional(),
+  fuel: z.string().nullable().optional(),
+  fuelPaymentType: z.enum(['cash', 'card']).nullable().optional(),
+  customerCollection: z.string().nullable().optional(),
+  cashOnHandReturned: z.string().nullable().optional(),
+  cashOnHandReturnedTo: z.string().nullable().optional(),
+  autoCash: z.boolean().optional(),
+  driverRate: z.string().nullable().optional(),
+  helperRate: z.string().nullable().optional(),
+
+  // ODO details
+  odoDetails: z.array(
+    insertTripOdoDetailSchema.extend({
+      id: z.string().uuid().optional(),
+      bookingId: z.string().uuid().optional(),
+    })
+  ).default([]),
+
+  // Expenses
+  expenses: z.array(
+    insertTripExpenseSchema.extend({
+      id: z.string().uuid().optional(),
+      bookingId: z.string().uuid().optional(),
+    })
+  ).default([]),
+});
+
+export type UpdateTripDetailsInput = z.infer<typeof updateTripDetailsSchema>;
 
 export const bookingRelations = relations(booking, ({ many }) => ({
   drops: many(bookingDrops),
   helpers: many(bookingToHelpers),
+  odoDetails: many(tripOdoDetails),
+  expenses: many(tripExpenses),
 }));
+

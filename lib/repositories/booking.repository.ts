@@ -7,7 +7,7 @@ import {
 } from "../db/schema/booking";
 import { bookingDrops, NewBookingDrop } from "../db/schema/bookingDrops";
 import { bookingToHelpers } from "../db/schema/bookingHelpers";
-import { UpdateTripDetailInput } from "../db/schema/booking";
+import { UpdateTripMonitoringInput } from "../db/schema/booking";
 import IBookingRepository from "./booking.repository.interface";
 
 export const makeBookingRepository = (database = db): IBookingRepository => {
@@ -22,12 +22,16 @@ export const makeBookingRepository = (database = db): IBookingRepository => {
               helper: true,
             },
           },
+          odoDetails: true,
+          expenses: true,
         },
       });
 
       return bookings.map((b) => ({
         ...b,
         helpers: b.helpers.map((h) => h.helper),
+        odoDetails: b.odoDetails || [],
+        expenses: b.expenses || [],
       }));
     },
 
@@ -74,6 +78,8 @@ export const makeBookingRepository = (database = db): IBookingRepository => {
                 helper: true,
               },
             },
+            odoDetails: true,
+            expenses: true,
           },
         });
 
@@ -86,6 +92,8 @@ export const makeBookingRepository = (database = db): IBookingRepository => {
         return {
           ...fullBooking,
           helpers: fullBooking.helpers.map((h) => h.helper),
+          odoDetails: fullBooking.odoDetails || [],
+          expenses: fullBooking.expenses || [],
         };
       });
     },
@@ -128,6 +136,8 @@ export const makeBookingRepository = (database = db): IBookingRepository => {
                 helper: true,
               },
             },
+            odoDetails: true,
+            expenses: true,
           },
         });
 
@@ -138,6 +148,8 @@ export const makeBookingRepository = (database = db): IBookingRepository => {
         return {
           ...updatedBooking,
           helpers: updatedBooking.helpers.map((h) => h.helper),
+          odoDetails: updatedBooking.odoDetails || [],
+          expenses: updatedBooking.expenses || [],
         };
       });
     },
@@ -155,7 +167,7 @@ export const makeBookingRepository = (database = db): IBookingRepository => {
   };
 };
 
-export async function updateTripDetails(data: UpdateTripDetailInput) {
+export async function updateTripDetails(data: UpdateTripMonitoringInput) {
   // DB uses timestamp, form gives "HH:mm" — combine with pickup date
   const toTs = (time?: string): Date | null => {
     if (!time || !data.pickupDate) return null;
