@@ -17,12 +17,12 @@ interface MonthlyOperation {
 }
 
 interface MonthlyOperationsTableProps {
-  month: string;
+  year: string | number;
   data: MonthlyOperation[];
 }
 
 export const MonthlyOperationsTable = ({
-  month,
+  year,
   data,
 }: MonthlyOperationsTableProps) => {
   const totalKts = data.reduce((acc, curr) => acc + curr.kts, 0);
@@ -45,7 +45,7 @@ export const MonthlyOperationsTable = ({
             radius="sm"
             styles={{ label: { fontSize: "9px" }, root: { height: 18 } }}
           >
-            {month}
+            {year}
           </Badge>
         }
       />
@@ -60,7 +60,7 @@ export const MonthlyOperationsTable = ({
             <Table.Tr>
               <Table.Th w="50%">
                 <Text style={{ fontSize: "10px" }} c="dimmed" fw={700}>
-                  DAY
+                  MONTH
                 </Text>
               </Table.Th>
               <Table.Th w="25%" ta="center">

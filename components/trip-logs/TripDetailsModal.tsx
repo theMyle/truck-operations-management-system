@@ -263,6 +263,8 @@ export function TripDetailsModal({
                             handleReset={handleReset}
                             handleSave={handleSave}
                             manpowerOptions={manpowerOptions}
+                            driverName={record.driver || "Driver"}
+                            helperName={record.helper || "Helper"}
                         />
                     </Tabs.Panel>
                 </Tabs>

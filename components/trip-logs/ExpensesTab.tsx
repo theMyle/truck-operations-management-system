@@ -31,6 +31,8 @@ interface NewExpensesTabProps {
   handleReset: () => void;
   handleSave: () => void;
   manpowerOptions: { value: string; label: string }[];
+  driverName: string;
+  helperName: string;
 }
 
 export const EXPENSE_CATEGORIES = [
@@ -57,6 +59,8 @@ export function NewExpensesTab({
   handleReset,
   handleSave,
   manpowerOptions,
+  driverName,
+  helperName,
 }: NewExpensesTabProps) {
   return (
     <Stack gap="sm">
@@ -85,7 +89,18 @@ export function NewExpensesTab({
             Personnel Expense
           </Text>
         </Group>
-        <SimpleGrid cols={2} spacing="sm">
+        <SimpleGrid cols={2} spacing="md" mt="xs">
+          <TextInput
+            label="Driver"
+            value={driverName}
+            readOnly
+            variant="unstyled"
+            size="xs"
+            styles={{
+              label: { fontWeight: 700, fontSize: "12px", marginBottom: 4 },
+              input: { fontWeight: 500, color: "var(--mantine-color-dimmed)" }
+            }}
+          />
           <TextInput
             label="Driver Rate (₱)"
             placeholder="0.00"
@@ -96,6 +111,23 @@ export function NewExpensesTab({
               form.setFieldValue("driverRate", Number(e.currentTarget.value))
             }
             error={form.errors.driverRate}
+            styles={{
+              label: { fontWeight: 700, fontSize: "12px", marginBottom: 4 }
+            }}
+          />
+
+          <Divider style={{ gridColumn: "span 2" }} size="xs" variant="dashed" my="xs" />
+
+          <TextInput
+            label="Helper"
+            value={helperName}
+            readOnly
+            variant="unstyled"
+            size="xs"
+            styles={{
+              label: { fontWeight: 700, fontSize: "12px", marginBottom: 4 },
+              input: { fontWeight: 500, color: "var(--mantine-color-dimmed)" }
+            }}
           />
           <TextInput
             label="Helper Rate (₱)"
@@ -107,14 +139,16 @@ export function NewExpensesTab({
               form.setFieldValue("helperRate", Number(e.currentTarget.value))
             }
             error={form.errors.helperRate}
+            styles={{
+              label: { fontWeight: 700, fontSize: "12px", marginBottom: 4 }
+            }}
           />
         </SimpleGrid>
       </Paper>
 
       <Stack gap="xs">
-
-
         {form.values.expenses.map((expense, idx) => {
+          const isCashAdvance = expense.expenseCategory === "cash_advance";
           return (
             <Paper key={expense.expenseId} withBorder radius="sm" p="sm">
               <Group justify="space-between" mb={6} wrap="nowrap">
@@ -138,7 +172,7 @@ export function NewExpensesTab({
               </Group>
 
               <SimpleGrid
-                cols={expense.expenseCategory === "cash_advance" ? 1 : 2}
+                cols={isCashAdvance ? 3 : 2}
                 spacing="sm"
               >
                 <Select
@@ -152,26 +186,8 @@ export function NewExpensesTab({
                     form.setFieldValue(`expenses.${idx}.assignedTo`, "");
                   }}
                 />
-                {expense.expenseCategory !== "cash_advance" && (
-                  <TextInput
-                    label="Amount (₱)"
-                    placeholder="0.00"
-                    type="number"
-                    size="xs"
-                    value={expense.amount || ""}
-                    onChange={(e) =>
-                      form.setFieldValue(
-                        `expenses.${idx}.amount`,
-                        Number(e.currentTarget.value),
-                      )
-                    }
-                    error={form.errors[`expenses.${idx}.amount`]}
-                  />
-                )}
-              </SimpleGrid>
 
-              {expense.expenseCategory === "cash_advance" && (
-                <SimpleGrid cols={2} spacing="sm" mt="xs">
+                {isCashAdvance && (
                   <Select
                     label="Assigned Manpower"
                     placeholder="Select crew member"
@@ -181,22 +197,23 @@ export function NewExpensesTab({
                     allowDeselect
                     {...form.getInputProps(`expenses.${idx}.assignedTo`)}
                   />
-                  <TextInput
-                    label="Amount (₱)"
-                    placeholder="0.00"
-                    type="number"
-                    size="xs"
-                    value={expense.amount || ""}
-                    onChange={(e) =>
-                      form.setFieldValue(
-                        `expenses.${idx}.amount`,
-                        Number(e.currentTarget.value),
-                      )
-                    }
-                    error={form.errors[`expenses.${idx}.amount`]}
-                  />
-                </SimpleGrid>
-              )}
+                )}
+
+                <TextInput
+                  label="Amount (₱)"
+                  placeholder="0.00"
+                  type="number"
+                  size="xs"
+                  value={expense.amount || ""}
+                  onChange={(e) =>
+                    form.setFieldValue(
+                      `expenses.${idx}.amount`,
+                      Number(e.currentTarget.value),
+                    )
+                  }
+                  error={form.errors[`expenses.${idx}.amount`]}
+                />
+              </SimpleGrid>
             </Paper>
           );
         })}
