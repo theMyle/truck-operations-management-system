@@ -83,6 +83,7 @@ export const updateTripDetailSchema = z.object({
   id: z.string().uuid(),
   pickupDate: z.string(),
   arrivalPickup: z.string().optional(),
+  bookingDRNo: z.string().optional().default(""),
   loadingStart: z.string().optional(),
   loadingEnd: z.string().optional(),
   departurePickup: z.string().optional(),

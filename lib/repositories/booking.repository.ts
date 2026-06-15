@@ -12,9 +12,13 @@ import IBookingRepository from "./booking.repository.interface";
 
 export const makeBookingRepository = (database = db): IBookingRepository => {
   return {
-    getAll: async function (deliveryStatus?: string): Promise<BookingWithRelations[]> {
+    getAll: async function (
+      deliveryStatus?: string,
+    ): Promise<BookingWithRelations[]> {
       const bookings = await database.query.booking.findMany({
-        where: deliveryStatus ? eq(booking.deliveryStatus, deliveryStatus) : undefined,
+        where: deliveryStatus
+          ? eq(booking.deliveryStatus, deliveryStatus)
+          : undefined,
         with: {
           drops: true,
           helpers: {
@@ -173,7 +177,8 @@ export async function updateTripDetails(data: UpdateTripDetailInput) {
       finishedDeliveryTime: toTs(data.finishDelivery),
       deliveryStatus: data.deliveryStatus,
       tripRemarks: data.tripRemarks ?? null,
-      PODLink: data.PODLink ?? null
+      PODLink: data.PODLink ?? null,
+      bookingDRNo: data.bookingDRNo || undefined,
     })
     .where(eq(booking.id, data.id));
 }

@@ -250,6 +250,44 @@ export default function BookingRecordsPage() {
       color: form.deliveryStatus === "Completed" ? "green" : "blue",
     });
   };
+
+  const handleUpdateDR = async (id: string | number, newDR: string) => {
+    // optimistic update
+    setRecords((prev) =>
+      prev.map((r) =>
+        r.id === id ? { ...r, bookingDRNo: newDR, bookingDr: newDR } : r,
+      ),
+    );
+
+    const source = records.find((r) => r.id === id);
+
+    const result = await updateTripDetailsAction({
+      id: String(id),
+      pickupDate: source?.pickUpDate ?? "",
+      deliveryStatus: source?.deliveryStatus ?? "Pending",
+      bookingDRNo: newDR, // ← this is all that matters
+    });
+
+    if (result?.serverError) {
+      // roll back optimistic update on failure
+      setRecords((prev) =>
+        prev.map((r) =>
+          r.id === id
+            ? {
+                ...r,
+                bookingDRNo: source?.bookingDRNo ?? "",
+                bookingDr: source?.bookingDr ?? "",
+              }
+            : r,
+        ),
+      );
+      notifications.show({
+        title: "Error",
+        message: result.serverError,
+        color: "red",
+      });
+    }
+  };
   if (isLoading) return <BookingModuleSkeleton />;
 
   return (
@@ -296,6 +334,7 @@ export default function BookingRecordsPage() {
             onView={handleView}
             onEdit={handleEdit}
             onDelete={handleDeleteClick}
+            onUpdateDR={handleUpdateDR}
           />
         </Stack>
       </ScrollArea>
