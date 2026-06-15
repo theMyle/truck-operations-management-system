@@ -124,7 +124,7 @@ export function NewBudgetTab({
 
       <SimpleGrid cols={2} spacing="sm">
         <TextInput
-          label="Cash On Hand Returned (₱)"
+          label="Cash On Hand Turnovered (₱)"
           placeholder="e.g. 500"
           type="number"
           size="xs"

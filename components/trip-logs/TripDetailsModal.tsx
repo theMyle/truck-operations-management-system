@@ -44,9 +44,14 @@ export interface NewTripDetailsFormData {
 
     // expenses
     expenses: Expenses[];
+
+    //rates
+    driverName: string;
+    driverRate: number;
+    helperRates: Array<{helperName: string, rate: number}>
 }
 
-const defaultForm = (): NewTripDetailsFormData => ({
+const defaultForm = (record?: DispatchRecord | null): NewTripDetailsFormData => ({
     tripType: "single",
     trips: [{ tripNumber: 1, odoStart: 0, odoEnd: 0 }],
     totalKm: 0,
@@ -60,14 +65,20 @@ const defaultForm = (): NewTripDetailsFormData => ({
     cashOnHandReturned: 0,
     cashOnHandReturnedToWhom: "",
     autoCA: false,
+    driverName: record?.driver ?? "",
     expenses: [],
+    driverRate: 0,
+    helperRates: record?.rawHelpers?.map((h) => ({
+        helperName: h.helperName,
+        rate: 0
+    })) ?? []
 });
 
-const generateRefNumber = (id: string | number) => {
+const generateRefNumber = (displayBookingNo: number | null) => {
     const d = new Date();
     const datePart = `${String(d.getDate()).padStart(2, "0")}${String(d.getMonth() + 1).padStart(2, "0")}${String(d.getFullYear()).slice(-2)}`;
     const randomPart = Math.random().toString(36).toUpperCase().slice(2, 5);
-    return `LIQ-${datePart}-${String(id).padStart(4, "0")}-${randomPart}`;
+    return `LIQ-${datePart}-${String(displayBookingNo).padStart(4, "0")}-${randomPart}`;
 };
 
 export function TripDetailsModal({
@@ -88,7 +99,7 @@ export function TripDetailsModal({
     const [pendingRefNumber, setPendingRefNumber] = useState("");
 
     const form = useForm<NewTripDetailsFormData>({
-        initialValues: initialData || defaultForm(),
+        initialValues: initialData || defaultForm(record),
         validate: {
             trips: {
                 odoEnd: (value, values, path) => {
@@ -142,7 +153,7 @@ export function TripDetailsModal({
         if (validation.hasErrors) return;
 
         if (!record) return;
-        setPendingRefNumber(generateRefNumber(record.id));
+        setPendingRefNumber(generateRefNumber(record.displayBookingNo ?? null));
         setReviewOpened(true);
     };
 
@@ -255,6 +266,7 @@ export function TripDetailsModal({
                     <Tabs.Panel value="expenses">
                         <NewExpensesTab
                             form={form}
+                            record={record}
                             setActiveTab={setActiveTab}
                             handleReset={handleReset}
                             handleSave={handleSave}

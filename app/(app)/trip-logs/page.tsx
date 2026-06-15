@@ -10,11 +10,8 @@ import {
   Badge,
   Divider,
   Button,
-  ActionIcon,
   ScrollArea,
   Modal,
-  Tooltip,
-  Pagination,
   Select,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
@@ -25,7 +22,6 @@ import {
   IconEye,
   IconSearch,
   IconAlertTriangle,
-  IconClipboardList,
   IconEdit,
   IconDownload,
   IconFileTypeDoc,
@@ -42,12 +38,12 @@ import { formatTime12Hour, formatTimeHHMM } from "@/lib/utils/stringFormat";
 import { TripLogsTable } from "@/components/trip-logs/TripLogsTable";
 import { TripLogsModuleSkeleton } from "@/components/ui/ModuleSkeletons";
 
-/* ── Status badge helper ── */
-const statusColor: Record<DispatchRecord["status"], string> = {
-  Completed: "green",
-  "In Transit": "blue",
-  Pending: "orange",
-};
+// /* ── Status badge helper ── */
+// const statusColor: Record<DispatchRecord["status"], string> = {
+//   Completed: "green",
+//   "In Transit": "blue",
+//   Pending: "orange",
+// };
 
 /* ── View Modal ── */
 function ViewModal({
@@ -264,22 +260,7 @@ function DeleteModal({
   );
 }
 
-/* ── Table column headers ── */
-const COLUMNS = [
-  { key: "actions", label: "Actions", sticky: true },
-  { key: "id", label: "#" },
-  { key: "tripRate", label: "Trip Rate" },
-  { key: "date", label: "Date" },
-  { key: "status", label: "Status" },
-  { key: "client", label: "Client" },
-  { key: "driver", label: "Driver" },
-  { key: "helper", label: "Helper" },
-  { key: "unit", label: "Unit" },
-  { key: "plateNo", label: "Plate #" },
-  { key: "ruta", label: "Route" },
-  { key: "bookingDr", label: "Booking / DR#" },
-  { key: "bookedBy", label: "Booked By" },
-];
+
 
 const PAGE_SIZE = 10;
 
@@ -293,9 +274,7 @@ export default function DispatchRecordsPage() {
   const [viewOpened, setViewOpened] = useState(false);
 
   const [deleteRecord, setDeleteRecord] = useState<DispatchRecord | null>(null);
-  const [deleteOpened, setDeleteOpened] = useState(false);
-
-  const [expandedRow, setExpandedRow] = useState<string | number | null>(null);
+  const [deleteOpened, setDeleteOpened] = useState(false);  
 
   const [odoRecord, setOdoRecord] = useState<DispatchRecord | null>(null);
   const [odoOpened, setOdoOpened] = useState(false);
@@ -421,25 +400,9 @@ export default function DispatchRecordsPage() {
   };
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setPage(1);
   }, [search]);
-  const cellStyle: React.CSSProperties = {
-    fontSize: "11px",
-    fontWeight: 600,
-    whiteSpace: "nowrap",
-    padding: "8px 12px",
-  };
-
-  const headerCellStyle: React.CSSProperties = {
-    fontSize: "9px",
-    fontWeight: 800,
-    textTransform: "uppercase",
-    letterSpacing: "0.8px",
-    color: "var(--mantine-color-gray-6)",
-    whiteSpace: "nowrap",
-    padding: "8px 12px",
-    backgroundColor: "var(--mantine-color-gray-0)",
-  };
 
   if (isLoading) return <TripLogsModuleSkeleton />;
 
