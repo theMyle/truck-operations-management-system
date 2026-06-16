@@ -21,13 +21,7 @@ import {
 } from "@tabler/icons-react";
 import { DispatchRecord } from "@/app/(app)/constant";
 import { STATUS_META } from "./TripDetailsModal";
-import { useState } from "react";
 
-const STATUS_COLOR: Record<string, string> = {
-  "In Transit": "blue",
-  Pending: "orange",
-  Completed: "green",
-};
 
 const headerCellStyle: React.CSSProperties = {
   fontSize: "9px",
@@ -77,75 +71,8 @@ interface BookingTableProps {
   onView: (record: DispatchRecord) => void;
   onEdit: (record: DispatchRecord) => void;
   onDelete: (record: DispatchRecord) => void;
-  onUpdateDR: (id: string | number, newDR: string) => void;
 }
 
-function InlineDREdit({
-  value,
-  onSave,
-}: {
-  value: string;
-  onSave: (newDR: string) => void;
-}) {
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(value);
-
-  if (editing) {
-    return (
-      <input
-        autoFocus
-        value={draft}
-        onChange={(e) => setDraft(e.target.value)}
-        onBlur={() => {
-          setEditing(false);
-          if (draft !== value) onSave(draft);
-        }}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") {
-            setEditing(false);
-            if (draft !== value) onSave(draft);
-          }
-          if (e.key === "Escape") {
-            setDraft(value);
-            setEditing(false);
-          }
-        }}
-        style={{ fontSize: "11px", fontWeight: 600, width: 120 }}
-      />
-    );
-  }
-
-  return (
-    <span
-      onClick={() => setEditing(true)}
-      title="Click to edit"
-      style={{
-        cursor: "text",
-        display: "block",
-        width: "100%",
-        minWidth: 120,
-        padding: "2px 6px",
-        borderRadius: 4,
-        border: "1px dashed transparent",
-        color: value ? "inherit" : "var(--mantine-color-gray-4)",
-        fontStyle: value ? "normal" : "italic",
-        transition: "border-color 0.15s, background 0.15s",
-      }}
-      onMouseEnter={(e) => {
-        (e.currentTarget as HTMLElement).style.borderColor =
-          "var(--mantine-color-blue-3)";
-        (e.currentTarget as HTMLElement).style.background =
-          "var(--mantine-color-blue-0)";
-      }}
-      onMouseLeave={(e) => {
-        (e.currentTarget as HTMLElement).style.borderColor = "transparent";
-        (e.currentTarget as HTMLElement).style.background = "transparent";
-      }}
-    >
-      {value || "Enter DR# here"}
-    </span>
-  );
-}
 
 export function BookingTable({
   records,
@@ -157,7 +84,6 @@ export function BookingTable({
   onView,
   onEdit,
   onDelete,
-  onUpdateDR,
 }: BookingTableProps) {
   return (
     <Paper withBorder radius="md" p={0} style={{ overflow: "hidden" }}>
@@ -288,14 +214,8 @@ export function BookingTable({
                   <Table.Td style={cellStyle}>
                     {record.bookingDate || "—"}
                   </Table.Td>
-                  <Table.Td
-                    style={cellStyle}
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <InlineDREdit
-                      value={record.bookingDRNo || record.bookingDr || ""}
-                      onSave={(newDR) => onUpdateDR(record.id, newDR)}
-                    />
+                  <Table.Td style={cellStyle}>
+                    {record.bookingDRNo || record.bookingDRNo || "—"}
                   </Table.Td>
                   <Table.Td style={cellStyle}>
                     {record.clientName || record.client || "—"}
