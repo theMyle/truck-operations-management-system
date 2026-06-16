@@ -218,6 +218,7 @@ export default function BookingRecordsPage() {
       deliveryStatus: form.deliveryStatus,
       tripRemarks: form.tripRemarks || undefined,
       PODLink: form.podFileUrl || undefined,
+      bookingDRNo: form.bookingDRNo || undefined,
     });
 
     if (result?.serverError) {
@@ -246,10 +247,11 @@ export default function BookingRecordsPage() {
     notifications.show({
       title:
         form.deliveryStatus === "Completed" ? "Trip completed" : "Trip updated",
-      message: `Record #${id} → ${form.deliveryStatus}.`,
+      message: `Record # ${id} → ${form.deliveryStatus}.`,
       color: form.deliveryStatus === "Completed" ? "green" : "blue",
     });
   };
+
   if (isLoading) return <BookingModuleSkeleton />;
 
   return (

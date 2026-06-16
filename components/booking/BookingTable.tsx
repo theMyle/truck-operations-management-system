@@ -22,11 +22,6 @@ import {
 import { DispatchRecord } from "@/app/(app)/constant";
 import { STATUS_META } from "./TripDetailsModal";
 
-const STATUS_COLOR: Record<string, string> = {
-  "In Transit": "blue",
-  Pending: "orange",
-  Completed: "green",
-};
 
 const headerCellStyle: React.CSSProperties = {
   fontSize: "9px",
@@ -77,6 +72,7 @@ interface BookingTableProps {
   onEdit: (record: DispatchRecord) => void;
   onDelete: (record: DispatchRecord) => void;
 }
+
 
 export function BookingTable({
   records,
@@ -206,14 +202,30 @@ export function BookingTable({
                     </Group>
                   </Table.Td>
 
-                  <Table.Td style={{ ...cellStyle, color: "var(--mantine-color-blue-6)", fontFamily: "monospace" }}>
+                  <Table.Td
+                    style={{
+                      ...cellStyle,
+                      color: "var(--mantine-color-blue-6)",
+                      fontFamily: "monospace",
+                    }}
+                  >
                     {record.displayBookingNo ?? record.id}
                   </Table.Td>
-                  <Table.Td style={cellStyle}>{record.bookingDate || "—"}</Table.Td>
-                  <Table.Td style={cellStyle}>{record.bookingDRNo || record.bookingDr || "—"}</Table.Td>
-                  <Table.Td style={cellStyle}>{record.clientName || record.client || "—"}</Table.Td>
-                  <Table.Td style={cellStyle}>{record.pickUpDate || record.date || "—"}</Table.Td>
-                  <Table.Td style={cellStyle}>{record.pickUpTime || "—"}</Table.Td>
+                  <Table.Td style={cellStyle}>
+                    {record.bookingDate || "—"}
+                  </Table.Td>
+                  <Table.Td style={cellStyle}>
+                    {record.bookingDRNo || record.bookingDRNo || "—"}
+                  </Table.Td>
+                  <Table.Td style={cellStyle}>
+                    {record.clientName || record.client || "—"}
+                  </Table.Td>
+                  <Table.Td style={cellStyle}>
+                    {record.pickUpDate || record.date || "—"}
+                  </Table.Td>
+                  <Table.Td style={cellStyle}>
+                    {record.pickUpTime || "—"}
+                  </Table.Td>
                   <Table.Td style={cellStyle}>
                     <Badge
                       variant="light"
@@ -227,19 +239,43 @@ export function BookingTable({
                       {record.status}
                     </Badge>
                   </Table.Td>
-                  <Table.Td style={cellStyle}>{record.driverName || record.driver || "—"}</Table.Td>
+                  <Table.Td style={cellStyle}>
+                    {record.driverName || record.driver || "—"}
+                  </Table.Td>
                   <Table.Td style={cellStyle}>{record.trucker || "—"}</Table.Td>
                   <Table.Td style={cellStyle}>{record.helper || "—"}</Table.Td>
-                  <Table.Td style={cellStyle}>{record.fleetType || record.unit || "—"}</Table.Td>
-                  <Table.Td style={{ ...cellStyle, fontFamily: "monospace" }}>{record.plateNo || "—"}</Table.Td>
-                  <Table.Td style={{ ...cellStyle, maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis" }}>
+                  <Table.Td style={cellStyle}>
+                    {record.fleetType || record.unit || "—"}
+                  </Table.Td>
+                  <Table.Td style={{ ...cellStyle, fontFamily: "monospace" }}>
+                    {record.plateNo || "—"}
+                  </Table.Td>
+                  <Table.Td
+                    style={{
+                      ...cellStyle,
+                      maxWidth: 160,
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                    }}
+                  >
                     {record.ruta || "—"}
                   </Table.Td>
-                  <Table.Td style={cellStyle}>{record.pickLocation || "—"}</Table.Td>
-                  <Table.Td style={{ ...cellStyle, maxWidth: 240, overflow: "hidden", textOverflow: "ellipsis" }}>
+                  <Table.Td style={cellStyle}>
+                    {record.pickLocation || "—"}
+                  </Table.Td>
+                  <Table.Td
+                    style={{
+                      ...cellStyle,
+                      maxWidth: 240,
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                    }}
+                  >
                     {record.dropOffLocation || "—"}
                   </Table.Td>
-                  <Table.Td style={cellStyle}>{record.bookedBy || "—"}</Table.Td>
+                  <Table.Td style={cellStyle}>
+                    {record.bookedBy || "—"}
+                  </Table.Td>
                 </Table.Tr>
               ))
             )}
@@ -261,8 +297,8 @@ export function BookingTable({
             {totalRecords === 0
               ? 0
               : Math.min((page - 1) * pageSize + 1, totalRecords)}{" "}
-            – {Math.min(page * pageSize, totalRecords)} of {totalRecords}{" "}
-            record{totalRecords !== 1 ? "s" : ""}
+            – {Math.min(page * pageSize, totalRecords)} of {totalRecords} record
+            {totalRecords !== 1 ? "s" : ""}
           </Text>
           <Pagination
             total={Math.ceil(totalRecords / pageSize)}

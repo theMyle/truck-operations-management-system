@@ -106,8 +106,6 @@ export default function DispatchPage() {
       },
       pickupLocation: (value) =>
         !value?.trim() ? "Pickup location is required" : null,
-      bookingDr: (value) =>
-        !value?.trim() ? "Booking / DR# is required" : null,
       noOfDrops: (value) =>
         !value || Number(value) < 1 ? "At least 1 drop required" : null,
       pickupDate: (value) => (!value ? "Pickup date is required" : null),
@@ -200,7 +198,7 @@ export default function DispatchPage() {
     const payload: CreateBookingInput = {
       bookingDate: new Date().toISOString().split("T")[0],
       bookedBy: userRole,
-      bookingDRNo: form.values.bookingDr,
+      bookingDRNo: form.values.bookingDr ?? "",
       clientId: selectedClient.id,
       clientName: selectedClient.clientName,
       clientRate: form.values.clientRate,
