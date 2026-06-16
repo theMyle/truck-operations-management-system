@@ -10,10 +10,11 @@ import {
   Badge,
   RingProgress,
   Box,
+  ThemeIcon,
 } from "@mantine/core";
 import {
-  IconTrendingUp,
-  IconTrendingDown,
+  IconCheck,
+  IconAlertTriangle,
 } from "@tabler/icons-react";
 import { NewTripDetailsFormData } from "./TripDetailsModal";
 import { EXPENSE_CATEGORIES, CATEGORY_COLORS } from "./ExpensesTab";
@@ -39,56 +40,116 @@ export function ExpensesSummary({ formValues }: ExpensesSummaryProps) {
   const balance = totalFunds - grandTotal;
   const isOverBudget = balance < 0;
   const spentPct =
-    totalFunds > 0 ? Math.min((grandTotal / totalFunds) * 100, 100) : 0;
+    totalFunds > 0 ? (grandTotal / totalFunds) * 100 : 0;
+
+  const status = useMemo(() => {
+    if (balance === 0) {
+      return {
+        bg: "linear-gradient(135deg, var(--mantine-color-teal-0), var(--mantine-color-teal-1))",
+        border: "1px solid var(--mantine-color-teal-3)",
+        color: "teal.8",
+        ringColor: "teal",
+        label: "ALL FUNDS ACCOUNTED",
+        description: "Tally balances perfectly",
+        icon: IconCheck,
+      };
+    }
+    if (isOverBudget) {
+      return {
+        bg: "linear-gradient(135deg, var(--mantine-color-red-0), var(--mantine-color-red-1))",
+        border: "1px solid var(--mantine-color-red-3)",
+        color: "red.8",
+        ringColor: "red",
+        label: "UNACCOUNTED: MISSING",
+        description: "Shortage / Overspent amount",
+        icon: IconAlertTriangle,
+      };
+    }
+    return {
+      bg: "linear-gradient(135deg, var(--mantine-color-orange-0), var(--mantine-color-orange-1))",
+      border: "1px solid var(--mantine-color-orange-3)",
+      color: "orange.8",
+      ringColor: "orange",
+      label: "UNACCOUNTED: EXCESS",
+      description: "Remaining cash to return",
+      icon: IconAlertTriangle,
+    };
+  }, [balance, isOverBudget]);
 
   if (totalFunds <= 0) return null;
+
+  const StatusIcon = status.icon;
 
   return (
     <Paper
       withBorder
       radius="md"
-      p="sm"
-      bg={isOverBudget ? "red.0" : balance === 0 ? "blue.0" : "green.0"}
+      p="md"
+      bg="var(--mantine-color-body)"
+      style={{
+        borderColor: "var(--mantine-color-gray-3)",
+        boxShadow: "var(--mantine-shadow-xs)",
+      }}
     >
-      <Group justify="space-between" align="flex-start" wrap="nowrap">
-        <Stack gap={4} style={{ flex: 1 }}>
-          <Text
-            style={{ fontSize: "9px" }}
-            fw={800}
-            tt="uppercase"
-            lts={1}
-            c={isOverBudget ? "red.7" : balance === 0 ? "blue.7" : "green.7"}
-          >
-            Budget Summary
-          </Text>
-
-          <Group justify="space-between">
-            <Text style={{ fontSize: "10px" }} c="gray.7" fw={600}>
-              Budget Given
+      <Stack gap="sm">
+        {/* Header section with RingProgress */}
+        <Group justify="space-between" align="center">
+          <Stack gap={2}>
+            <Text
+              style={{ fontSize: "9px" }}
+              fw={800}
+              tt="uppercase"
+              lts={1.2}
+              c="dimmed"
+            >
+              Budget & Expenses Summary
             </Text>
-            <Text style={{ fontSize: "10px" }} fw={700}>
+            <Text style={{ fontSize: "18px" }} fw={800}>
+              ₱{totalFunds.toLocaleString("en-PH", { minimumFractionDigits: 2 })}
+            </Text>
+            <Text style={{ fontSize: "10px" }} c="dimmed">
+              Total Budget Given
+            </Text>
+          </Stack>
+
+          <RingProgress
+            size={64}
+            thickness={6}
+            roundCaps
+            sections={[{ value: Math.min(spentPct, 100), color: status.ringColor }]}
+            label={
+              <Text
+                ta="center"
+                style={{ fontSize: "10px" }}
+                fw={800}
+                c={status.color}
+              >
+                {Math.round(spentPct)}%
+              </Text>
+            }
+          />
+        </Group>
+
+        <Divider size="xs" color="gray.1" />
+
+        {/* Detailed items list */}
+        <Stack gap={6}>
+          <Group justify="space-between">
+            <Text style={{ fontSize: "11px" }} c="gray.7" fw={600}>
+              Base Budget Given
+            </Text>
+            <Text style={{ fontSize: "11px" }} fw={700}>
               ₱{budgetAmount.toLocaleString("en-PH", { minimumFractionDigits: 2 })}
             </Text>
           </Group>
 
           {collectionAmount > 0 && (
             <Group justify="space-between">
-              <Text style={{ fontSize: "10px" }} c="gray.7" fw={600}>
+              <Text style={{ fontSize: "11px" }} c="gray.7" fw={600}>
                 Collection from Customer
               </Text>
-              <Text style={{ fontSize: "10px" }} fw={700}>
+              <Text style={{ fontSize: "11px" }} fw={700} c="teal.7">
                 + ₱{collectionAmount.toLocaleString("en-PH", { minimumFractionDigits: 2 })}
-              </Text>
-            </Group>
-          )}
-
-          {collectionAmount > 0 && (
-            <Group justify="space-between">
-              <Text style={{ fontSize: "10px" }} c="gray.7" fw={600}>
-                Total Funds
-              </Text>
-              <Text style={{ fontSize: "10px" }} fw={700} c="blue.7">
-                ₱{totalFunds.toLocaleString("en-PH", { minimumFractionDigits: 2 })}
               </Text>
             </Group>
           )}
@@ -109,7 +170,7 @@ export function ExpensesSummary({ formValues }: ExpensesSummaryProps) {
               >
                 {EXPENSE_CATEGORIES.find((c) => c.value === cat)?.label || cat}
               </Badge>
-              <Text style={{ fontSize: "10px" }} fw={600} c="gray.7">
+              <Text style={{ fontSize: "11px" }} fw={600} c="gray.7">
                 — ₱{amt.toLocaleString("en-PH", { minimumFractionDigits: 2 })}
               </Text>
             </Group>
@@ -125,7 +186,7 @@ export function ExpensesSummary({ formValues }: ExpensesSummaryProps) {
               >
                 RFID Load ({formValues.rfidPaymentType})
               </Badge>
-              <Text style={{ fontSize: "10px" }} fw={600} c="gray.7">
+              <Text style={{ fontSize: "11px" }} fw={600} c="gray.7">
                 — ₱{rfidAmount.toLocaleString("en-PH", { minimumFractionDigits: 2 })}
               </Text>
             </Group>
@@ -141,7 +202,7 @@ export function ExpensesSummary({ formValues }: ExpensesSummaryProps) {
               >
                 Fuel ({formValues.fuelPaymentType})
               </Badge>
-              <Text style={{ fontSize: "10px" }} fw={600} c="gray.7">
+              <Text style={{ fontSize: "11px" }} fw={600} c="gray.7">
                 — ₱{fuelAmt.toLocaleString("en-PH", { minimumFractionDigits: 2 })}
               </Text>
             </Group>
@@ -175,72 +236,65 @@ export function ExpensesSummary({ formValues }: ExpensesSummaryProps) {
               </Group>
             </Paper>
           )}
+        </Stack>
 
-          <Divider size="xs" mt="xs" />
+        <Divider size="xs" color="gray.1" />
 
+        {/* Totals Breakdown */}
+        <Stack gap={4}>
+          <Group justify="space-between">
+            <Text style={{ fontSize: "11px" }} c="gray.7" fw={700}>
+              Total Budget / Funds
+            </Text>
+            <Text style={{ fontSize: "11px" }} fw={800}>
+              ₱{totalFunds.toLocaleString("en-PH", { minimumFractionDigits: 2 })}
+            </Text>
+          </Group>
 
           <Group justify="space-between">
-            <Text style={{ fontSize: "10px" }} c="gray.7" fw={700}>
+            <Text style={{ fontSize: "11px" }} c="gray.7" fw={700}>
               Total Accounted
             </Text>
             <Text
-              style={{ fontSize: "10px" }}
+              style={{ fontSize: "11px" }}
               fw={800}
-              c={isOverBudget ? "red.6" : "gray.8"}
+              c={isOverBudget ? "red.7" : "gray.8"}
             >
               — ₱{grandTotal.toLocaleString("en-PH", { minimumFractionDigits: 2 })}
             </Text>
           </Group>
+        </Stack>
 
-          <Group
-            justify="space-between"
-            style={{
-              borderTop: `2px solid var(--mantine-color-${isOverBudget ? "red" : balance === 0 ? "blue" : "green"}-4)`,
-              paddingTop: 6,
-            }}
-          >
-            <Group gap={4}>
-              {isOverBudget ? (
-                <IconTrendingUp size={12} color="var(--mantine-color-red-6)" />
-              ) : (
-                <IconTrendingDown size={12} color={`var(--mantine-color-${balance === 0 ? "blue" : "green"}-6)`} />
-              )}
-              <Text
-                style={{ fontSize: "11px" }}
-                fw={800}
-                c={isOverBudget ? "red.7" : balance === 0 ? "blue.7" : "green.7"}
-              >
-                {isOverBudget ? "Over Budget" : balance === 0 ? "ALL FUNDS ACCOUNTED" : "UNACCOUNTED / CASH ONHAND"}
-              </Text>
+        {/* Premium Status Footer Banner */}
+        <Paper
+          p="xs"
+          radius="md"
+          style={{
+            background: status.bg,
+            border: status.border,
+            transition: "all 0.2s ease",
+          }}
+        >
+          <Group justify="space-between" align="center" wrap="nowrap">
+            <Group gap={8} wrap="nowrap">
+              <ThemeIcon color={status.ringColor} variant="light" size="md" radius="xl">
+                <StatusIcon size={14} />
+              </ThemeIcon>
+              <Stack gap={0}>
+                <Text style={{ fontSize: "11px" }} fw={800} c={status.color}>
+                  {status.label}
+                </Text>
+                <Text style={{ fontSize: "9px" }} fw={500} c="gray.7">
+                  {status.description}
+                </Text>
+              </Stack>
             </Group>
-            <Text
-              style={{ fontSize: "13px" }}
-              fw={900}
-              c={isOverBudget ? "red.7" : balance === 0 ? "blue.7" : "green.7"}
-            >
+            <Text style={{ fontSize: "14px" }} fw={900} c={status.color}>
               ₱{Math.abs(balance).toLocaleString("en-PH", { minimumFractionDigits: 2 })}
             </Text>
           </Group>
-        </Stack>
-
-        <RingProgress
-          size={70}
-          thickness={6}
-          roundCaps
-          sections={[{ value: spentPct, color: isOverBudget ? "red" : balance === 0 ? "blue" : "green" }]}
-          label={
-            <Text
-              ta="center"
-              style={{ fontSize: "9px" }}
-              fw={800}
-              c={isOverBudget ? "red.7" : balance === 0 ? "blue.7" : "green.7"}
-            >
-              {Math.round(spentPct)}%
-            </Text>
-          }
-        />
-      </Group>
+        </Paper>
+      </Stack>
     </Paper>
   );
 }
-

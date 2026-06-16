@@ -62,6 +62,26 @@ export function NewExpensesTab({
   driverName,
   helperName,
 }: NewExpensesTabProps) {
+  const balance = useMemo(() => {
+    const budgetAmount = form.values.budget || 0;
+    const collectionAmount = form.values.collectionFromCustomer || 0;
+    const rfidAmount = form.values.rfidLoad || 0;
+    const fuelAmt = form.values.fuelAmount || 0;
+    const cashReturned = form.values.cashOnHandReturned || 0;
+    const totalExpenses = form.values.expenses.reduce((s, e) => s + (e.amount || 0), 0);
+
+    const grandTotal = totalExpenses + rfidAmount + fuelAmt + cashReturned;
+    const totalFunds = budgetAmount + collectionAmount;
+    return totalFunds - grandTotal;
+  }, [
+    form.values.budget,
+    form.values.collectionFromCustomer,
+    form.values.rfidLoad,
+    form.values.fuelAmount,
+    form.values.cashOnHandReturned,
+    form.values.expenses,
+  ]);
+
   return (
     <Stack gap="sm">
       {/* Real-time Budget Summary */}
@@ -272,6 +292,7 @@ export function NewExpensesTab({
           </Button>
           <Button
             color="blue.6"
+            disabled={balance !== 0}
             styles={{
               root: { height: 34 },
               label: { fontSize: "11px", fontWeight: 700 },
