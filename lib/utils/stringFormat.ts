@@ -27,3 +27,14 @@ export function formatTimeHHMM(date: Date | string | null | undefined): string {
   if (isNaN(d.getTime())) return "";
   return `${d.getHours().toString().padStart(2, "0")}:${d.getMinutes().toString().padStart(2, "0")}`;
 }
+
+export function getTripRefNumber(bookingId: string, pickupDateStr?: string | null): string {
+  // Use pickup date if available, or fall back to current date
+  const d = pickupDateStr ? new Date(pickupDateStr) : new Date();
+  const datePart = `${String(d.getDate()).padStart(2, "0")}${String(d.getMonth() + 1).padStart(2, "0")}${String(d.getFullYear()).slice(-2)}`;
+  
+  // Extract first 8 chars of UUID to make it deterministic and readable
+  const shortId = bookingId.replace(/-/g, "").slice(0, 8).toUpperCase();
+  
+  return `LIQ-${datePart}-${shortId}-RCR`;
+}

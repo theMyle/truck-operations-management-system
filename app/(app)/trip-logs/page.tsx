@@ -566,13 +566,16 @@ export default function DispatchRecordsPage() {
         record={deleteRecord}
       />
 
-      <TripDetailsModal
-        opened={detailsOpened}
-        onClose={() => setDetailsOpened(false)}
-        record={seletectedTrip}
-        initialData={seletectedTrip ? detailsData[seletectedTrip.id] : undefined}
-        onSave={handleSaveTripDetails}
-      />
+      {detailsOpened && seletectedTrip && (
+        <TripDetailsModal
+          key={seletectedTrip.id}
+          opened={detailsOpened}
+          onClose={() => setDetailsOpened(false)}
+          record={seletectedTrip}
+          initialData={detailsData[seletectedTrip.id]}
+          onSave={handleSaveTripDetails}
+        />
+      )}
 
       <ScrollArea h="calc(100vh - 72px)" scrollbars="y">
         <Stack gap="md">

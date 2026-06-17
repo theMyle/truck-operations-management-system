@@ -2,13 +2,14 @@
 
 import { Modal, Tabs, Text, Group, Badge, ScrollArea } from "@mantine/core";
 import { IconClipboardList, IconGauge, IconWallet, IconReceipt } from "@tabler/icons-react";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useForm } from "@mantine/form";
 import { DispatchRecord } from "@/app/(app)/constant";
 import { NewOdometerTab } from "./OdometerTab";
 import { NewBudgetTab } from "./BudgetTab";
 import { NewExpensesTab } from "./ExpensesTab";
-import { ReviewModal } from "./ReviewModal";
+import { TripSummaryModal } from "./TripSummaryModal";
+import { BookingWithRelations } from "@/lib/db/schema/booking";
 import { generateLiquidationPDF } from "@/lib/utils/pdf";
 
 export interface TripData {
@@ -67,12 +68,7 @@ const defaultForm = (): NewTripDetailsFormData => ({
     expenses: [],
 });
 
-const generateRefNumber = (id: string | number) => {
-    const d = new Date();
-    const datePart = `${String(d.getDate()).padStart(2, "0")}${String(d.getMonth() + 1).padStart(2, "0")}${String(d.getFullYear()).slice(-2)}`;
-    const randomPart = Math.random().toString(36).toUpperCase().slice(2, 5);
-    return `LIQ-${datePart}-${String(id).padStart(4, "0")}-${randomPart}`;
-};
+import { getTripRefNumber } from "@/lib/utils/stringFormat";
 
 export function TripDetailsModal({
     opened,
@@ -106,6 +102,13 @@ export function TripDetailsModal({
             },
         },
     });
+    
+    useEffect(() => {
+        if (opened) {
+            form.initialize(initialData || defaultForm());
+            setActiveTab("odometer");
+        }
+    }, [opened, initialData]);
 
     const handleReset = () => {
         switch (activeTab) {
@@ -146,7 +149,7 @@ export function TripDetailsModal({
         if (validation.hasErrors) return;
 
         if (!record) return;
-        setPendingRefNumber(generateRefNumber(record.id));
+        setPendingRefNumber(getTripRefNumber(String(record.id), record.pickUpDate || record.date));
         setReviewOpened(true);
     };
 
@@ -165,7 +168,7 @@ export function TripDetailsModal({
 
     const manpowerOptions = useMemo(() => {
         if (!record) return [];
-        return (
+        const items = (
             [
                 record.driver
                     ? { value: record.driver, label: `${record.driver} (Driver)` }
@@ -178,20 +181,90 @@ export function TripDetailsModal({
                     : null,
             ] as ({ value: string; label: string } | null)[]
         ).filter((o): o is { value: string; label: string } => o !== null);
+
+        const seen = new Set<string>();
+        return items.filter((item) => {
+            if (seen.has(item.value)) return false;
+            seen.add(item.value);
+            return true;
+        });
     }, [record]);
+
+    const activeBookingData = useMemo<BookingWithRelations | null>(() => {
+        if (!record) return null;
+
+        return {
+            id: String(record.id),
+            displayBookingNo: Number(record.id) || 0,
+            bookingDate: record.date,
+            clientId: "",
+            clientName: record.client,
+            ruta: record.ruta || "",
+            clientRate: "0",
+            pickupDate: record.date,
+            pickupTime: record.pickUpTime || "",
+            pickupLocation: "",
+            bookingDRNo: record.bookingDr || "",
+            numberOfDrops: record.noOfDrops || 0,
+            plateNumber: record.plateNo || "",
+            trucker: record.trucker || "",
+            fleetType: "",
+            truckerRate: "0",
+            driverId: "",
+            driverName: record.driver || "",
+            bookedBy: record.bookedBy || "",
+
+            deliveryStatus: record.status,
+            PODLink: record.podFileUrl || null,
+            tripRemarks: record.tripRemarks || "",
+            pickupArrivalTime: record.arrivalPickup ? new Date(record.arrivalPickup) : null,
+            pickupDepartureTime: record.departurePickup ? new Date(record.departurePickup) : null,
+            loadingStartTime: record.loadingStart ? new Date(record.loadingStart) : null,
+            loadingEndTime: record.loadingEnd ? new Date(record.loadingEnd) : null,
+            finishedDeliveryTime: record.finishDelivery ? new Date(record.finishDelivery) : null,
+
+            odoDetails: form.values.trips.map((t, idx) => ({
+                id: String(idx),
+                bookingId: String(record.id),
+                tripIndex: t.tripNumber || idx + 1,
+                odoStart: t.odoStart,
+                odoEnd: t.odoEnd,
+            })),
+
+            budget: String(form.values.budget),
+            budgetFrom: form.values.budgetFrom,
+            rfidLoad: String(form.values.rfidLoad),
+            rfidPaymentType: form.values.rfidPaymentType,
+            fuel: String(form.values.fuelAmount),
+            fuelPaymentType: form.values.fuelPaymentType === "shell card" ? "card" : form.values.fuelPaymentType,
+            customerCollection: String(form.values.collectionFromCustomer),
+            cashOnHandReturned: String(form.values.cashOnHandReturned),
+            cashOnHandReturnedTo: form.values.cashOnHandReturnedToWhom,
+            autoCash: form.values.autoCA,
+
+            driverRate: String(form.values.driverRate),
+            helperRate: String(form.values.helperRate),
+            expenses: form.values.expenses.map((e, idx) => ({
+                id: String(e.expenseId),
+                bookingId: String(record.id),
+                entryIndex: idx,
+                expenseType: e.expenseCategory,
+                amount: String(e.amount),
+            })),
+            helpers: [],
+            drops: [],
+        };
+    }, [record, form.values]);
 
     if (!record) return null;
 
     return (
         <>
-            <ReviewModal
+            <TripSummaryModal
                 opened={reviewOpened}
                 onClose={() => setReviewOpened(false)}
-                onDownload={handleDownload}
+                booking={activeBookingData}
                 onConfirm={handleConfirmSave}
-                form={form.values}
-                record={record}
-                refNumber={pendingRefNumber}
             />
 
             <Modal
