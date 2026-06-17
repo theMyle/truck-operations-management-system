@@ -37,7 +37,11 @@ export const makeClientRepository = (database = db): IClientRepository => {
           await tx
             .insert(clientRoutes)
             .values(
-              routes.map((r) => ({ clientId: newClient.id, route: r.route })),
+              routes.map((r) => ({
+                clientId: newClient.id,
+                route: r.route,
+                rate: r.rate ?? null,
+              })),
             );
         }
 
@@ -66,7 +70,13 @@ export const makeClientRepository = (database = db): IClientRepository => {
           if (routes.length > 0) {
             await tx
               .insert(clientRoutes)
-              .values(routes.map((r) => ({ clientId: id, route: r.route })));
+              .values(
+                routes.map((r) => ({
+                  clientId: id,
+                  route: r.route,
+                  rate: r.rate ?? null,
+                })),
+              );
           }
         }
 
