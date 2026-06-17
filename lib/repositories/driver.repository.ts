@@ -1,9 +1,8 @@
 import { eq } from "drizzle-orm";
 import { db } from "../db";
 import { Driver, drivers, NewDriver } from "../db/schema";
-import IDriverRepository from "./driver.repository.interface";
 
-export const makeDriverRepository = (database = db): IDriverRepository => {
+export const makeDriverRepository = (database = db) => {
     return {
         getAll: async function (): Promise<Driver[]> {
             return await database.select().from(drivers);

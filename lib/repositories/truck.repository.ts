@@ -1,9 +1,8 @@
 import { eq } from "drizzle-orm";
 import { db } from "../db";
 import { NewTruck, Truck, trucks, UpdateTruck } from "../db/schema";
-import ITruckRepository from "./truck.repository.interface";
 
-export const makeTruckRepository = (database = db): ITruckRepository => {
+export const makeTruckRepository = (database = db) => {
     return {
         getAll: async function (): Promise<Truck[]> {
             return await database.select().from(trucks);

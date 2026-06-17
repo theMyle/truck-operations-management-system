@@ -1,6 +1,7 @@
 import { Badge, Paper, Table, Text, Box, Group } from "@mantine/core";
-import React from "react";
+import { useMemo } from "react";
 import { CardHeader } from "./CardHeader";
+import { getWeekOfMonth } from "@/lib/utils/dateUtils";
 
 interface WeeklyOperation {
   day: string;
@@ -16,6 +17,8 @@ export const WeeklyOperationsTable = ({ data }: WeeklyOperationsTableProps) => {
   const totalKts = data.reduce((acc, curr) => acc + curr.kts, 0);
   const totalSubcon = data.reduce((acc, curr) => acc + curr.subcon, 0);
   const totalTrips = totalKts + totalSubcon;
+
+  const weekNum = useMemo(() => getWeekOfMonth(new Date()), []);
 
   return (
     <Paper
@@ -33,7 +36,7 @@ export const WeeklyOperationsTable = ({ data }: WeeklyOperationsTableProps) => {
             radius="sm"
             styles={{ label: { fontSize: "9px" }, root: { height: 18 } }}
           >
-            Week 1
+            Week {weekNum}
           </Badge>
         }
       />
@@ -67,9 +70,14 @@ export const WeeklyOperationsTable = ({ data }: WeeklyOperationsTableProps) => {
             {data.map((item, idx) => (
               <Table.Tr key={idx}>
                 <Table.Td>
-                  <Text style={{ fontSize: "11px" }} fw={600}>
-                    {item.day}
-                  </Text>
+                  <Group gap="xs" wrap="nowrap">
+                    <Text style={{ fontSize: "11px" }} fw={700} c="gray.8" w={32}>
+                      {item.day.split(" | ")[0]}
+                    </Text>
+                    <Text style={{ fontSize: "11px" }} c="dimmed" fw={500}>
+                      {item.day.split(" | ")[1]}
+                    </Text>
+                  </Group>
                 </Table.Td>
                 <Table.Td ta="center">
                   <Text style={{ fontSize: "11px" }} fw={700} c="blue.6">
