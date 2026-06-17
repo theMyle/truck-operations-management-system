@@ -12,7 +12,7 @@ export interface DispatchFormValues {
   clientRate: string;
   ruta: string;
   pickupLocation: string;
-  bookingDr: string;
+  bookingDr?: string;
   noOfDrops: string | number;
   pickupDate: Date | null;
   pickupTime: string;

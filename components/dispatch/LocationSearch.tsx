@@ -26,6 +26,7 @@ export function LocationSearch({
   const debounceRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
   React.useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setQuery(value ?? "");
   }, [value]);
 

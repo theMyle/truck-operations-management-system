@@ -41,7 +41,7 @@ export function ReviewModal({
   const displayData: Record<string, string> = {
     client: values.clientName ?? "",
     ruta: values.ruta,
-    bookingDr: values.bookingDr,
+    bookingDr: values.bookingDr ?? "",
     pickupLocation: values.pickupLocation,
     dropOffs: getDropOffsString(),
     noOfDrops: values.noOfDrops?.toString() || "",

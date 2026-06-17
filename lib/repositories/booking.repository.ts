@@ -11,14 +11,17 @@ import { bookingDrops, NewBookingDrop } from "../db/schema/bookingDrops";
 import { bookingToHelpers } from "../db/schema/bookingHelpers";
 import { tripOdoDetails } from "../db/schema/tripOdo";
 import { tripExpenses } from "../db/schema/tripExpense";
-import IBookingRepository from "./booking.repository.interface";
 
 
-export const makeBookingRepository = (database = db): IBookingRepository => {
+export const makeBookingRepository = (database = db) => {
   return {
-    getAll: async function (deliveryStatus?: string): Promise<BookingWithRelations[]> {
+    getAll: async function (
+      deliveryStatus?: string,
+    ): Promise<BookingWithRelations[]> {
       const bookings = await database.query.booking.findMany({
-        where: deliveryStatus ? eq(booking.deliveryStatus, deliveryStatus) : undefined,
+        where: deliveryStatus
+          ? eq(booking.deliveryStatus, deliveryStatus)
+          : undefined,
         with: {
           drops: true,
           helpers: {
@@ -293,6 +296,28 @@ export const makeBookingRepository = (database = db): IBookingRepository => {
   };
 };
 
+export async function updateTripDetails(data: UpdateTripMonitoringInput) {
+  // DB uses timestamp, form gives "HH:mm" — combine with pickup date
+  const toTs = (time?: string): Date | null => {
+    if (!time || !data.pickupDate) return null;
+    const d = new Date(`${data.pickupDate}T${time}:00`);
+    return isNaN(d.getTime()) ? null : d;
+  };
+
+  return db
+    .update(booking)
+    .set({
+      pickupArrivalTime: toTs(data.arrivalPickup),
+      loadingStartTime: toTs(data.loadingStart),
+      loadingEndTime: toTs(data.loadingEnd),
+      pickupDepartureTime: toTs(data.departurePickup),
+      finishedDeliveryTime: toTs(data.finishDelivery),
+      deliveryStatus: data.deliveryStatus,
+      tripRemarks: data.tripRemarks ?? null,
+      PODLink: data.PODLink ?? null,
+      bookingDRNo: data.bookingDRNo || undefined,
+    })
+    .where(eq(booking.id, data.id));
+}
+
 export const bookingRepository = makeBookingRepository();
-
-
