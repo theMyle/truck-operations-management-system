@@ -43,6 +43,13 @@
       "when": 1781696835770,
       "tag": "0005_slim_red_shift",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1781749932857,
+      "tag": "0008_short_black_queen",
+      "breakpoints": true
     }
   ]
 }
