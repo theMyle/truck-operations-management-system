@@ -1,5 +1,5 @@
 {
-  "id": "1e36e39d-40a2-46ac-b498-805551b79be4",
+  "id": "d533a48e-b476-4a20-829a-645ff7cde265",
   "prevId": "be52891a-29e4-409b-8aa3-0363a0f864b5",
   "version": "7",
   "dialect": "postgresql",
@@ -162,6 +162,12 @@
           "type": "text",
           "primaryKey": false,
           "notNull": true
+        },
+        "rate": {
+          "name": "rate",
+          "type": "numeric(10, 2)",
+          "primaryKey": false,
+          "notNull": false
         },
         "created_at": {
           "name": "created_at",

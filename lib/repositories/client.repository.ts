@@ -8,7 +8,7 @@ import {
   ClientWithRoutes,
 } from "../db/schema";
 
-export type RouteInput = { route: string };
+export type RouteInput = { route: string, rate?: string };
 
 export const makeClientRepository = (database = db) => {
   return {
