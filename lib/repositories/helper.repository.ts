@@ -1,9 +1,8 @@
 import { eq } from "drizzle-orm";
 import { db } from "../db";
 import { Helper, helpers, NewHelper } from "../db/schema";
-import IHelperRepository from "./helper.repository.interface";
 
-export const makeHelperRepository = (database = db): IHelperRepository => {
+export const makeHelperRepository = (database = db) => {
     return {
         getAll: async function (): Promise<Helper[]> {
             return await database.select().from(helpers);

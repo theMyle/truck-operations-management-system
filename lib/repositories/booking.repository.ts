@@ -1,20 +1,27 @@
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { db } from "../db";
 import {
   booking,
   BookingWithRelations,
   NewBooking,
+  UpdateTripMonitoringInput,
+  UpdateTripDetailsInput,
 } from "../db/schema/booking";
 import { bookingDrops, NewBookingDrop } from "../db/schema/bookingDrops";
 import { bookingToHelpers } from "../db/schema/bookingHelpers";
-import { UpdateTripDetailInput } from "../db/schema/booking";
-import IBookingRepository from "./booking.repository.interface";
+import { tripOdoDetails } from "../db/schema/tripOdo";
+import { tripExpenses } from "../db/schema/tripExpense";
 
-export const makeBookingRepository = (database = db): IBookingRepository => {
+
+export const makeBookingRepository = (database = db) => {
   return {
-    getAll: async function (deliveryStatus?: string): Promise<BookingWithRelations[]> {
+    getAll: async function (
+      deliveryStatus?: string,
+    ): Promise<BookingWithRelations[]> {
       const bookings = await database.query.booking.findMany({
-        where: deliveryStatus ? eq(booking.deliveryStatus, deliveryStatus) : undefined,
+        where: deliveryStatus
+          ? eq(booking.deliveryStatus, deliveryStatus)
+          : undefined,
         with: {
           drops: true,
           helpers: {
@@ -22,13 +29,17 @@ export const makeBookingRepository = (database = db): IBookingRepository => {
               helper: true,
             },
           },
+          odoDetails: true,
+          expenses: true,
         },
       });
 
       return bookings.map((b) => ({
         ...b,
         helpers: b.helpers.map((h) => h.helper),
-      }));
+        odoDetails: (b.odoDetails || []) as any,
+        expenses: (b.expenses || []) as any,
+      })) as unknown as BookingWithRelations[];
     },
 
     add: async function (
@@ -74,6 +85,8 @@ export const makeBookingRepository = (database = db): IBookingRepository => {
                 helper: true,
               },
             },
+            odoDetails: true,
+            expenses: true,
           },
         });
 
@@ -86,9 +99,12 @@ export const makeBookingRepository = (database = db): IBookingRepository => {
         return {
           ...fullBooking,
           helpers: fullBooking.helpers.map((h) => h.helper),
-        };
+          odoDetails: (fullBooking.odoDetails || []) as any,
+          expenses: (fullBooking.expenses || []) as any,
+        } as unknown as BookingWithRelations;
       });
     },
+
     update: async function (
       id: string,
       bookingData: Partial<NewBooking>,
@@ -128,6 +144,8 @@ export const makeBookingRepository = (database = db): IBookingRepository => {
                 helper: true,
               },
             },
+            odoDetails: true,
+            expenses: true,
           },
         });
 
@@ -138,7 +156,130 @@ export const makeBookingRepository = (database = db): IBookingRepository => {
         return {
           ...updatedBooking,
           helpers: updatedBooking.helpers.map((h) => h.helper),
-        };
+          odoDetails: (updatedBooking.odoDetails || []) as any,
+          expenses: (updatedBooking.expenses || []) as any,
+        } as unknown as BookingWithRelations;
+      });
+    },
+
+    updateTripDetails: async function (data: UpdateTripMonitoringInput): Promise<void> {
+      const toTs = (time?: string): Date | null => {
+        if (!time || !data.pickupDate) return null;
+        const d = new Date(`${data.pickupDate}T${time}:00`);
+        return isNaN(d.getTime()) ? null : d;
+      };
+
+      await database
+        .update(booking)
+        .set({
+          pickupArrivalTime: toTs(data.arrivalPickup),
+          loadingStartTime: toTs(data.loadingStart),
+          loadingEndTime: toTs(data.loadingEnd),
+          pickupDepartureTime: toTs(data.departurePickup),
+          finishedDeliveryTime: toTs(data.finishDelivery),
+          deliveryStatus: data.deliveryStatus,
+          tripRemarks: data.tripRemarks ?? null,
+          PODLink: data.PODLink ?? null
+        })
+        .where(eq(booking.id, data.id));
+    },
+
+    updateTripFinanceOdo: async function (data: UpdateTripDetailsInput): Promise<void> {
+      await database.transaction(async (tx) => {
+        // 1. Update budget and rates on booking table
+        await tx
+          .update(booking)
+          .set({
+            budget: data.budget ?? null,
+            budgetFrom: data.budgetFrom ?? null,
+            rfidLoad: data.rfidLoad ?? null,
+            rfidPaymentType: data.rfidPaymentType ?? null,
+            fuel: data.fuel ?? null,
+            fuelPaymentType: data.fuelPaymentType ?? null,
+            customerCollection: data.customerCollection ?? null,
+            cashOnHandReturned: data.cashOnHandReturned ?? null,
+            cashOnHandReturnedTo: data.cashOnHandReturnedTo ?? null,
+            autoCash: data.autoCash ?? false,
+            driverRate: data.driverRate ?? null,
+            helperRate: data.helperRate ?? null,
+          })
+          .where(eq(booking.id, data.id));
+
+        // 2. Sync Odometer Details
+        if (data.odoDetails !== undefined) {
+          const existingOdos = await tx.query.tripOdoDetails.findMany({
+            where: eq(tripOdoDetails.bookingId, data.id),
+          });
+          const existingOdoIds = existingOdos.map((o) => o.id);
+          const incomingOdoIds = data.odoDetails
+            .map((o) => o.id)
+            .filter((id): id is string => !!id);
+
+          const odosToDelete = existingOdoIds.filter((id) => !incomingOdoIds.includes(id));
+          if (odosToDelete.length > 0) {
+            await tx
+              .delete(tripOdoDetails)
+              .where(inArray(tripOdoDetails.id, odosToDelete));
+          }
+
+          for (const odo of data.odoDetails) {
+            if (odo.id) {
+              await tx
+                .update(tripOdoDetails)
+                .set({
+                  tripIndex: odo.tripIndex,
+                  odoStart: odo.odoStart,
+                  odoEnd: odo.odoEnd,
+                })
+                .where(eq(tripOdoDetails.id, odo.id));
+            } else {
+              await tx.insert(tripOdoDetails).values({
+                bookingId: data.id,
+                tripIndex: odo.tripIndex,
+                odoStart: odo.odoStart,
+                odoEnd: odo.odoEnd,
+              });
+            }
+          }
+        }
+
+        // 3. Sync Expenses
+        if (data.expenses !== undefined) {
+          const existingExpenses = await tx.query.tripExpenses.findMany({
+            where: eq(tripExpenses.bookingId, data.id),
+          });
+          const existingExpenseIds = existingExpenses.map((e) => e.id);
+          const incomingExpenseIds = data.expenses
+            .map((e) => e.id)
+            .filter((id): id is string => !!id);
+
+          const expensesToDelete = existingExpenseIds.filter((id) => !incomingExpenseIds.includes(id));
+          if (expensesToDelete.length > 0) {
+            await tx
+              .delete(tripExpenses)
+              .where(inArray(tripExpenses.id, expensesToDelete));
+          }
+
+          for (const exp of data.expenses) {
+            if (exp.id) {
+              await tx
+                .update(tripExpenses)
+                .set({
+                  entryIndex: exp.entryIndex,
+                  expenseType: exp.expenseType,
+                  amount: exp.amount,
+                })
+                .where(eq(tripExpenses.id, exp.id));
+            } else {
+              await tx.insert(tripExpenses).values({
+                bookingId: data.id,
+                entryIndex: exp.entryIndex,
+                expenseType: exp.expenseType,
+                amount: exp.amount,
+              });
+            }
+          }
+        }
       });
     },
 
@@ -155,7 +296,7 @@ export const makeBookingRepository = (database = db): IBookingRepository => {
   };
 };
 
-export async function updateTripDetails(data: UpdateTripDetailInput) {
+export async function updateTripDetails(data: UpdateTripMonitoringInput) {
   // DB uses timestamp, form gives "HH:mm" — combine with pickup date
   const toTs = (time?: string): Date | null => {
     if (!time || !data.pickupDate) return null;
@@ -173,7 +314,8 @@ export async function updateTripDetails(data: UpdateTripDetailInput) {
       finishedDeliveryTime: toTs(data.finishDelivery),
       deliveryStatus: data.deliveryStatus,
       tripRemarks: data.tripRemarks ?? null,
-      PODLink: data.PODLink ?? null
+      PODLink: data.PODLink ?? null,
+      bookingDRNo: data.bookingDRNo || undefined,
     })
     .where(eq(booking.id, data.id));
 }

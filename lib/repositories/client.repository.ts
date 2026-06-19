@@ -7,9 +7,10 @@ import {
   NewClient,
   ClientWithRoutes,
 } from "../db/schema";
-import IClientRepository, { RouteInput } from "./client.repository.interface";
 
-export const makeClientRepository = (database = db): IClientRepository => {
+export type RouteInput = { route: string };
+
+export const makeClientRepository = (database = db) => {
   return {
     getAll: async function (): Promise<ClientWithRoutes[]> {
       // switch from .select() to relational query to pull routes in one shot

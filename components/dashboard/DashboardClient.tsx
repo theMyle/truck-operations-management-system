@@ -127,7 +127,7 @@ export default function DashboardClient({ fleetCounts, truckList, dailyOperation
             <WeeklyOperationsTable data={weeklyOperations} />
           </Box>
           <Box style={{ flex: 1 }}>
-            <MonthlyOperationsTable month="January" data={monthlyOperations} />
+            <MonthlyOperationsTable year={new Date().getFullYear()} data={monthlyOperations} />
           </Box>
         </Flex>
       </Stack>

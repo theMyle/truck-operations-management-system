@@ -21,7 +21,7 @@ import { useDispatchPrint } from "@/app/hooks/useDispatchPrint";
 import {
   deleteBookingAction,
   getAllBookingAction,
-  updateTripDetailsAction,
+  updateTripMonitoringAction,
 } from "@/lib/actions/booking";
 import { formatTime12Hour, formatTimeHHMM } from "@/lib/utils/stringFormat";
 import { BookingModuleSkeleton } from "@/components/ui/ModuleSkeletons";
@@ -207,7 +207,7 @@ export default function BookingRecordsPage() {
   ) => {
     const source = records.find((r) => r.id === id);
 
-    const result = await updateTripDetailsAction({
+    const result = await updateTripMonitoringAction({
       id: String(id),
       pickupDate: source?.pickUpDate ?? "",
       arrivalPickup: form.arrivalPickup || undefined,
@@ -218,6 +218,7 @@ export default function BookingRecordsPage() {
       deliveryStatus: form.deliveryStatus,
       tripRemarks: form.tripRemarks || undefined,
       PODLink: form.podFileUrl || undefined,
+      bookingDRNo: form.bookingDRNo || undefined,
     });
 
     if (result?.serverError) {
@@ -246,10 +247,11 @@ export default function BookingRecordsPage() {
     notifications.show({
       title:
         form.deliveryStatus === "Completed" ? "Trip completed" : "Trip updated",
-      message: `Record #${id} → ${form.deliveryStatus}.`,
+      message: `Record # ${id} → ${form.deliveryStatus}.`,
       color: form.deliveryStatus === "Completed" ? "green" : "blue",
     });
   };
+
   if (isLoading) return <BookingModuleSkeleton />;
 
   return (
