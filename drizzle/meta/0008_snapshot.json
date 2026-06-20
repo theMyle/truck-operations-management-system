@@ -1,6 +1,6 @@
 {
-  "id": "3cc4555f-ee0e-47fb-b79b-2f362a6ce6a6",
-  "prevId": "ec9c99b1-e3bd-49b6-ac0e-c8a49be2f8a5",
+  "id": "d533a48e-b476-4a20-829a-645ff7cde265",
+  "prevId": "be52891a-29e4-409b-8aa3-0363a0f864b5",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -62,12 +62,12 @@
           "default": "now()"
         }
       },
-      "indexes": { },
-      "foreignKeys": { },
-      "compositePrimaryKeys": { },
-      "uniqueConstraints": { },
-      "policies": { },
-      "checkConstraints": { },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
       "isRLSEnabled": false
     },
     "public.drivers": {
@@ -132,12 +132,12 @@
           "default": "now()"
         }
       },
-      "indexes": { },
-      "foreignKeys": { },
-      "compositePrimaryKeys": { },
-      "uniqueConstraints": { },
-      "policies": { },
-      "checkConstraints": { },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
       "isRLSEnabled": false
     },
     "public.client_routes": {
@@ -163,6 +163,12 @@
           "primaryKey": false,
           "notNull": true
         },
+        "rate": {
+          "name": "rate",
+          "type": "numeric(10, 2)",
+          "primaryKey": false,
+          "notNull": false
+        },
         "created_at": {
           "name": "created_at",
           "type": "timestamp",
@@ -178,7 +184,7 @@
           "default": "now()"
         }
       },
-      "indexes": { },
+      "indexes": {},
       "foreignKeys": {
         "client_routes_client_id_clients_id_fk": {
           "name": "client_routes_client_id_clients_id_fk",
@@ -194,10 +200,10 @@
           "onUpdate": "no action"
         }
       },
-      "compositePrimaryKeys": { },
-      "uniqueConstraints": { },
-      "policies": { },
-      "checkConstraints": { },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
       "isRLSEnabled": false
     },
     "public.clients": {
@@ -210,12 +216,6 @@
           "primaryKey": true,
           "notNull": true,
           "default": "gen_random_uuid()"
-        },
-        "client_rate": {
-          "name": "client_rate",
-          "type": "numeric(10, 2)",
-          "primaryKey": false,
-          "notNull": false
         },
         "client_name": {
           "name": "client_name",
@@ -245,12 +245,12 @@
           "default": "now()"
         }
       },
-      "indexes": { },
-      "foreignKeys": { },
-      "compositePrimaryKeys": { },
-      "uniqueConstraints": { },
-      "policies": { },
-      "checkConstraints": { },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
       "isRLSEnabled": false
     },
     "public.helpers": {
@@ -315,12 +315,12 @@
           "default": "now()"
         }
       },
-      "indexes": { },
-      "foreignKeys": { },
-      "compositePrimaryKeys": { },
-      "uniqueConstraints": { },
-      "policies": { },
-      "checkConstraints": { },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
       "isRLSEnabled": false
     },
     "public.dispatch": {
@@ -471,7 +471,7 @@
           "default": "now()"
         }
       },
-      "indexes": { },
+      "indexes": {},
       "foreignKeys": {
         "dispatch_client_id_clients_id_fk": {
           "name": "dispatch_client_id_clients_id_fk",
@@ -513,10 +513,10 @@
           "onUpdate": "no action"
         }
       },
-      "compositePrimaryKeys": { },
-      "uniqueConstraints": { },
-      "policies": { },
-      "checkConstraints": { },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
       "isRLSEnabled": false
     },
     "public.booking": {
@@ -762,7 +762,7 @@
           "notNull": false
         }
       },
-      "indexes": { },
+      "indexes": {},
       "foreignKeys": {
         "booking_clientId_clients_id_fk": {
           "name": "booking_clientId_clients_id_fk",
@@ -804,7 +804,7 @@
           "onUpdate": "no action"
         }
       },
-      "compositePrimaryKeys": { },
+      "compositePrimaryKeys": {},
       "uniqueConstraints": {
         "booking_displayBookingNo_unique": {
           "name": "booking_displayBookingNo_unique",
@@ -814,8 +814,8 @@
           ]
         }
       },
-      "policies": { },
-      "checkConstraints": { },
+      "policies": {},
+      "checkConstraints": {},
       "isRLSEnabled": false
     },
     "public.bookingDrops": {
@@ -848,7 +848,7 @@
           "notNull": true
         }
       },
-      "indexes": { },
+      "indexes": {},
       "foreignKeys": {
         "bookingDrops_bookingId_booking_id_fk": {
           "name": "bookingDrops_bookingId_booking_id_fk",
@@ -864,10 +864,10 @@
           "onUpdate": "no action"
         }
       },
-      "compositePrimaryKeys": { },
-      "uniqueConstraints": { },
-      "policies": { },
-      "checkConstraints": { },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
       "isRLSEnabled": false
     },
     "public.bookingsToHelpers": {
@@ -887,7 +887,7 @@
           "notNull": true
         }
       },
-      "indexes": { },
+      "indexes": {},
       "foreignKeys": {
         "bookingsToHelpers_bookingId_booking_id_fk": {
           "name": "bookingsToHelpers_bookingId_booking_id_fk",
@@ -925,9 +925,125 @@
           ]
         }
       },
-      "uniqueConstraints": { },
-      "policies": { },
-      "checkConstraints": { },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.tripOdoDetails": {
+      "name": "tripOdoDetails",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "bookingId": {
+          "name": "bookingId",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "tripIndex": {
+          "name": "tripIndex",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "odoStart": {
+          "name": "odoStart",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "odoEnd": {
+          "name": "odoEnd",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "tripOdoDetails_bookingId_booking_id_fk": {
+          "name": "tripOdoDetails_bookingId_booking_id_fk",
+          "tableFrom": "tripOdoDetails",
+          "tableTo": "booking",
+          "columnsFrom": [
+            "bookingId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.tripExpenses": {
+      "name": "tripExpenses",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "bookingId": {
+          "name": "bookingId",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "entryIndex": {
+          "name": "entryIndex",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "expenseType": {
+          "name": "expenseType",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "amount": {
+          "name": "amount",
+          "type": "numeric(10, 2)",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "tripExpenses_bookingId_booking_id_fk": {
+          "name": "tripExpenses_bookingId_booking_id_fk",
+          "tableFrom": "tripExpenses",
+          "tableTo": "booking",
+          "columnsFrom": [
+            "bookingId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
       "isRLSEnabled": false
     }
   },
@@ -953,14 +1069,14 @@
       ]
     }
   },
-  "schemas": { },
-  "sequences": { },
-  "roles": { },
-  "policies": { },
-  "views": { },
+  "schemas": {},
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "views": {},
   "_meta": {
-    "columns": { },
-    "schemas": { },
-    "tables": { }
+    "columns": {},
+    "schemas": {},
+    "tables": {}
   }
 }

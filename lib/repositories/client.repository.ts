@@ -8,7 +8,7 @@ import {
   ClientWithRoutes,
 } from "../db/schema";
 
-export type RouteInput = { route: string };
+export type RouteInput = { route: string, rate?: string };
 
 export const makeClientRepository = (database = db) => {
   return {
@@ -38,7 +38,11 @@ export const makeClientRepository = (database = db) => {
           await tx
             .insert(clientRoutes)
             .values(
-              routes.map((r) => ({ clientId: newClient.id, route: r.route })),
+              routes.map((r) => ({
+                clientId: newClient.id,
+                route: r.route,
+                rate: r.rate ?? null,
+              })),
             );
         }
 
@@ -67,7 +71,13 @@ export const makeClientRepository = (database = db) => {
           if (routes.length > 0) {
             await tx
               .insert(clientRoutes)
-              .values(routes.map((r) => ({ clientId: id, route: r.route })));
+              .values(
+                routes.map((r) => ({
+                  clientId: id,
+                  route: r.route,
+                  rate: r.rate ?? null,
+                })),
+              );
           }
         }
 

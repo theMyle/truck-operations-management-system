@@ -1,12 +1,17 @@
-import { z } from "zod"
-import { relations, } from "drizzle-orm";
-import { pgTable, text, timestamp, decimal, uuid, boolean } from "drizzle-orm/pg-core";
+import { z } from "zod";
+import { relations } from "drizzle-orm";
+import {
+  pgTable,
+  text,
+  timestamp,
+  decimal,
+  uuid,
+  boolean,
+} from "drizzle-orm/pg-core";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
-
 
 export const clients = pgTable("clients", {
   id: uuid("id").primaryKey().defaultRandom(),
-  rate: decimal("client_rate", { precision: 10, scale: 2 }),
   clientName: text("client_name").notNull(),
   hasFixedRoutes: boolean("has_fixed_routes").notNull().default(false),
   createdAt: timestamp("created_at").notNull().defaultNow(),
@@ -21,7 +26,7 @@ export const clientRoutes = pgTable("client_routes", {
     .references(() => clients.id, { onDelete: "cascade" }),
 
   route: text("route").notNull(),
-  // rate: decimal("rate", { precision: 10, scale: 2 }).notNull(),
+  rate: decimal("rate", { precision: 10, scale: 2 }),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });

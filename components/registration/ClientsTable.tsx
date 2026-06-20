@@ -12,6 +12,7 @@ import type { ClientWithRoutes } from "@/lib/db/schema/clients";
 import { deleteClientAction } from "@/lib/actions/clients";
 import { TableHeader } from "./TableHeader";
 import { ClientModal } from "./ClientModal";
+import { ViewClientModal } from "./ViewClientModal";
 
 interface Props {
   data: ClientWithRoutes[];
@@ -22,7 +23,8 @@ const UNIFORM_TABLE_HEIGHT = "21rem";
 
 export function ClientsTable({ data }: Props) {
   const [addOpened, { open: openAdd, close: closeAdd }] = useDisclosure(false);
-  const [editClient, setEditClient] = useState<ClientWithRoutes| null>(null);
+  const [editClient, setEditClient] = useState<ClientWithRoutes | null>(null);
+  const [viewClient, setViewClient] = useState<ClientWithRoutes | null>(null);
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
 
@@ -75,6 +77,11 @@ export function ClientsTable({ data }: Props) {
         onClose={() => setEditClient(null)}
         client={editClient}
       />
+      <ViewClientModal
+        opened={!!viewClient}
+        onClose={() => setViewClient(null)}
+        client={viewClient}
+      />
 
       <TableHeader
         icon={IconUsers}
@@ -89,6 +96,7 @@ export function ClientsTable({ data }: Props) {
           setPage(1);
         }}
       />
+
       <Box style={{ flex: 1 }}>
         <DataTable
           height={UNIFORM_TABLE_HEIGHT}
@@ -121,7 +129,7 @@ export function ClientsTable({ data }: Props) {
             {
               accessor: "actions",
               title: "",
-              width: 72,
+              width: 96,
               titleStyle: {
                 background: "var(--mantine-color-gray-0)",
                 borderRight: "1px solid var(--mantine-color-gray-2)",
@@ -132,6 +140,7 @@ export function ClientsTable({ data }: Props) {
               }),
               render: (row) => (
                 <TableRowActions
+                  onView={() => setViewClient(row)}
                   onEdit={() => setEditClient(row)}
                   onDelete={() => openDeleteConfirm(row)}
                 />
@@ -161,15 +170,19 @@ export function ClientsTable({ data }: Props) {
                 ),
             },
             {
-              accessor: "rate",
-              title: "Client Rate",
+              accessor: "routes",
+              title: "Routes",
               render: (row) =>
-                row.rate
-                  ? `₱ ${Number(row.rate).toLocaleString(undefined, {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2,
-                    })}`
-                  : "-",
+                row.routes.length === 0 ? (
+                  <Text size="xs" c="dimmed">
+                    —
+                  </Text>
+                ) : (
+                  <Badge size="sm" variant="light" color="violet">
+                    {row.routes.length}{" "}
+                    {row.routes.length === 1 ? "route" : "routes"}
+                  </Badge>
+                ),
             },
           ]}
         />

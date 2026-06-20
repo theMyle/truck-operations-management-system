@@ -1,6 +1,14 @@
 "use client";
 
-import { Grid, Stack, Select, NumberInput, Autocomplete, Divider, Alert } from "@mantine/core";
+import {
+  Grid,
+  Stack,
+  Select,
+  NumberInput,
+  Autocomplete,
+  Divider,
+  Alert,
+} from "@mantine/core";
 import { UseFormReturnType } from "@mantine/form";
 import { ClientWithRoutes } from "@/lib/db/schema";
 import { DispatchFormValues } from "@/types/dispatch";
@@ -35,7 +43,6 @@ export function ClientSection({
                 form.setFieldValue("clientName", val);
                 const client =
                   clients.find((c) => c.clientName === val) ?? null;
-                form.setFieldValue("clientRate", client?.rate ?? "");
 
                 const routes = client?.routes ?? [];
                 if (routes.length === 1) {
@@ -70,14 +77,19 @@ export function ClientSection({
             <Autocomplete
               label="Ruta"
               placeholder={
-                clientRoutes.length > 0
-                  ? "Select a route"
-                  : "Type a route"
+                clientRoutes.length > 0 ? "Select a route" : "Type a route"
               }
               data={clientRoutes.map((r) => r.route)}
               styles={inputStyles}
               disabled={!form.values.clientName}
               {...form.getInputProps("ruta")}
+              onChange={(val) => {
+                form.setFieldValue("ruta", val);
+                const matched = clientRoutes.find((r) => r.route === val);
+                if (matched) {
+                  form.setFieldValue("clientRate", matched.rate ?? "");
+                }
+              }}
             />
 
             {selectedClient && clientRoutes.length > 1 && !form.values.ruta && (

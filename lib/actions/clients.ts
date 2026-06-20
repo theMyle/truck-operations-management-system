@@ -14,7 +14,9 @@ const clientInputSchema = insertClientSchema
   })
   .extend({
     routes: z
-      .array(z.object({ route: z.string().min(1) }))
+      .array(
+        z.object({ route: z.string().min(1), rate: z.string().optional() }),
+      )
       .default([]),
   });
 
@@ -27,9 +29,13 @@ export const createClientAction = actionClient
   .action(async ({ parsedInput }) => {
     const { routes, ...clientData } = parsedInput;
 
-    const existingClient = await clientRepository.getByName(clientData.clientName);
+    const existingClient = await clientRepository.getByName(
+      clientData.clientName,
+    );
     if (existingClient) {
-      throw new Error(`A client with the name "${clientData.clientName}" already exists.`);
+      throw new Error(
+        `A client with the name "${clientData.clientName}" already exists.`,
+      );
     }
 
     const newClient = await clientRepository.add(clientData, routes ?? []);
