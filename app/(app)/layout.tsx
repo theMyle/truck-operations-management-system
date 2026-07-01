@@ -19,9 +19,6 @@ import {
   IconDashboard,
   IconSend,
   IconReceipt2,
-  IconLogout,
-  IconSettings,
-  IconChevronUp,
   IconRoute,
   IconLayoutSidebarLeftCollapse,
   IconLayoutSidebarLeftExpand,
@@ -31,10 +28,11 @@ import {
 } from "@tabler/icons-react";
 import Image from "next/image";
 import LOGO from "../assets/logo.png";
-import { useClerk, useUser } from "@clerk/nextjs";
+import { useUser } from "@clerk/nextjs";
 import { usePathname } from "next/navigation";
 import { DispatchProvider } from "./context/dispatch-context";
-import { toTitleCase } from "@/lib/utils/stringFormat";
+import { SidebarNav } from "../../components/SidebarNav";
+import { UserCard } from "../../components/UserCard";
 
 interface NavItem {
   label: string
@@ -48,7 +46,6 @@ export default function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { signOut } = useClerk();
   const { user, isLoaded } = useUser();
   const [mobileOpened, { toggle: toggleMobile }] = useDisclosure();
   const [desktopOpened, { toggle: toggleDesktop }] = useDisclosure(true);
@@ -81,11 +78,34 @@ export default function DashboardLayout({
       label: "Registration", icon: IconUserPlus, href: "/registration",
       allowedRoles: ["admin"]
     },
+    {
+      label: "Accounts", icon: IconUserPlus, href: "/accounts",
+      allowedRoles: ["admin"]
+    },
   ];
 
   const visibleNavItems = navItems.filter((item) => {
     return item.allowedRoles?.includes(userRole);
   })
+
+  const navSections = [
+    {
+      title: "Overview",
+      items: visibleNavItems.filter(item => ["/dashboard"].includes(item.href))
+    },
+    {
+      title: "Operations",
+      items: visibleNavItems.filter(item => ["/dispatch", "/booking", "/trip-logs"].includes(item.href))
+    },
+    {
+      title: "Finance",
+      items: visibleNavItems.filter(item => ["/billing"].includes(item.href))
+    },
+    {
+      title: "Management",
+      items: visibleNavItems.filter(item => ["/registration", "/accounts"].includes(item.href))
+    }
+  ].filter(section => section.items.length > 0);
 
   if (!isLoaded) return null;
 
@@ -155,88 +175,27 @@ export default function DashboardLayout({
 
         <AppShell.Navbar p="xs">
           <AppShell.Section grow mt="xs">
-            <Stack gap={2}>
-              {visibleNavItems.map((item) => {
-                const isActive = pathname === item.href;
-                return (
-                  <NavLink
-                    key={item.href}
-                    component={Link}
-                    label={
-                      <Text size="xs" fw={500}>
-                        {item.label}
-                      </Text>
-                    }
-                    leftSection={<item.icon size={14} stroke={2} />}
-                    active={isActive}
-                    variant={isActive ? "filled" : "subtle"}
-                    color={isActive ? "blue.6" : undefined}
-                    c={isActive ? undefined : "gray.7"}
-                    href={item.href}
-                  />
-                );
-              })}
-            </Stack>
+
+            {/* Nav Component */}
+            <SidebarNav sections={navSections} pathname={pathname} />
+
           </AppShell.Section>
 
           <AppShell.Section
             p="xs"
             style={{ borderTop: "1px solid var(--mantine-color-gray-2)" }}
           >
-            <Menu
-              position="right-end"
-              shadow="md"
-              width={180}
-              transitionProps={{ transition: "pop-bottom-left" }}
-            >
-              <Menu.Target>
-                <UnstyledButton
-                  p="xs"
-                  className="hover:bg-gray-100 w-full rounded-md transition-colors"
-                >
-                  <Group gap="xs">
-                    <Avatar radius="xl" size="xs" color="blue">
-                      A
-                    </Avatar>
-                    <Box style={{ flex: 1 }}>
-                      <Text fw={600} style={{ fontSize: "11px" }}>
-                        {user?.firstName}
-                      </Text>
-                      <Text style={{ fontSize: "9px" }} c="dimmed">
-                        {toTitleCase(userRole)}
-                      </Text>
-                    </Box>
-                    <IconChevronUp size={12} className="text-gray-400" />
-                  </Group>
-                </UnstyledButton>
-              </Menu.Target>
 
-              <Menu.Dropdown>
-                <Menu.Label style={{ fontSize: "9px" }}>Application</Menu.Label>
-                <Menu.Item
-                  leftSection={<IconSettings size={12} />}
-                  style={{ fontSize: "11px" }}
-                >
-                  Settings
-                </Menu.Item>
+            {/* User Card */}
+            <UserCard user={user} userRole={userRole} />
 
-                <Menu.Divider />
-
-                <Menu.Label style={{ fontSize: "9px" }}>Session</Menu.Label>
-                <Menu.Item
-                  color="red"
-                  leftSection={<IconLogout size={12} />}
-                  style={{ fontSize: "11px" }}
-                  onClick={() => signOut({ redirectUrl: "/" })}
-                >
-                  Logout
-                </Menu.Item>
-              </Menu.Dropdown>
-            </Menu>
           </AppShell.Section>
         </AppShell.Navbar>
 
-        <AppShell.Main bg="gray.0">{children}</AppShell.Main>
+        <AppShell.Main
+          bg="gray.0"
+          h="100dvh"
+        >{children}</AppShell.Main>
       </AppShell>
     </DispatchProvider>
   );

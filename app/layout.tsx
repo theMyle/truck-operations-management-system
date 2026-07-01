@@ -26,6 +26,7 @@ import {
 } from "@mantine/core";
 import { Notifications } from "@mantine/notifications";
 import { ModalsProvider } from "@mantine/modals";
+import Providers from "./providers";
 
 const theme = createTheme({
   fontFamily: "var(--font-geist-sans), sans-serif",
@@ -50,7 +51,11 @@ export default function RootLayout({
         <ClerkProvider>
           <MantineProvider theme={theme}>
             <Notifications position="top-right" />
-            <ModalsProvider>{children}</ModalsProvider>
+            <ModalsProvider>
+              <Providers>
+                {children}
+              </Providers>
+            </ModalsProvider>
           </MantineProvider>
         </ClerkProvider>
       </body>
