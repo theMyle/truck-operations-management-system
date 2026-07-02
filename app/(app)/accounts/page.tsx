@@ -8,6 +8,11 @@ import { useState, useMemo } from "react";
 import { AccountsToolbar } from "./components/AccountsToolbar";
 import { AccountsTable } from "./components/AccountsTable";
 
+import { CreateUserModal } from "./components/CreateUserModal";
+import { EditUserModal } from "./components/EditUserModal";
+import { DeleteUserModal } from "./components/DeleteUserModal";
+import { User } from "@/types/user";
+
 export default function AccountsPage() {
     const { getToken, isLoaded, isSignedIn, userId } = useAuth();
 
@@ -22,6 +27,11 @@ export default function AccountsPage() {
 
     const [searchTerm, setSearchTerm] = useState("");
     const [roleFilter, setRoleFilter] = useState<string | null>(null);
+
+    // Modal States
+    const [createOpened, setCreateOpened] = useState(false);
+    const [editingUser, setEditingUser] = useState<User | null>(null);
+    const [deletingUser, setDeletingUser] = useState<User | null>(null);
 
     const filteredUsers = useMemo(() => {
         return users.filter((user) => {
@@ -78,6 +88,7 @@ export default function AccountsPage() {
                         color="blue"
                         radius="md"
                         size="xs"
+                        onClick={() => setCreateOpened(true)}
                     >
                         Create User
                     </Button>
@@ -92,10 +103,25 @@ export default function AccountsPage() {
 
                 <AccountsTable
                     users={filteredUsers}
-                    onEdit={() => {}}
-                    onDelete={() => {}}
+                    onEdit={(user) => setEditingUser(user)}
+                    onDelete={(user) => setDeletingUser(user)}
                 />
             </Card>
+
+            <CreateUserModal
+                opened={createOpened}
+                onClose={() => setCreateOpened(false)}
+            />
+
+            <EditUserModal
+                user={editingUser}
+                onClose={() => setEditingUser(null)}
+            />
+
+            <DeleteUserModal
+                user={deletingUser}
+                onClose={() => setDeletingUser(null)}
+            />
         </div>
     );
 }

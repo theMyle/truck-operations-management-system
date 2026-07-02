@@ -9,3 +9,14 @@ export type User = {
     primaryEmailAddress: string
     role: string | null
 }
+
+export type UserRoles = "admin"
+    | "dispatch officer"
+    | "coordinator"
+    | "billing clerk"
+
+export type CreateUserErrorItem = {
+    code: string
+    message: string
+    paramName: string
+}

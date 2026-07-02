@@ -88,7 +88,7 @@ export function AccountsTable({ users, onEdit, onDelete }: AccountsTableProps) {
                                         </Text>
                                     </Stack>
                                 </Table.Td>
-                                
+
                                 <Table.Td style={cellStyle}>
                                     <Text size="sm" c="gray.7" fw={500}>
                                         {user.username ?? "—"}
@@ -124,7 +124,7 @@ export function AccountsTable({ users, onEdit, onDelete }: AccountsTableProps) {
                                             <Menu.Item
                                                 leftSection={<IconTrash size={14} />}
                                                 color="red"
-                                                disabled={user.role?.toLowerCase() === "admin"}
+                                                // disabled={user.role?.toLowerCase() === "admin"}
                                                 onClick={() => onDelete?.(user)}
                                             >
                                                 delete
