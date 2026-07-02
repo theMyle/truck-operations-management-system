@@ -17,6 +17,8 @@ import {
   Tooltip,
   Alert,
   TextInput,
+  Progress,
+  Image,
 } from "@mantine/core";
 import { DispatchRecord } from "@/app/(app)/constant";
 import {
@@ -31,6 +33,7 @@ import {
   IconBan,
   IconCheck,
   IconClock,
+  IconEye,
   IconFileDescription,
   IconRoute,
   IconTrash,
@@ -57,7 +60,6 @@ export interface TripDetailsForm {
   podFileType: string;
   tripRemarks: string;
   bookingDRNo: string;
-
 }
 
 /* ── Constants ── */
@@ -222,21 +224,27 @@ function TimeField({
   );
 }
 
-/* ── POD Upload Field ── */
 function PodUploadField({
   fileName,
+  fileUrl,
+  fileType,
   isUploading,
   onUploadClick,
   onFileChange,
   onClear,
+  onPreview,
 }: {
   fileName: string;
+  fileUrl: string;
+  fileType: string;
   isUploading: boolean;
   onUploadClick: () => void;
   onFileChange: (file: File | null) => void;
   onClear: () => void;
+  onPreview: () => void;
 }) {
   const [isDragging, setIsDragging] = useState(false);
+  const isImage = fileType.startsWith("image/");
 
   const handleDrop = (event: DragEvent<HTMLDivElement>) => {
     event.preventDefault();
@@ -284,17 +292,33 @@ function PodUploadField({
           transition: "border-color 0.15s ease, background-color 0.15s ease",
         }}
       >
-        <Stack align="center" gap={6}>
-          <ThemeIcon color="blue" variant="light" radius="xl" size={30}>
-            <IconUpload size={15} />
-          </ThemeIcon>
-          <Text style={{ fontSize: "11px" }} fw={800} c="blue.7">
-            {isUploading ? "Uploading…" : "Upload File"}
-          </Text>
-          <Text style={{ fontSize: "10px" }} c="dimmed" fw={500}>
-            JPG, PNG or WEBP
-          </Text>
-        </Stack>
+        {isUploading ? (
+          <Stack align="center" gap={8} style={{ width: "65%" }}>
+            <Text style={{ fontSize: "11px" }} fw={800} c="blue.7">
+              Uploading…
+            </Text>
+            <Progress
+              value={100}
+              animated
+              color="blue.5"
+              size={4}
+              radius="xl"
+              style={{ width: "100%" }}
+            />
+          </Stack>
+        ) : (
+          <Stack align="center" gap={6}>
+            <ThemeIcon color="blue" variant="light" radius="xl" size={30}>
+              <IconUpload size={15} />
+            </ThemeIcon>
+            <Text style={{ fontSize: "11px" }} fw={800} c="blue.7">
+              Upload File
+            </Text>
+            <Text style={{ fontSize: "10px" }} c="dimmed" fw={500}>
+              JPG, PNG or WEBP
+            </Text>
+          </Stack>
+        )}
       </Box>
 
       {fileName && (
@@ -311,10 +335,26 @@ function PodUploadField({
           }}
         >
           <Group gap={6} wrap="nowrap" style={{ minWidth: 0 }}>
-            <IconFileDescription
-              size={13}
-              color="var(--mantine-color-blue-6)"
-            />
+            {isImage && fileUrl ? (
+              <Image
+                src={fileUrl}
+                alt={fileName}
+                w={24}
+                h={24}
+                radius={4}
+                fit="cover"
+                style={{ flexShrink: 0, cursor: "pointer" }}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onPreview();
+                }}
+              />
+            ) : (
+              <IconFileDescription
+                size={13}
+                color="var(--mantine-color-blue-6)"
+              />
+            )}
             <Text
               style={{
                 fontSize: "10px",
@@ -327,23 +367,54 @@ function PodUploadField({
             >
               {fileName}
             </Text>
+            {!isUploading && (
+              <ThemeIcon
+                size={13}
+                radius="xl"
+                color="green"
+                variant="light"
+                style={{ flexShrink: 0 }}
+              >
+                <IconCheck size={9} />
+              </ThemeIcon>
+            )}
           </Group>
-          <Tooltip label="Remove POD" withArrow fz={10}>
-            <ActionIcon
-              size="sm"
-              radius="xl"
-              color="blue"
-              variant="filled"
-              aria-label="Remove POD file"
-              disabled={isUploading}
-              onClick={(event) => {
-                event.stopPropagation();
-                onClear();
-              }}
-            >
-              <IconTrash size={12} />
-            </ActionIcon>
-          </Tooltip>
+
+          <Group gap={4} wrap="nowrap">
+            {isImage && fileUrl && !isUploading && (
+              <Tooltip label="Preview POD" withArrow fz={10}>
+                <ActionIcon
+                  size="sm"
+                  radius="xl"
+                  color="gray"
+                  variant="light"
+                  aria-label="Preview POD file"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    onPreview();
+                  }}
+                >
+                  <IconEye size={12} />
+                </ActionIcon>
+              </Tooltip>
+            )}
+            <Tooltip label="Remove POD" withArrow fz={10}>
+              <ActionIcon
+                size="sm"
+                radius="xl"
+                color="blue"
+                variant="filled"
+                aria-label="Remove POD file"
+                disabled={isUploading}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onClear();
+                }}
+              >
+                <IconTrash size={12} />
+              </ActionIcon>
+            </Tooltip>
+          </Group>
         </Group>
       )}
     </Stack>
@@ -376,7 +447,6 @@ export function TripDetailsModal({
       podFileType: record?.podFileType ?? "",
       tripRemarks: record?.tripRemarks ?? "",
       bookingDRNo: record?.bookingDRNo ?? "",
-     
     }),
     [record],
   );
@@ -387,6 +457,7 @@ export function TripDetailsModal({
   const [pendingFile, setPendingFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [previewOpen, setPreviewOpen] = useState(false);
   const podInputRef = useRef<HTMLInputElement>(null);
 
   const set = (key: keyof TripDetailsForm, val: string) =>
@@ -497,240 +568,289 @@ export function TripDetailsModal({
   };
 
   return (
-    <Modal
-      key={record.id}
-      opened={opened}
-      onClose={handleClose}
-      title={
-        <Stack gap={2}>
-          <Group gap={8}>
-            <IconClock size={15} color="var(--mantine-color-blue-6)" />
+    <>
+      <Modal
+        key={record.id}
+        opened={opened}
+        onClose={handleClose}
+        title={
+          <Stack gap={2}>
+            <Group gap={8}>
+              <IconClock size={15} color="var(--mantine-color-blue-6)" />
+              <Text
+                fw={800}
+                style={{ fontSize: "12px" }}
+                tt="uppercase"
+                lts={0.8}
+                c="blue.7"
+              >
+                Delivery Monitoring
+              </Text>
+              <Text fw={600} style={{ fontSize: "12px" }} c="gray.5">
+                #{record.id}
+              </Text>
+            </Group>
+            <Group gap={12} ml={23}>
+              <Group gap={4}>
+                <IconUser size={11} color="var(--mantine-color-gray-5)" />
+                <Text style={{ fontSize: "10px" }} c="dimmed" fw={600}>
+                  {record.driver}
+                </Text>
+              </Group>
+              <Group gap={4}>
+                <IconRoute size={11} color="var(--mantine-color-gray-5)" />
+                <Text style={{ fontSize: "10px" }} c="dimmed" fw={600}>
+                  {record.ruta}
+                </Text>
+              </Group>
+            </Group>
+          </Stack>
+        }
+        size="lg"
+        radius="md"
+        centered
+      >
+        <Stack gap="md">
+          <Paper
+            withBorder
+            radius="md"
+            p="md"
+            style={{ backgroundColor: "var(--mantine-color-gray-0)" }}
+          >
             <Text
               fw={800}
-              style={{ fontSize: "12px" }}
+              style={{ fontSize: "9px" }}
               tt="uppercase"
-              lts={0.8}
-              c="blue.7"
+              lts={1}
+              c="blue.6"
+              mb="sm"
             >
-              Delivery Monitoring
+              Timeline
             </Text>
-            <Text fw={600} style={{ fontSize: "12px" }} c="gray.5">
-              #{record.id}
+            <SimpleGrid cols={2} spacing="sm" verticalSpacing="sm">
+              <TimeField
+                label="Arrival at Pick Up"
+                value={form.arrivalPickup}
+                onChange={(v) => set("arrivalPickup", v)}
+              />
+              <TimeField
+                label="Loading Start"
+                value={form.loadingStart}
+                onChange={(v) => set("loadingStart", v)}
+              />
+              <TimeField
+                label="Loading End"
+                value={form.loadingEnd}
+                onChange={(v) => set("loadingEnd", v)}
+              />
+              <TimeField
+                label="Departure from Pick Up"
+                value={form.departurePickup}
+                onChange={(v) => set("departurePickup", v)}
+              />
+            </SimpleGrid>
+            <Divider mt="10px" mb="10px" />
+            <TimeField
+              label="Finish Delivery Time"
+              value={form.finishDelivery}
+              onChange={(v) => set("finishDelivery", v)}
+            />
+          </Paper>
+          <Paper
+            withBorder
+            radius="md"
+            p="md"
+            style={{ background: "var(--mantine-color-gray-0)" }}
+          >
+            <Text
+              fw={800}
+              style={{ fontSize: "9px" }}
+              tt="uppercase"
+              lts={1}
+              c="blue.6"
+              mb="sm"
+            >
+              Booking DR / #
             </Text>
-          </Group>
-          <Group gap={12} ml={23}>
-            <Group gap={4}>
-              <IconUser size={11} color="var(--mantine-color-gray-5)" />
-              <Text style={{ fontSize: "10px" }} c="dimmed" fw={600}>
-                {record.driver}
-              </Text>
-            </Group>
-            <Group gap={4}>
-              <IconRoute size={11} color="var(--mantine-color-gray-5)" />
-              <Text style={{ fontSize: "10px" }} c="dimmed" fw={600}>
-                {record.ruta}
-              </Text>
-            </Group>
+            <TextInput
+              placeholder="Enter booking DR / #"
+              style={{ inputStyles }}
+              value={form.bookingDRNo}
+              onChange={(e) => set("bookingDRNo", e.currentTarget.value)}
+            />
+          </Paper>
+          <Paper
+            withBorder
+            radius="md"
+            p="md"
+            style={{ backgroundColor: "var(--mantine-color-gray-0)" }}
+          >
+            <Text
+              fw={800}
+              style={{ fontSize: "9px" }}
+              tt="uppercase"
+              lts={1}
+              c="blue.6"
+              mb="sm"
+            >
+              Delivery Outcome
+            </Text>
+            <Select
+              label="Delivery Status"
+              placeholder="Select a status..."
+              data={DELIVERY_STATUS_OPTIONS}
+              value={form.deliveryStatus || null}
+              onChange={(val) => set("deliveryStatus", val ?? "")}
+              renderOption={({ option }) => {
+                const meta = STATUS_META[option.value];
+                return (
+                  <Group gap={8} wrap="nowrap">
+                    <ThemeIcon
+                      size={20}
+                      radius="xl"
+                      variant="light"
+                      color={meta.color}
+                    >
+                      {meta.icon}
+                    </ThemeIcon>
+                    <Text style={{ fontSize: "12px" }} fw={600}>
+                      {option.label}
+                    </Text>
+                  </Group>
+                );
+              }}
+              styles={{
+                label: { fontSize: "11px", fontWeight: 600 },
+                input: {
+                  fontSize: "12px",
+                  fontWeight: 700,
+                  borderColor: form.deliveryStatus
+                    ? `var(--mantine-color-${STATUS_META[form.deliveryStatus]?.color}-4)`
+                    : undefined,
+                  color: form.deliveryStatus
+                    ? `var(--mantine-color-${STATUS_META[form.deliveryStatus]?.color}-7)`
+                    : undefined,
+                },
+              }}
+              radius="md"
+            />
+            <input
+              ref={podInputRef}
+              type="file"
+              accept="image/png,image/jpeg,image/webp"
+              onChange={handlePodInputChange}
+              style={{ display: "none" }}
+            />
+            <PodUploadField
+              fileName={form.podFile}
+              fileUrl={form.podFileUrl}
+              fileType={form.podFileType}
+              isUploading={isUploading}
+              onUploadClick={() => podInputRef.current?.click()}
+              onFileChange={handlePodChange}
+              onClear={() => handlePodChange(null)}
+              onPreview={() => setPreviewOpen(true)}
+            />
+
+            {/* Upload error inline — user stays on modal to retry */}
+            {uploadError && (
+              <Alert
+                color="red"
+                mt="xs"
+                radius="md"
+                styles={{ message: { fontSize: "11px" } }}
+              >
+                {uploadError}
+              </Alert>
+            )}
+
+            <Textarea
+              label="Trip Remarks"
+              placeholder="Any notes about this trip..."
+              value={form.tripRemarks}
+              onChange={(e) => set("tripRemarks", e.currentTarget.value)}
+              minRows={3}
+              mt="sm"
+              styles={{ label: { fontSize: "11px", fontWeight: 600 } }}
+              radius="md"
+            />
+          </Paper>
+
+          <Divider />
+
+          <Group justify="flex-end" gap="sm">
+            <Button
+              variant="light"
+              color="gray"
+              disabled={isUploading}
+              styles={{
+                root: { height: 34 },
+                label: { fontSize: "11px", fontWeight: 700 },
+              }}
+              onClick={handleClose}
+            >
+              Cancel
+            </Button>
+            <Button
+              color="blue.6"
+              leftSection={<IconTruckDelivery size={14} />}
+              disabled={!isFormValid || isUploading}
+              loading={isUploading}
+              styles={{
+                root: { height: 34 },
+                label: { fontSize: "11px", fontWeight: 700 },
+              }}
+              onClick={handleSave}
+            >
+              {isUploading ? "Saving…" : "Save Trip Details"}
+            </Button>
           </Group>
         </Stack>
-      }
-      size="lg"
-      radius="md"
-      centered
-    >
-      <Stack gap="md">
-        <Paper
-          withBorder
-          radius="md"
-          p="md"
-          style={{ backgroundColor: "var(--mantine-color-gray-0)" }}
-        >
+      </Modal>
+
+      <Modal
+        opened={previewOpen}
+        onClose={() => setPreviewOpen(false)}
+        title={
           <Text
             fw={800}
-            style={{ fontSize: "9px" }}
+            style={{ fontSize: "12px" }}
             tt="uppercase"
-            lts={1}
-            c="blue.6"
-            mb="sm"
+            lts={0.8}
+            c="blue.7"
           >
-            Timeline
+            POD Preview
           </Text>
-          <SimpleGrid cols={2} spacing="sm" verticalSpacing="sm">
-            <TimeField
-              label="Arrival at Pick Up"
-              value={form.arrivalPickup}
-              onChange={(v) => set("arrivalPickup", v)}
-            />
-            <TimeField
-              label="Loading Start"
-              value={form.loadingStart}
-              onChange={(v) => set("loadingStart", v)}
-            />
-            <TimeField
-              label="Loading End"
-              value={form.loadingEnd}
-              onChange={(v) => set("loadingEnd", v)}
-            />
-            <TimeField
-              label="Departure from Pick Up"
-              value={form.departurePickup}
-              onChange={(v) => set("departurePickup", v)}
-            />
-          </SimpleGrid>
-          <Divider mt="10px" mb="10px" />
-          <TimeField
-            label="Finish Delivery Time"
-            value={form.finishDelivery}
-            onChange={(v) => set("finishDelivery", v)}
-          />
-        </Paper>
-        <Paper
-          withBorder
+        }
+        size="lg"
+        radius="md"
+        centered
+        zIndex={1000}
+      >
+        <Image
+          src={form.podFileUrl}
+          alt={form.podFile}
           radius="md"
-          p="md"
-          style={{ background: "var(--mantine-color-gray-0)" }}
-        >
-          <Text
-            fw={800}
-            style={{ fontSize: "9px" }}
-            tt="uppercase"
-            lts={1}
-            c="blue.6"
-            mb="sm"
-          >
-            Booking DR / #
+          fit="contain"
+          mah={600}
+        />
+        <Group justify="space-between" mt="sm">
+          <Text style={{ fontSize: "11px" }} c="dimmed" fw={600}>
+            {form.podFile}
           </Text>
-          <TextInput
-            placeholder="Enter booking DR / #"
-            style={{ inputStyles }}
-            value={form.bookingDRNo}
-            onChange={(e) => set("bookingDRNo", e.currentTarget.value)}
-          />
-        </Paper>
-        <Paper
-          withBorder
-          radius="md"
-          p="md"
-          style={{ backgroundColor: "var(--mantine-color-gray-0)" }}
-        >
-          <Text
-            fw={800}
-            style={{ fontSize: "9px" }}
-            tt="uppercase"
-            lts={1}
-            c="blue.6"
-            mb="sm"
-          >
-            Delivery Outcome
-          </Text>
-          <Select
-            label="Delivery Status"
-            placeholder="Select a status..."
-            data={DELIVERY_STATUS_OPTIONS}
-            value={form.deliveryStatus || null}
-            onChange={(val) => set("deliveryStatus", val ?? "")}
-            renderOption={({ option }) => {
-              const meta = STATUS_META[option.value];
-              return (
-                <Group gap={8} wrap="nowrap">
-                  <ThemeIcon
-                    size={20}
-                    radius="xl"
-                    variant="light"
-                    color={meta.color}
-                  >
-                    {meta.icon}
-                  </ThemeIcon>
-                  <Text style={{ fontSize: "12px" }} fw={600}>
-                    {option.label}
-                  </Text>
-                </Group>
-              );
-            }}
-            styles={{
-              label: { fontSize: "11px", fontWeight: 600 },
-              input: {
-                fontSize: "12px",
-                fontWeight: 700,
-                borderColor: form.deliveryStatus
-                  ? `var(--mantine-color-${STATUS_META[form.deliveryStatus]?.color}-4)`
-                  : undefined,
-                color: form.deliveryStatus
-                  ? `var(--mantine-color-${STATUS_META[form.deliveryStatus]?.color}-7)`
-                  : undefined,
-              },
-            }}
-            radius="md"
-          />
-          <input
-            ref={podInputRef}
-            type="file"
-            accept="image/png,image/jpeg,image/webp"
-            onChange={handlePodInputChange}
-            style={{ display: "none" }}
-          />
-          <PodUploadField
-            fileName={form.podFile}
-            isUploading={isUploading}
-            onUploadClick={() => podInputRef.current?.click()}
-            onFileChange={handlePodChange}
-            onClear={() => handlePodChange(null)}
-          />
-
-          {/* Upload error inline — user stays on modal to retry */}
-          {uploadError && (
-            <Alert
-              color="red"
-              mt="xs"
-              radius="md"
-              styles={{ message: { fontSize: "11px" } }}
-            >
-              {uploadError}
-            </Alert>
-          )}
-
-          <Textarea
-            label="Trip Remarks"
-            placeholder="Any notes about this trip..."
-            value={form.tripRemarks}
-            onChange={(e) => set("tripRemarks", e.currentTarget.value)}
-            minRows={3}
-            mt="sm"
-            styles={{ label: { fontSize: "11px", fontWeight: 600 } }}
-            radius="md"
-          />
-        </Paper>
-
-        <Divider />
-
-        <Group justify="flex-end" gap="sm">
           <Button
+            component="a"
+            href={form.podFileUrl}
+            target="_blank"
+            rel="noopener noreferrer"
             variant="light"
-            color="gray"
-            disabled={isUploading}
-            styles={{
-              root: { height: 34 },
-              label: { fontSize: "11px", fontWeight: 700 },
-            }}
-            onClick={handleClose}
+            size="xs"
+            styles={{ label: { fontSize: "11px", fontWeight: 700 } }}
           >
-            Cancel
-          </Button>
-          <Button
-            color="blue.6"
-            leftSection={<IconTruckDelivery size={14} />}
-            disabled={!isFormValid || isUploading}
-            loading={isUploading}
-            styles={{
-              root: { height: 34 },
-              label: { fontSize: "11px", fontWeight: 700 },
-            }}
-            onClick={handleSave}
-          >
-            {isUploading ? "Saving…" : "Save Trip Details"}
+            Open Original
           </Button>
         </Group>
-      </Stack>
-    </Modal>
+      </Modal>
+    </>
   );
 }
