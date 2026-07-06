@@ -37,6 +37,7 @@ export interface DispatchRecord {
   tripRemarks?: string;
   rawDrops?: { locationName: string }[];
   truckerRate?: string;
+  podRequired?: boolean;
 }
 
 export const MOCK_RECORDS: DispatchRecord[] = [

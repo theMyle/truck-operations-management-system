@@ -65,3 +65,7 @@ export const deleteClientAction = actionClient
     revalidatePath("/registration");
     return deleted;
   });
+
+export const getAllClientsAction = actionClient.action(async () => {
+  return clientRepository.getAll();
+});

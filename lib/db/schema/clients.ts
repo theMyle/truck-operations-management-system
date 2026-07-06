@@ -14,6 +14,7 @@ export const clients = pgTable("clients", {
   id: uuid("id").primaryKey().defaultRandom(),
   clientName: text("client_name").notNull(),
   hasFixedRoutes: boolean("has_fixed_routes").notNull().default(false),
+  podRequired: boolean("pod_required").notNull().default(true),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });

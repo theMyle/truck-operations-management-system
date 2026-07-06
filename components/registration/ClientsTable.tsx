@@ -170,6 +170,20 @@ export function ClientsTable({ data }: Props) {
                 ),
             },
             {
+              accessor: "podRequired",
+              title: "POD Required",
+              render: (row) =>
+                row.podRequired ? (
+                  <Badge size="sm" color="teal">
+                    Yes
+                  </Badge>
+                ) : (
+                  <Badge size="sm" color="orange">
+                    No
+                  </Badge>
+                ),
+            },
+            {
               accessor: "routes",
               title: "Routes",
               render: (row) =>

@@ -129,6 +129,27 @@ export function ViewClientModal({ opened, onClose, client }: Props) {
                 </Badge>
               }
             />
+            <InfoField
+              icon={
+                client.podRequired ? (
+                  <IconCheckbox size={12} />
+                ) : (
+                  <IconSquare size={12} />
+                )
+              }
+              iconColor={client.podRequired ? "teal" : "orange"}
+              label="POD Required for Billing"
+              value={
+                <Badge
+                  size="sm"
+                  color={client.podRequired ? "teal" : "orange"}
+                  variant="light"
+                  mt={2}
+                >
+                  {client.podRequired ? "Yes" : "No"}
+                </Badge>
+              }
+            />
           </SimpleGrid>
         </Stack>
 

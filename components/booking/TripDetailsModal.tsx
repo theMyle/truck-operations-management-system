@@ -233,6 +233,7 @@ function PodUploadField({
   onFileChange,
   onClear,
   onPreview,
+  podRequired,
 }: {
   fileName: string;
   fileUrl: string;
@@ -242,6 +243,7 @@ function PodUploadField({
   onFileChange: (file: File | null) => void;
   onClear: () => void;
   onPreview: () => void;
+  podRequired: boolean;
 }) {
   const [isDragging, setIsDragging] = useState(false);
   const isImage = fileType.startsWith("image/");
@@ -257,6 +259,11 @@ function PodUploadField({
       <Text style={{ fontSize: "11px", fontWeight: 600 }} c="gray.7">
         POD
       </Text>
+      {!podRequired && (
+        <Text size="10px" c="dimmed" fw={600} mt={4}>
+          POD not required for this client — optional.
+        </Text>
+      )}
       <Box
         role="button"
         tabIndex={0}
@@ -491,6 +498,7 @@ export function TripDetailsModal({
     event.currentTarget.value = "";
   };
 
+  const podRequired = record?.podRequired ?? true;
   const isFormValid =
     !!form.deliveryStatus &&
     (form.deliveryStatus === "Completed"
@@ -498,7 +506,8 @@ export function TripDetailsModal({
         !!form.loadingStart &&
         !!form.loadingEnd &&
         !!form.departurePickup &&
-        form.finishDelivery
+        form.finishDelivery &&
+        (!podRequired || !!form.podFileUrl)
       : true);
 
   if (!record) return null;
@@ -750,6 +759,7 @@ export function TripDetailsModal({
               onFileChange={handlePodChange}
               onClear={() => handlePodChange(null)}
               onPreview={() => setPreviewOpen(true)}
+              podRequired={podRequired}
             />
 
             {/* Upload error inline — user stays on modal to retry */}

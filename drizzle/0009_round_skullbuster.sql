@@ -1,0 +1,1 @@
+ALTER TABLE "clients" ADD COLUMN "pod_required" boolean DEFAULT true NOT NULL;

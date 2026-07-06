@@ -31,6 +31,7 @@ export function ClientModal({ opened, onClose, client }: Props) {
     initialValues: {
       clientName: client?.clientName ?? "",
       hasFixedRoutes: client?.hasFixedRoutes ?? false,
+      podRequired: client?.podRequired ?? true,
       routes:
         client?.routes?.map((r) => ({ route: r.route, rate: r.rate ?? "" })) ??
         [],
@@ -73,6 +74,7 @@ export function ClientModal({ opened, onClose, client }: Props) {
     const payload = {
       clientName: values.clientName,
       hasFixedRoutes: values.hasFixedRoutes,
+      podRequired: values.podRequired,
       routes: values.routes,
     };
     if (isEditMode && client) {
@@ -108,6 +110,13 @@ export function ClientModal({ opened, onClose, client }: Props) {
               <Checkbox
                 label="Fixed Routes"
                 {...form.getInputProps("hasFixedRoutes", {
+                  type: "checkbox",
+                })}
+              />
+              <Checkbox
+                label="POD Required for Billing"
+                description="When unchecked, trips appear in billing without needing a POD upload"
+                {...form.getInputProps("podRequired", {
                   type: "checkbox",
                 })}
               />
