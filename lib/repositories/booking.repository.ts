@@ -12,7 +12,6 @@ import { bookingToHelpers } from "../db/schema/bookingHelpers";
 import { tripOdoDetails } from "../db/schema/tripOdo";
 import { tripExpenses } from "../db/schema/tripExpense";
 
-
 export const makeBookingRepository = (database = db) => {
   return {
     getAll: async function (
@@ -24,11 +23,7 @@ export const makeBookingRepository = (database = db) => {
           : undefined,
         with: {
           drops: true,
-          helpers: {
-            with: {
-              helper: true,
-            },
-          },
+          helpers: { with: { helper: true } },
           odoDetails: true,
           expenses: true,
         },
@@ -37,9 +32,9 @@ export const makeBookingRepository = (database = db) => {
       return bookings.map((b) => ({
         ...b,
         helpers: b.helpers.map((h) => h.helper),
-        odoDetails: (b.odoDetails || []) as any,
-        expenses: (b.expenses || []) as any,
-      })) as unknown as BookingWithRelations[];
+        odoDetails: b.odoDetails ?? [],
+        expenses: b.expenses ?? [],
+      }));
     },
 
     add: async function (
@@ -99,9 +94,9 @@ export const makeBookingRepository = (database = db) => {
         return {
           ...fullBooking,
           helpers: fullBooking.helpers.map((h) => h.helper),
-          odoDetails: (fullBooking.odoDetails || []) as any,
-          expenses: (fullBooking.expenses || []) as any,
-        } as unknown as BookingWithRelations;
+          odoDetails: fullBooking.odoDetails ?? [],
+          expenses: fullBooking.expenses ?? [],
+        };
       });
     },
 
@@ -156,13 +151,15 @@ export const makeBookingRepository = (database = db) => {
         return {
           ...updatedBooking,
           helpers: updatedBooking.helpers.map((h) => h.helper),
-          odoDetails: (updatedBooking.odoDetails || []) as any,
-          expenses: (updatedBooking.expenses || []) as any,
-        } as unknown as BookingWithRelations;
+          odoDetails: updatedBooking.odoDetails ?? [],
+          expenses: updatedBooking.expenses ?? [],
+        };
       });
     },
 
-    updateTripDetails: async function (data: UpdateTripMonitoringInput): Promise<void> {
+    updateTripDetails: async function (
+      data: UpdateTripMonitoringInput,
+    ): Promise<void> {
       const toTs = (time?: string): Date | null => {
         if (!time || !data.pickupDate) return null;
         const d = new Date(`${data.pickupDate}T${time}:00`);
@@ -179,12 +176,14 @@ export const makeBookingRepository = (database = db) => {
           finishedDeliveryTime: toTs(data.finishDelivery),
           deliveryStatus: data.deliveryStatus,
           tripRemarks: data.tripRemarks ?? null,
-          PODLink: data.PODLink ?? null
+          PODLink: data.PODLink ?? null,
         })
         .where(eq(booking.id, data.id));
     },
 
-    updateTripFinanceOdo: async function (data: UpdateTripDetailsInput): Promise<void> {
+    updateTripFinanceOdo: async function (
+      data: UpdateTripDetailsInput,
+    ): Promise<void> {
       await database.transaction(async (tx) => {
         // 1. Update budget and rates on booking table
         await tx
@@ -215,7 +214,9 @@ export const makeBookingRepository = (database = db) => {
             .map((o) => o.id)
             .filter((id): id is string => !!id);
 
-          const odosToDelete = existingOdoIds.filter((id) => !incomingOdoIds.includes(id));
+          const odosToDelete = existingOdoIds.filter(
+            (id) => !incomingOdoIds.includes(id),
+          );
           if (odosToDelete.length > 0) {
             await tx
               .delete(tripOdoDetails)
@@ -253,7 +254,9 @@ export const makeBookingRepository = (database = db) => {
             .map((e) => e.id)
             .filter((id): id is string => !!id);
 
-          const expensesToDelete = existingExpenseIds.filter((id) => !incomingExpenseIds.includes(id));
+          const expensesToDelete = existingExpenseIds.filter(
+            (id) => !incomingExpenseIds.includes(id),
+          );
           if (expensesToDelete.length > 0) {
             await tx
               .delete(tripExpenses)

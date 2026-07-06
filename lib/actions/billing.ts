@@ -2,9 +2,9 @@
 
 import { actionClient } from "@/lib/safe-action";
 import { db } from "@/lib/db";
-import { booking } from "@/lib/db/schema";
+import { booking, clients } from "@/lib/db/schema";
 import { z } from "zod";
-import { and, eq, gte, lte, sql } from "drizzle-orm";
+import { and, eq, gte, lte, isNotNull, or } from "drizzle-orm";
 import { formatTime12Hour, formatTimeHHMM } from "@/lib/utils/stringFormat";
 
 const GetBillingSchema = z.object({
@@ -24,21 +24,42 @@ export const getBillingRecordsAction = actionClient
     if (from) conditions.push(gte(booking.pickupDate, from));
     if (to) conditions.push(lte(booking.pickupDate, to));
 
-    const rows = await db.query.booking.findMany({
-      where: conditions.length ? and(...conditions) : undefined,
-      with: {
-        helpers: {
+    // POD-based filter:
+    // - Clients with podRequired = false  → always included
+    // - Clients with podRequired = true   → only when PODLink is not null
+    conditions.push(
+      or(
+        eq(clients.podRequired, false),
+        and(eq(clients.podRequired, true), isNotNull(booking.PODLink)),
+      )!,
+    );
+
+    const rows = await db
+      .select()
+      .from(booking)
+      .innerJoin(clients, eq(booking.clientId, clients.id))
+      .where(conditions.length ? and(...conditions) : undefined)
+      .orderBy(booking.pickupDate);
+
+    // Fetch relations (helpers, drops) for each booking
+    const bookingIds = rows.map((r) => r.booking.id);
+    const bookingsWithRelations = bookingIds.length
+      ? await db.query.booking.findMany({
+          where: (b, { inArray }) => inArray(b.id, bookingIds),
           with: {
-            helper: true,
+            helpers: {
+              with: {
+                helper: true,
+              },
+            },
+            drops: true,
           },
-        },
-        drops: true,
-      },
-      orderBy: (b, { desc }) => [desc(b.pickupDate)],
-    });
+          orderBy: (b, { desc }) => [desc(b.pickupDate)],
+        })
+      : [];
 
     // Same mapping shape as BookingRecordsPage so BillingRecord stays compatible
-    return rows.map((b) => ({
+    return bookingsWithRelations.map((b) => ({
       id: b.id,
       bookingDate: b.bookingDate,
       bookingDRNo: b.bookingDRNo,

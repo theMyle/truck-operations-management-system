@@ -25,6 +25,7 @@ import {
 } from "@/lib/actions/booking";
 import { formatTime12Hour, formatTimeHHMM } from "@/lib/utils/stringFormat";
 import { BookingModuleSkeleton } from "@/components/ui/ModuleSkeletons";
+import { getAllClientsAction } from "@/lib/actions/clients";
 
 const PAGE_SIZE = 10;
 
@@ -57,6 +58,14 @@ export default function BookingRecordsPage() {
       const res = await getAllBookingAction({});
       console.log(res);
 
+      const [bookingsRes, clientsRes] = await Promise.all([
+        getAllBookingAction({}),
+        getAllClientsAction(),
+      ]);
+      
+      const podMap = new Map(
+        (clientsRes?.data ?? []).map((c) => [c.clientName, c.podRequired]),
+      );
       if (res?.data) {
         const mapped = res.data.map((b) => ({
           id: b.id,
@@ -102,6 +111,7 @@ export default function BookingRecordsPage() {
           podFile: b.PODLink ? (b.PODLink.split("/").pop() ?? "") : "",
           podFileUrl: b.PODLink ?? "",
           podFileType: "",
+          podRequired: podMap.get(b.clientName) ?? true,
         }));
 
         setRecords(mapped);
