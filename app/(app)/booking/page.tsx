@@ -16,8 +16,8 @@ import { ViewModal } from "@/components/booking/ViewModal";
 import { DeleteModal } from "@/components/booking/DeleteModal";
 import { BookingTable } from "@/components/booking/BookingTable";
 import { BookingToolbar } from "@/components/booking/BookingToolbar";
-import { useDispatchExport } from "@/app/hooks/useDispatchExport ";
-import { useDispatchPrint } from "@/app/hooks/useDispatchPrint";
+import { useTableExport } from "@/app/hooks/useTableExport";
+import { useTablePrint } from "@/app/hooks/useTablePrint";
 import {
   deleteBookingAction,
   getAllBookingAction,
@@ -28,6 +28,26 @@ import { BookingModuleSkeleton } from "@/components/ui/ModuleSkeletons";
 import { getAllClientsAction } from "@/lib/actions/clients";
 
 const PAGE_SIZE = 10;
+
+/** Columns matching the BookingTable display */
+const BOOKING_EXPORT_COLUMNS = [
+  { key: "displayBookingNo", label: "Booking ID" },
+  { key: "bookingDate", label: "Date Booked" },
+  { key: "bookingDRNo", label: "Booking / DR#" },
+  { key: "clientName", label: "Client" },
+  { key: "pickUpDate", label: "Pickup Date" },
+  { key: "pickUpTime", label: "Pickup Time" },
+  { key: "status", label: "Status" },
+  { key: "driverName", label: "Driver" },
+  { key: "trucker", label: "Trucker" },
+  { key: "helper", label: "Helper" },
+  { key: "fleetType", label: "Unit Type" },
+  { key: "plateNo", label: "Plate #" },
+  { key: "ruta", label: "Route" },
+  { key: "pickLocation", label: "Pickup Location" },
+  { key: "dropOffLocation", label: "Drop-off Location" },
+  { key: "bookedBy", label: "Booked By" },
+];
 
 interface FilterValues {
   search: string;
@@ -164,8 +184,8 @@ export default function BookingRecordsPage() {
     setPage(1);
   };
 
-  const { handleExport } = useDispatchExport(filtered);
-  const { handlePrint } = useDispatchPrint(filtered);
+  const { handleExport } = useTableExport(filtered, BOOKING_EXPORT_COLUMNS, "Booking Records");
+  const { handlePrint } = useTablePrint(filtered, BOOKING_EXPORT_COLUMNS, "Booking Records");
 
   const handleView = (record: DispatchRecord) => {
     setViewRecord(record);

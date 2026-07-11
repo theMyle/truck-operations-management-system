@@ -43,6 +43,8 @@ import { DispatchRecord } from "../constant";
 import { usePodDownload, type PodRecord } from "@/app/hooks/usePodDownload";
 import { SummaryCard } from "@/components/billing/SummaryCard";
 import { getBillingRecordsAction } from "@/lib/actions/billing";
+import { getAllClientsAction } from "@/lib/actions/clients";
+import { getTruckAction } from "@/lib/actions/trucks";
 import {
   BILLING_TABLE_HEADERS,
 } from "@/components/ui/ModuleSkeletons";
@@ -69,12 +71,7 @@ const STATUS_COLOR: Record<string, string> = {
   Pending: "orange",
 };
 
-const FLEET_OPTIONS = [
-  { value: "4-Wheeler", label: "4-Wheeler" },
-  { value: "6-Wheeler", label: "6-Wheeler" },
-  { value: "10-Wheeler", label: "10-Wheeler" },
-  { value: "Motorcycle", label: "Motorcycle" },
-];
+
 
 const cell: React.CSSProperties = {
   fontSize: "11px",
@@ -179,18 +176,57 @@ export default function BillingModule() {
   const [page, setPage] = useState(1);
   const [podPreview, setPodPreview] = useState<BillingRecord | null>(null);
 
+  const [dbClients, setDbClients] = useState<{ id: string; clientName: string }[]>([]);
+  const [dbFleetTypes, setDbFleetTypes] = useState<string[]>([]);
+
+  useEffect(() => {
+    async function loadFilterOptions() {
+      try {
+        const [clientsRes, trucksRes] = await Promise.all([
+          getAllClientsAction(),
+          getTruckAction(),
+        ]);
+        if (clientsRes?.data) {
+          setDbClients(clientsRes.data);
+        }
+        if (trucksRes?.data) {
+          const uniqueFleets = Array.from(
+            new Set(
+              trucksRes.data
+                .map((t) => t.fleetType)
+                .filter((f): f is string => typeof f === "string" && f.trim().length > 0)
+            )
+          ).sort();
+          setDbFleetTypes(uniqueFleets);
+        }
+      } catch (err) {
+        console.error("Error loading filter options:", err);
+      }
+    }
+    loadFilterOptions();
+  }, []);
+
   useEffect(() => {
     startTransition(() => setPage(1));
   }, [search, statusFilter, fleetFilter, activeFilters]);
 
-  // Client options derived from already-loaded records
+  // Client options derived from database clients
   const clientOptions = useMemo(() => {
-    const unique = Array.from(new Set(records.map((r) => r.client))).sort();
+    const unique = Array.from(new Set(dbClients.map((c) => c.clientName))).sort();
     return [
       { value: "", label: "All Clients" },
       ...unique.map((c) => ({ value: c, label: c })),
     ];
-  }, [records]);
+  }, [dbClients]);
+
+  // Fleet options derived from database trucks + active records to ensure legacy values work
+  const fleetOptions = useMemo(() => {
+    const fromRecords = records
+      .map((r) => r.unit)
+      .filter((f): f is string => typeof f === "string" && f.trim().length > 0);
+    const combined = Array.from(new Set([...dbFleetTypes, ...fromRecords])).sort();
+    return combined.map((f) => ({ value: f, label: f }));
+  }, [dbFleetTypes, records]);
 
   // Client-side search + status + fleet filter on top of DB results
   const filtered = useMemo(() => {
@@ -589,7 +625,7 @@ export default function BillingModule() {
             />
             <Select
               placeholder="All Fleet Types"
-              data={FLEET_OPTIONS}
+              data={fleetOptions}
               value={fleetFilter}
               onChange={setFleetFilter}
               clearable
