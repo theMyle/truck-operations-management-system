@@ -388,12 +388,13 @@ export default function BillingModule() {
               label="Date From"
               type="date"
               value={pendingFilters.from ?? ""}
-              onChange={(e) =>
+              onChange={(e) => {
+                const val = e.currentTarget.value || null;
                 setPendingFilters((f) => ({
                   ...f,
-                  from: e.currentTarget.value || null,
-                }))
-              }
+                  from: val,
+                }));
+              }}
               styles={{ input: { fontSize: "12px" } }}
               radius="md"
             />
@@ -402,12 +403,13 @@ export default function BillingModule() {
               type="date"
               value={pendingFilters.to ?? ""}
               min={pendingFilters.from ?? undefined}
-              onChange={(e) =>
+              onChange={(e) => {
+                const val = e.currentTarget.value || null;
                 setPendingFilters((f) => ({
                   ...f,
-                  to: e.currentTarget.value || null,
-                }))
-              }
+                  to: val,
+                }));
+              }}
               styles={{ input: { fontSize: "12px" } }}
               radius="md"
             />
