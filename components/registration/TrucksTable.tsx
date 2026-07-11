@@ -12,6 +12,7 @@ import type { Truck } from "@/lib/db/schema/trucks";
 import { deleteTruckAction } from "@/lib/actions/trucks";
 import { TableHeader } from "./TableHeader";
 import { TruckModal } from "./TruckModal";
+import { getTruckStatusLabel } from "@/lib/utils/truckStatus";
 
 interface Props {
   data: Truck[];
@@ -197,7 +198,7 @@ export function TrucksTable({ data }: Props) {
                   color={truckStatusColors[row.status] ?? "gray"}
                   style={{ textTransform: "capitalize" }}
                 >
-                  {row.status}
+                  {getTruckStatusLabel(row.status)}
                 </Badge>
               ),
             },

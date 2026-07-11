@@ -14,19 +14,16 @@ import { useAction } from "next-safe-action/hooks";
 import { createTruckAction, updateTruckAction } from "@/lib/actions/trucks";
 import { notifications } from "@mantine/notifications";
 import type { Truck } from "@/lib/db/schema/trucks";
+import {
+  TRUCK_STATUS_OPTIONS,
+  type TruckStatus,
+} from "@/lib/utils/truckStatus";
 
 interface Props {
   opened: boolean;
   onClose: () => void;
   truck?: Truck | null;
 }
-
-const STATUS_OPTIONS = [
-  { value: "available", label: "Available" },
-  { value: "on trip", label: "On Trip" },
-  { value: "maintenance", label: "Maintenance" },
-  { value: "unavailable", label: "Unavailable" },
-];
 
 export function TruckModal({ opened, onClose, truck }: Props) {
   const isEditMode = !!truck;
@@ -38,11 +35,7 @@ export function TruckModal({ opened, onClose, truck }: Props) {
       unitType: truck?.unitType ?? "",
       rate: truck?.rate ?? "",
       isSubcon: truck?.isSubcon ?? false,
-      status: "available" as
-        | "available"
-        | "on trip"
-        | "maintenance"
-        | "unavailable",
+      status: (truck?.status ?? "available") as TruckStatus,
     },
     validate: {
       plateNumber: (v) =>
@@ -132,7 +125,7 @@ export function TruckModal({ opened, onClose, truck }: Props) {
           {isEditMode && (
             <Select
               label="Status"
-              data={STATUS_OPTIONS}
+              data={TRUCK_STATUS_OPTIONS}
               {...form.getInputProps("status")}
             />
           )}

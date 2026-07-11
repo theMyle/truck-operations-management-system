@@ -20,6 +20,7 @@ export const getBillingRecordsAction = actionClient
 
     // Build where clauses dynamically
     const conditions = [];
+    conditions.push(eq(booking.deliveryStatus, "Completed"))
     if (client) conditions.push(eq(booking.clientName, client));
     if (from) conditions.push(gte(booking.pickupDate, from));
     if (to) conditions.push(lte(booking.pickupDate, to));
