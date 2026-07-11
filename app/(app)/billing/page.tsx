@@ -45,9 +45,7 @@ import { SummaryCard } from "@/components/billing/SummaryCard";
 import { getBillingRecordsAction } from "@/lib/actions/billing";
 import { getAllClientsAction } from "@/lib/actions/clients";
 import { getTruckAction } from "@/lib/actions/trucks";
-import {
-  BILLING_TABLE_HEADERS,
-} from "@/components/ui/ModuleSkeletons";
+import { BILLING_TABLE_HEADERS } from "@/components/ui/ModuleSkeletons";
 import { TableSkeleton } from "@/components/ui/TableSkeleton";
 
 export type BillingRecord = DispatchRecord & {
@@ -70,8 +68,6 @@ const STATUS_COLOR: Record<string, string> = {
   "In Transit": "blue",
   Pending: "orange",
 };
-
-
 
 const cell: React.CSSProperties = {
   fontSize: "11px",
@@ -169,14 +165,18 @@ export default function BillingModule() {
     from: null,
     to: null,
   });
-  const [activeFilters, setActiveFilters] = useState<BillingFilters | null>(null);
+  const [activeFilters, setActiveFilters] = useState<BillingFilters | null>(
+    null,
+  );
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
   const [fleetFilter, setFleetFilter] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [podPreview, setPodPreview] = useState<BillingRecord | null>(null);
 
-  const [dbClients, setDbClients] = useState<{ id: string; clientName: string }[]>([]);
+  const [dbClients, setDbClients] = useState<
+    { id: string; clientName: string }[]
+  >([]);
   const [dbFleetTypes, setDbFleetTypes] = useState<string[]>([]);
 
   useEffect(() => {
@@ -194,8 +194,11 @@ export default function BillingModule() {
             new Set(
               trucksRes.data
                 .map((t) => t.fleetType)
-                .filter((f): f is string => typeof f === "string" && f.trim().length > 0)
-            )
+                .filter(
+                  (f): f is string =>
+                    typeof f === "string" && f.trim().length > 0,
+                ),
+            ),
           ).sort();
           setDbFleetTypes(uniqueFleets);
         }
@@ -212,7 +215,9 @@ export default function BillingModule() {
 
   // Client options derived from database clients
   const clientOptions = useMemo(() => {
-    const unique = Array.from(new Set(dbClients.map((c) => c.clientName))).sort();
+    const unique = Array.from(
+      new Set(dbClients.map((c) => c.clientName)),
+    ).sort();
     return [
       { value: "", label: "All Clients" },
       ...unique.map((c) => ({ value: c, label: c })),
@@ -224,7 +229,9 @@ export default function BillingModule() {
     const fromRecords = records
       .map((r) => r.unit)
       .filter((f): f is string => typeof f === "string" && f.trim().length > 0);
-    const combined = Array.from(new Set([...dbFleetTypes, ...fromRecords])).sort();
+    const combined = Array.from(
+      new Set([...dbFleetTypes, ...fromRecords]),
+    ).sort();
     return combined.map((f) => ({ value: f, label: f }));
   }, [dbFleetTypes, records]);
 
@@ -328,7 +335,7 @@ export default function BillingModule() {
         `"${r.dropOffLocation || ""}"`,
         r.tripRate ?? "",
         r.status,
-        r.podFileUrl ?? "",   // use the real Supabase URL in CSV
+        r.podFileUrl ?? "", // use the real Supabase URL in CSV
       ].join(","),
     );
     const csv = [headers.join(","), ...rows].join("\n");
@@ -350,8 +357,8 @@ export default function BillingModule() {
   }, [filtered, activeFilters]);
 
   return (
-    <>
-      {/* Filter Modal */}
+    <Box pos="relative" style={{ height: "calc(100vh - 72px)" }}>
+      {/* Filter Modal — confined to this module, not the whole viewport/sidebar */}
       <Modal
         opened={filterModalOpen}
         onClose={() => {
@@ -369,6 +376,11 @@ export default function BillingModule() {
         size="sm"
         closeOnClickOutside={!!activeFilters}
         withCloseButton={!!activeFilters}
+        withinPortal={false}
+        styles={{
+          overlay: { position: "absolute" },
+          inner: { position: "absolute" },
+        }}
       >
         <Stack gap="sm">
           <Select
@@ -437,7 +449,7 @@ export default function BillingModule() {
         </Stack>
       </Modal>
 
-      {/* POD Viewer Modal — uses Supabase URL directly, no local fallback */}
+      {/* POD Viewer Modal — also confined to this module */}
       <Modal
         opened={!!podPreview}
         onClose={() => setPodPreview(null)}
@@ -451,6 +463,11 @@ export default function BillingModule() {
         }
         centered
         size="lg"
+        withinPortal={false}
+        styles={{
+          overlay: { position: "absolute" },
+          inner: { position: "absolute" },
+        }}
       >
         {podPreview?.podFileUrl ? (
           <Box
@@ -658,178 +675,179 @@ export default function BillingModule() {
                   withColumnBorders
                   style={{ minWidth: 1400 }}
                 >
-                <Table.Thead>
-                  <Table.Tr>
-                    {[
-                      "Date",
-                      "Client",
-                      "Fleet Type",
-                      "Plate No.",
-                      "Booking / DR #",
-                      "No. of Drops",
-                      "Pickup Location",
-                      "Drop-off Location",
-                      "Rate (₱)",
-                      "Status",
-                      "POD / Receipt",
-                    ].map((col) => (
-                      <Table.Th
-                        key={col}
-                        style={{ ...headerCell, minWidth: 110 }}
-                      >
-                        {col}
-                      </Table.Th>
-                    ))}
-                  </Table.Tr>
-                </Table.Thead>
-                <Table.Tbody>
-                  {!activeFilters ? (
+                  <Table.Thead>
                     <Table.Tr>
-                      <Table.Td
-                        colSpan={11}
-                        style={{ textAlign: "center", padding: "40px 0" }}
-                      >
-                        <Stack align="center" gap={6}>
-                          <IconReceipt
-                            size={28}
-                            color="var(--mantine-color-gray-4)"
-                          />
-                          <Text size="xs" c="dimmed" fw={500}>
-                            Set filters above to generate a billing statement
-                          </Text>
-                        </Stack>
-                      </Table.Td>
+                      {[
+                        "Date",
+                        "Client",
+                        "Fleet Type",
+                        "Plate No.",
+                        "Booking / DR #",
+                        "No. of Drops",
+                        "Pickup Location",
+                        "Drop-off Location",
+                        "Rate (₱)",
+                        "Status",
+                        "POD / Receipt",
+                      ].map((col) => (
+                        <Table.Th
+                          key={col}
+                          style={{ ...headerCell, minWidth: 110 }}
+                        >
+                          {col}
+                        </Table.Th>
+                      ))}
                     </Table.Tr>
-                  ) : filtered.length === 0 ? (
-                    <Table.Tr>
-                      <Table.Td
-                        colSpan={11}
-                        style={{ textAlign: "center", padding: "32px 0" }}
-                      >
-                        <Stack align="center" gap={6}>
-                          <IconClipboardList
-                            size={28}
-                            color="var(--mantine-color-gray-4)"
-                          />
-                          <Text size="xs" c="dimmed" fw={500}>
-                            No records found
-                          </Text>
-                        </Stack>
-                      </Table.Td>
-                    </Table.Tr>
-                  ) : (
-                    paginated.map((record) => (
-                      <Table.Tr key={record.id}>
-                        <Table.Td style={cell}>{record.date}</Table.Td>
-                        <Table.Td style={cell}>{record.client}</Table.Td>
-                        <Table.Td style={cell}>
-                          <Badge
-                            variant="light"
-                            color="gray"
-                            radius="sm"
-                            styles={{
-                              root: { height: 18 },
-                              label: { fontSize: "9px", fontWeight: 700 },
-                            }}
-                          >
-                            {record.unit || "—"}
-                          </Badge>
-                        </Table.Td>
+                  </Table.Thead>
+                  <Table.Tbody>
+                    {!activeFilters ? (
+                      <Table.Tr>
                         <Table.Td
-                          style={{
-                            ...cell,
-                            fontFamily: "var(--mantine-font-family-monospace)",
-                            fontSize: "10px",
-                          }}
+                          colSpan={11}
+                          style={{ textAlign: "center", padding: "40px 0" }}
                         >
-                          {record.plateNo}
-                        </Table.Td>
-                        <Table.Td
-                          style={{
-                            ...cell,
-                            color: "var(--mantine-color-blue-7)",
-                          }}
-                        >
-                          {record.bookingDr}
-                        </Table.Td>
-                        <Table.Td style={{ ...cell, textAlign: "center" }}>
-                          {record.noOfDrops ?? "—"}
-                        </Table.Td>
-                        <Table.Td style={cell}>
-                          {record.pickLocation || "—"}
-                        </Table.Td>
-                        <Table.Td style={cell}>
-                          {record.dropOffLocation || "—"}
-                        </Table.Td>
-                        <Table.Td
-                          style={{
-                            ...cell,
-                            color: "var(--mantine-color-green-7)",
-                            fontWeight: 700,
-                          }}
-                        >
-                          {record.tripRate
-                            ? `₱${Number(record.tripRate).toLocaleString()}`
-                            : "—"}
-                        </Table.Td>
-                        <Table.Td style={cell}>
-                          <Badge
-                            variant="light"
-                            color={STATUS_COLOR[record.status] ?? "gray"}
-                            radius="md"
-                            styles={{
-                              root: { height: 18 },
-                              label: { fontSize: "9px", fontWeight: 700 },
-                            }}
-                          >
-                            {record.status}
-                          </Badge>
-                        </Table.Td>
-                        <Table.Td style={cell}>
-                          <PodCell record={record} onView={setPodPreview} />
+                          <Stack align="center" gap={6}>
+                            <IconReceipt
+                              size={28}
+                              color="var(--mantine-color-gray-4)"
+                            />
+                            <Text size="xs" c="dimmed" fw={500}>
+                              Set filters above to generate a billing statement
+                            </Text>
+                          </Stack>
                         </Table.Td>
                       </Table.Tr>
-                    ))
-                  )}
-                </Table.Tbody>
-              </Table>
-            </ScrollArea>
+                    ) : filtered.length === 0 ? (
+                      <Table.Tr>
+                        <Table.Td
+                          colSpan={11}
+                          style={{ textAlign: "center", padding: "32px 0" }}
+                        >
+                          <Stack align="center" gap={6}>
+                            <IconClipboardList
+                              size={28}
+                              color="var(--mantine-color-gray-4)"
+                            />
+                            <Text size="xs" c="dimmed" fw={500}>
+                              No records found
+                            </Text>
+                          </Stack>
+                        </Table.Td>
+                      </Table.Tr>
+                    ) : (
+                      paginated.map((record) => (
+                        <Table.Tr key={record.id}>
+                          <Table.Td style={cell}>{record.date}</Table.Td>
+                          <Table.Td style={cell}>{record.client}</Table.Td>
+                          <Table.Td style={cell}>
+                            <Badge
+                              variant="light"
+                              color="gray"
+                              radius="sm"
+                              styles={{
+                                root: { height: 18 },
+                                label: { fontSize: "9px", fontWeight: 700 },
+                              }}
+                            >
+                              {record.unit || "—"}
+                            </Badge>
+                          </Table.Td>
+                          <Table.Td
+                            style={{
+                              ...cell,
+                              fontFamily:
+                                "var(--mantine-font-family-monospace)",
+                              fontSize: "10px",
+                            }}
+                          >
+                            {record.plateNo}
+                          </Table.Td>
+                          <Table.Td
+                            style={{
+                              ...cell,
+                              color: "var(--mantine-color-blue-7)",
+                            }}
+                          >
+                            {record.bookingDr}
+                          </Table.Td>
+                          <Table.Td style={{ ...cell, textAlign: "center" }}>
+                            {record.noOfDrops ?? "—"}
+                          </Table.Td>
+                          <Table.Td style={cell}>
+                            {record.pickLocation || "—"}
+                          </Table.Td>
+                          <Table.Td style={cell}>
+                            {record.dropOffLocation || "—"}
+                          </Table.Td>
+                          <Table.Td
+                            style={{
+                              ...cell,
+                              color: "var(--mantine-color-green-7)",
+                              fontWeight: 700,
+                            }}
+                          >
+                            {record.tripRate
+                              ? `₱${Number(record.tripRate).toLocaleString()}`
+                              : "—"}
+                          </Table.Td>
+                          <Table.Td style={cell}>
+                            <Badge
+                              variant="light"
+                              color={STATUS_COLOR[record.status] ?? "gray"}
+                              radius="md"
+                              styles={{
+                                root: { height: 18 },
+                                label: { fontSize: "9px", fontWeight: 700 },
+                              }}
+                            >
+                              {record.status}
+                            </Badge>
+                          </Table.Td>
+                          <Table.Td style={cell}>
+                            <PodCell record={record} onView={setPodPreview} />
+                          </Table.Td>
+                        </Table.Tr>
+                      ))
+                    )}
+                  </Table.Tbody>
+                </Table>
+              </ScrollArea>
 
-            {/* Footer */}
-            <Box
-              px="md"
-              py={8}
-              style={{
-                borderTop: "1px solid var(--mantine-color-gray-2)",
-                backgroundColor: "var(--mantine-color-gray-0)",
-              }}
-            >
-              <Group justify="space-between" align="center">
-                <Text style={{ fontSize: "10px" }} c="dimmed" fw={600}>
-                  Showing{" "}
-                  {filtered.length
-                    ? Math.min((page - 1) * PAGE_SIZE + 1, filtered.length)
-                    : 0}{" "}
-                  of {filtered.length} record
-                  {filtered.length !== 1 ? "s" : ""}
-                  {search ? ` matching "${search}"` : ""}
-                </Text>
-                <Pagination
-                  total={Math.ceil(filtered.length / PAGE_SIZE)}
-                  value={page}
-                  onChange={setPage}
-                  size="xs"
-                  radius="md"
-                  styles={{
-                    control: { fontSize: "10px", height: 24, minWidth: 24 },
-                  }}
-                />
-              </Group>
-            </Box>
+              {/* Footer */}
+              <Box
+                px="md"
+                py={8}
+                style={{
+                  borderTop: "1px solid var(--mantine-color-gray-2)",
+                  backgroundColor: "var(--mantine-color-gray-0)",
+                }}
+              >
+                <Group justify="space-between" align="center">
+                  <Text style={{ fontSize: "10px" }} c="dimmed" fw={600}>
+                    Showing{" "}
+                    {filtered.length
+                      ? Math.min((page - 1) * PAGE_SIZE + 1, filtered.length)
+                      : 0}{" "}
+                    of {filtered.length} record
+                    {filtered.length !== 1 ? "s" : ""}
+                    {search ? ` matching "${search}"` : ""}
+                  </Text>
+                  <Pagination
+                    total={Math.ceil(filtered.length / PAGE_SIZE)}
+                    value={page}
+                    onChange={setPage}
+                    size="xs"
+                    radius="md"
+                    styles={{
+                      control: { fontSize: "10px", height: 24, minWidth: 24 },
+                    }}
+                  />
+                </Group>
+              </Box>
             </Paper>
           )}
         </Stack>
       </ScrollArea>
-    </>
+    </Box>
   );
 }
