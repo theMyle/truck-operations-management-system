@@ -6,8 +6,15 @@ export type User = {
     lastName: string | null
     createdAt: Date
     updatedAt: Date
-    primaryEmailAddress: string
+    primaryEmailAddress: string | null
     role: string | null
+}
+
+export enum UserRole {
+    ADMIN = "admin",
+    DISPATCH_OFFICER = "dispatch officer",
+    COORDINATOR = "coordinator",
+    BILLING_CLERK = "billing clerk",
 }
 
 export type UserRoles = "admin"

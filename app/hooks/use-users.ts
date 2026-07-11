@@ -45,14 +45,19 @@ export function useCreateUser({ getToken }: UserHookProps) {
                 body: JSON.stringify(newUser)
             });
 
+            console.log(res.status)
+
             if (!res.ok) {
                 if (res.status === 422) {
-                    const errorArray = await res.json();
-                    throw errorArray
+                    const errorData = await res.json();
+                    console.log(errorData);
+                    throw errorData.errors || errorData;
                 }
             }
 
             const rawData = await res.json();
+            console.log(rawData)
+
             return {
                 ...rawData,
                 createdAt: new Date(rawData.createdAt),
@@ -79,6 +84,10 @@ export function useUpdateUser({ getToken }: UserHookProps) {
             });
 
             if (!res.ok) {
+                if (res.status === 422) {
+                    const errorData = await res.json();
+                    throw errorData.errors || errorData;
+                }
                 const errorData = await res.json().catch(() => ({}));
                 throw new Error(errorData.error || errorData.message || 'Failed to update user');
             }
@@ -113,7 +122,7 @@ export function useDeleteUser({ getToken }: UserHookProps) {
                 throw new Error(errorData.error || errorData.message || 'Failed to delete user');
             }
 
-            return res.json() as Promise<{ success: boolean }>;
+            return;
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['users'] });
