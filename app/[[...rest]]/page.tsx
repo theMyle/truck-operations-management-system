@@ -1,11 +1,11 @@
 "use client";
 
-import { SignIn, useAuth } from "@clerk/nextjs";
+import { SignIn, useUser } from "@clerk/nextjs";
 import Image from "next/image";
 import logoImg from "../assets/logo.png";
 
 export default function Home() {
-  const { isSignedIn } = useAuth();
+  const { isSignedIn } = useUser();
 
   return (
     <div className="flex h-screen w-full overflow-hidden bg-slate-50 relative">
@@ -47,7 +47,7 @@ export default function Home() {
           <SignIn
             routing="path"
             path="/"
-            fallbackRedirectUrl="/dashboard"
+            fallbackRedirectUrl={"/default"}
           />
         </div>
       </div>

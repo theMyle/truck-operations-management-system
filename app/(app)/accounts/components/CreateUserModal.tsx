@@ -27,7 +27,7 @@ export function CreateUserModal({ opened, onClose }: CreateUserModalProps) {
             username: "",
             password: "",
             confirmPassword: "",
-            email: "",
+            email: undefined,
             firstName: "",
             lastName: "",
             role: "",
@@ -71,7 +71,7 @@ export function CreateUserModal({ opened, onClose }: CreateUserModalProps) {
                         return "Must be a valid email address"
                     }
                 }
-                return null;
+                return undefined;
             },
 
             firstName: (value) => !value ? "First Name is required" : null,
@@ -86,7 +86,7 @@ export function CreateUserModal({ opened, onClose }: CreateUserModalProps) {
             // Strip confirmPassword before sending payload to API
             const { confirmPassword, ...submitValues } = values;
             await createUserMutation.mutateAsync(submitValues);
-            
+
             notifications.show({
                 title: "Account Created",
                 message: `Successfully created account for ${submitValues.firstName || submitValues.username}`,
@@ -98,7 +98,7 @@ export function CreateUserModal({ opened, onClose }: CreateUserModalProps) {
         } catch (err: any) {
             console.log(err)
             setError(err || "Something went wrong.");
-            
+
             // Pop a failure notification if it's a general non-validation error
             if (!Array.isArray(err)) {
                 notifications.show({

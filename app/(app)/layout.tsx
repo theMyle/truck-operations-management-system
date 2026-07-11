@@ -33,12 +33,13 @@ import { usePathname } from "next/navigation";
 import { DispatchProvider } from "./context/dispatch-context";
 import { SidebarNav } from "../../components/SidebarNav";
 import { UserCard } from "../../components/UserCard";
+import { UserRole } from "@/types/user";
 
 interface NavItem {
   label: string
   icon: Icon
   href: string
-  allowedRoles: string[]
+  allowedRoles: UserRole[]
 }
 
 export default function DashboardLayout({
@@ -56,36 +57,36 @@ export default function DashboardLayout({
   const navItems: NavItem[] = [
     {
       label: "Dashboard", icon: IconDashboard, href: "/dashboard",
-      allowedRoles: ["admin"]
+      allowedRoles: [UserRole.ADMIN]
     },
     {
       label: "Booking Form", icon: IconSend, href: "/dispatch",
-      allowedRoles: ["admin"]
+      allowedRoles: [UserRole.ADMIN, UserRole.DISPATCH_OFFICER]
     },
     {
       label: "Booking List", icon: IconTruckDelivery, href: "/booking",
-      allowedRoles: ["admin"]
+      allowedRoles: [UserRole.ADMIN, UserRole.DISPATCH_OFFICER]
     },
     {
       label: "Trip Logs", icon: IconRoute, href: "/trip-logs",
-      allowedRoles: ["admin"]
+      allowedRoles: [UserRole.ADMIN, UserRole.COORDINATOR]
     },
     {
       label: "Billing", icon: IconReceipt2, href: "/billing",
-      allowedRoles: ["admin"]
+      allowedRoles: [UserRole.ADMIN, UserRole.BILLING_CLERK]
     },
     {
       label: "Registration", icon: IconUserPlus, href: "/registration",
-      allowedRoles: ["admin"]
+      allowedRoles: [UserRole.ADMIN]
     },
     {
       label: "Accounts", icon: IconUserPlus, href: "/accounts",
-      allowedRoles: ["admin"]
+      allowedRoles: [UserRole.ADMIN]
     },
   ];
 
   const visibleNavItems = navItems.filter((item) => {
-    return item.allowedRoles?.includes(userRole);
+    return item.allowedRoles?.includes(userRole as UserRole);
   })
 
   const navSections = [
