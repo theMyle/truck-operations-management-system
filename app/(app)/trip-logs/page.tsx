@@ -41,6 +41,8 @@ import { getAllBookingAction, deleteBookingAction, updateTripDetailAction } from
 import { formatTime12Hour, formatTimeHHMM } from "@/lib/utils/stringFormat";
 import { TripLogsTable } from "@/components/trip-logs/TripLogsTable";
 import { TripLogsModuleSkeleton } from "@/components/ui/ModuleSkeletons";
+import { useTableExport } from "@/app/hooks/useTableExport";
+import { useTablePrint } from "@/app/hooks/useTablePrint";
 
 /* ── Status badge helper ── */
 const statusColor: Record<DispatchRecord["status"], string> = {
@@ -283,6 +285,22 @@ const COLUMNS = [
 
 const PAGE_SIZE = 10;
 
+/** Columns matching the TripLogsTable display */
+const TRIP_LOG_EXPORT_COLUMNS = [
+  { key: "displayBookingNo", label: "Trip ID" },
+  { key: "tripRate", label: "Trip Rate" },
+  { key: "date", label: "Date" },
+  { key: "status", label: "Status" },
+  { key: "client", label: "Client" },
+  { key: "driver", label: "Driver" },
+  { key: "helper", label: "Helper" },
+  { key: "unit", label: "Unit" },
+  { key: "plateNo", label: "Plate #" },
+  { key: "ruta", label: "Route" },
+  { key: "bookingDr", label: "Booking / DR#" },
+  { key: "bookedBy", label: "Booked By" },
+];
+
 export default function DispatchRecordsPage() {
   const router = useRouter();
   const [records, setRecords] = useState<DispatchRecord[]>([]);
@@ -419,6 +437,9 @@ export default function DispatchRecordsPage() {
       );
     });
   }, [search, records]);
+
+  const { handleExport } = useTableExport(filtered, TRIP_LOG_EXPORT_COLUMNS, "Trip Logs");
+  const { handlePrint } = useTablePrint(filtered, TRIP_LOG_EXPORT_COLUMNS, "Trip Logs");
 
   const paginated = useMemo(
     () => filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
@@ -650,13 +671,14 @@ export default function DispatchRecordsPage() {
                     </Group>
                   );
                 }}
-                onChange={(val) => {
+                onChange={async (val) => {
                   if (!val) return;
                   notifications.show({
                     title: "Download started",
                     message: `Exporting as ${val.toUpperCase()}`,
                     color: "blue",
                   });
+                  await handleExport(val);
                 }}
                 styles={{
                   input: {

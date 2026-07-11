@@ -47,8 +47,10 @@ export function ClientSection({
                 const routes = client?.routes ?? [];
                 if (routes.length === 1) {
                   form.setFieldValue("ruta", routes[0].route);
+                  form.setFieldValue("clientRate", routes[0].rate ?? "");
                 } else {
                   form.setFieldValue("ruta", "");
+                  form.setFieldValue("clientRate", "");
                 }
               }}
               styles={inputStyles}
