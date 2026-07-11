@@ -10,6 +10,7 @@ import {
 } from "@mantine/core";
 import { IconSearch, IconX } from "@tabler/icons-react";
 import { CardHeader } from "./CardHeader";
+import { getTruckStatusLabel } from "@/lib/utils/truckStatus";
 
 interface Truck {
   plateNumber: string;
@@ -26,11 +27,12 @@ interface LiveFleetTableProps {
   activeStatus?: string | null;
 }
 
-const STATUS_CONFIG: Record<string, { color: string; label: string }> = {
-  available: { color: "green", label: "Available" },
-  "on trip": { color: "blue", label: "On Trip" },
-  maintenance: { color: "red", label: "Maintenance" },
-  unavailable: { color: "gray", label: "Unavailable" },
+const STATUS_COLORS: Record<string, string> = {
+  available: "green",
+  "on trip": "blue",
+  "in transit": "blue",
+  maintenance: "red",
+  unavailable: "gray",
 };
 
 export const LiveFleetTable = ({
@@ -58,7 +60,7 @@ export const LiveFleetTable = ({
       subtitle={
         <Text style={{ fontSize: "10px" }} c="dimmed">
           {activeStatus
-            ? (STATUS_CONFIG[activeStatus]?.label ?? activeStatus)
+            ? getTruckStatusLabel(activeStatus)
             : "All Fleet"}{" "}
           | {trucks.length}/{totalCount}
         </Text>
@@ -126,7 +128,7 @@ export const LiveFleetTable = ({
                 </Table.Td>
                 <Table.Td ta="center">
                   <Badge
-                    color={STATUS_CONFIG[truck.status]?.color ?? "gray"}
+                    color={STATUS_COLORS[truck.status] ?? "gray"}
                     variant="filled"
                     radius="sm"
                     w={90}
@@ -139,7 +141,7 @@ export const LiveFleetTable = ({
                       },
                     }}
                   >
-                    {STATUS_CONFIG[truck.status]?.label ?? truck.status}
+                    {getTruckStatusLabel(truck.status)}
                   </Badge>
                 </Table.Td>
               </Table.Tr>

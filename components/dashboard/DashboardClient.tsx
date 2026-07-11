@@ -9,6 +9,7 @@ import { MonthlyOperationsTable } from "@/components/dashboard/MonthlyOperations
 import { LiveFleetTable } from "@/components/dashboard/LiveFleetTable";
 import { useState } from "react";
 import { Truck } from "@/lib/db/schema";
+import { getTruckStatusLabel } from "@/lib/utils/truckStatus";
 
 type FleetCount = {
   status: "available" | "on trip" | "maintenance" | "unavailable";
@@ -42,7 +43,7 @@ export default function DashboardClient({ fleetCounts, truckList, dailyOperation
     displayLabel: string;
   }[] = [
     { label: "available" as const, color: "green", displayLabel: "Available" },
-    { label: "on trip" as const, color: "blue", displayLabel: "On Trip" },
+    { label: "on trip" as const, color: "blue", displayLabel: "In Transit" },
     {
       label: "maintenance" as const,
       color: "red",
@@ -60,23 +61,35 @@ export default function DashboardClient({ fleetCounts, truckList, dailyOperation
 
   const fleetSearchSuggestions = Array.from(
     new Set(
-      truckList.flatMap((truck) => [
-        truck.plateNumber,
-        truck.status,
-        `${truck.plateNumber} - ${truck.status}`,
-      ]),
+      truckList.flatMap((truck) => {
+        const statusLabel = getTruckStatusLabel(truck.status);
+
+        return [
+          truck.plateNumber,
+          truck.status,
+          statusLabel,
+          `${truck.plateNumber} - ${truck.status}`,
+          `${truck.plateNumber} - ${statusLabel}`,
+        ];
+      }),
     ),
   ).sort();
 
   const filteredTruckList = truckList.filter((truck) => {
     const searchQuery = fleetSearch.trim().toLowerCase();
+    const statusLabel = getTruckStatusLabel(truck.status);
+    const searchableText = [
+      truck.plateNumber,
+      truck.status,
+      statusLabel,
+      `${truck.plateNumber} - ${truck.status}`,
+      `${truck.plateNumber} - ${statusLabel}`,
+    ]
+      .join(" ")
+      .toLowerCase();
     const matchesStatus =
       !activeFleetStatus || truck.status === activeFleetStatus;
-    const matchesSearch =
-      !searchQuery ||
-      `${truck.plateNumber} ${truck.status} ${truck.plateNumber} - ${truck.status}`
-        .toLowerCase()
-        .includes(searchQuery);
+    const matchesSearch = !searchQuery || searchableText.includes(searchQuery);
 
     return matchesStatus && matchesSearch;
   });
