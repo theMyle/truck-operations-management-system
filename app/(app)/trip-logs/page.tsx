@@ -550,6 +550,7 @@ export default function DispatchRecordsPage() {
 
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setPage(1);
   }, [search]);
   const cellStyle: React.CSSProperties = {
