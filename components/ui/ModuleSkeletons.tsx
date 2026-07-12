@@ -1,4 +1,11 @@
-import { Group, Paper, ScrollArea, SimpleGrid, Skeleton, Stack } from "@mantine/core";
+import {
+  Group,
+  Paper,
+  ScrollArea,
+  SimpleGrid,
+  Skeleton,
+  Stack,
+} from "@mantine/core";
 import { SummaryCardsSkeleton } from "@/components/ui/CardSkeleton";
 import { TableSkeleton } from "@/components/ui/TableSkeleton";
 
@@ -6,11 +13,11 @@ export const BOOKING_TABLE_HEADERS = [
   "Booking No.",
   "Date",
   "Client",
+  "Driver",
   "Fleet",
   "Plate",
   "Pickup",
   "Drop-off",
-  "Driver",
   "Status",
   "Actions",
 ];
@@ -65,7 +72,11 @@ function ToolbarSkeleton({
   );
 }
 
-function FilterRowSkeleton({ widths = [340, 150, 160] }: { widths?: number[] }) {
+function FilterRowSkeleton({
+  widths = [340, 150, 160],
+}: {
+  widths?: number[];
+}) {
   return (
     <Group gap="sm">
       {widths.map((width, index) => (
@@ -80,7 +91,11 @@ export function BookingModuleSkeleton() {
     <ScrollArea h="calc(100vh - 72px)" scrollbars="y">
       <Stack gap="md">
         <ToolbarSkeleton titleWidth={180} actionWidths={[110, 110]} />
-        <TableSkeleton rows={10} headers={BOOKING_TABLE_HEADERS} minWidth={1250} />
+        <TableSkeleton
+          rows={10}
+          headers={BOOKING_TABLE_HEADERS}
+          minWidth={1250}
+        />
       </Stack>
     </ScrollArea>
   );
@@ -92,7 +107,11 @@ export function TripLogsModuleSkeleton() {
       <Stack gap="md">
         <ToolbarSkeleton titleWidth={160} actionWidths={[120]} />
         <FilterRowSkeleton widths={[400]} />
-        <TableSkeleton rows={10} headers={TRIP_LOGS_TABLE_HEADERS} minWidth={1600} />
+        <TableSkeleton
+          rows={10}
+          headers={TRIP_LOGS_TABLE_HEADERS}
+          minWidth={1600}
+        />
       </Stack>
     </ScrollArea>
   );
@@ -105,7 +124,11 @@ export function BillingModuleSkeleton() {
         <ToolbarSkeleton titleWidth={240} actionWidths={[90, 110, 130]} />
         <SummaryCardsSkeleton cols={3} />
         <FilterRowSkeleton />
-        <TableSkeleton rows={9} headers={BILLING_TABLE_HEADERS} minWidth={1400} />
+        <TableSkeleton
+          rows={9}
+          headers={BILLING_TABLE_HEADERS}
+          minWidth={1400}
+        />
       </Stack>
     </ScrollArea>
   );
@@ -160,10 +183,19 @@ export function RegistrationModuleSkeleton() {
           <Skeleton height={10} width={260} radius="xl" />
         </Stack>
       </Group>
-      <TableSkeleton rows={4} headers={["Client", "Routes", "Rate", "Actions"]} />
-      <TableSkeleton rows={4} headers={["Driver", "License", "Phone", "Actions"]} />
+      <TableSkeleton
+        rows={4}
+        headers={["Client", "Routes", "Rate", "Actions"]}
+      />
+      <TableSkeleton
+        rows={4}
+        headers={["Driver", "License", "Phone", "Actions"]}
+      />
       <TableSkeleton rows={4} headers={["Helper", "Phone", "ID", "Actions"]} />
-      <TableSkeleton rows={4} headers={["Plate", "Fleet", "Rate", "Status", "Actions"]} />
+      <TableSkeleton
+        rows={4}
+        headers={["Plate", "Fleet", "Rate", "Status", "Actions"]}
+      />
     </Stack>
   );
 }

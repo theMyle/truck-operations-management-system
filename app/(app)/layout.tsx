@@ -36,10 +36,10 @@ import { UserCard } from "../../components/UserCard";
 import { UserRole } from "@/types/user";
 
 interface NavItem {
-  label: string
-  icon: Icon
-  href: string
-  allowedRoles: UserRole[]
+  label: string;
+  icon: Icon;
+  href: string;
+  allowedRoles: UserRole[];
 }
 
 export default function DashboardLayout({
@@ -56,57 +56,81 @@ export default function DashboardLayout({
 
   const navItems: NavItem[] = [
     {
-      label: "Dashboard", icon: IconDashboard, href: "/dashboard",
-      allowedRoles: [UserRole.ADMIN]
+      label: "Dashboard",
+      icon: IconDashboard,
+      href: "/dashboard",
+      allowedRoles: [UserRole.ADMIN],
     },
     {
-      label: "Booking Form", icon: IconSend, href: "/dispatch",
-      allowedRoles: [UserRole.ADMIN, UserRole.DISPATCH_OFFICER]
+      label: "Booking Form",
+      icon: IconSend,
+      href: "/dispatch",
+      allowedRoles: [UserRole.ADMIN, UserRole.DISPATCH_OFFICER],
     },
     {
-      label: "Booking List", icon: IconTruckDelivery, href: "/booking",
-      allowedRoles: [UserRole.ADMIN, UserRole.DISPATCH_OFFICER]
+      label: "Booking List",
+      icon: IconTruckDelivery,
+      href: "/booking",
+      allowedRoles: [UserRole.ADMIN, UserRole.DISPATCH_OFFICER],
     },
     {
-      label: "Trip Logs", icon: IconRoute, href: "/trip-logs",
-      allowedRoles: [UserRole.ADMIN, UserRole.COORDINATOR]
+      label: "Trip Logs",
+      icon: IconRoute,
+      href: "/trip-logs",
+      allowedRoles: [
+        UserRole.ADMIN,
+        UserRole.COORDINATOR,
+        UserRole.BILLING_CLERK,
+      ],
     },
     {
-      label: "Billing", icon: IconReceipt2, href: "/billing",
-      allowedRoles: [UserRole.ADMIN, UserRole.BILLING_CLERK]
+      label: "Billing",
+      icon: IconReceipt2,
+      href: "/billing",
+      allowedRoles: [UserRole.ADMIN, UserRole.BILLING_CLERK],
     },
     {
-      label: "Registration", icon: IconUserPlus, href: "/registration",
-      allowedRoles: [UserRole.ADMIN]
+      label: "Registration",
+      icon: IconUserPlus,
+      href: "/registration",
+      allowedRoles: [UserRole.ADMIN],
     },
     {
-      label: "Accounts", icon: IconUserPlus, href: "/accounts",
-      allowedRoles: [UserRole.ADMIN]
+      label: "Accounts",
+      icon: IconUserPlus,
+      href: "/accounts",
+      allowedRoles: [UserRole.ADMIN],
     },
   ];
 
   const visibleNavItems = navItems.filter((item) => {
     return item.allowedRoles?.includes(userRole as UserRole);
-  })
+  });
 
   const navSections = [
     {
       title: "Overview",
-      items: visibleNavItems.filter(item => ["/dashboard"].includes(item.href))
+      items: visibleNavItems.filter((item) =>
+        ["/dashboard"].includes(item.href),
+      ),
     },
     {
       title: "Operations",
-      items: visibleNavItems.filter(item => ["/dispatch", "/booking", "/trip-logs"].includes(item.href))
+      items: visibleNavItems.filter((item) =>
+        ["/dispatch", "/booking", "/trip-logs"].includes(item.href),
+      ),
     },
     {
       title: "Finance",
-      items: visibleNavItems.filter(item => ["/billing"].includes(item.href))
+      items: visibleNavItems.filter((item) => ["/billing"].includes(item.href)),
     },
     {
       title: "Management",
-      items: visibleNavItems.filter(item => ["/registration", "/accounts"].includes(item.href))
-    }
-  ].filter(section => section.items.length > 0);
+      items: visibleNavItems.filter((item) =>
+        ["/registration", "/accounts"].includes(item.href),
+      ),
+    },
+  ].filter((section) => section.items.length > 0);
 
   if (!isLoaded) return null;
 
@@ -176,27 +200,22 @@ export default function DashboardLayout({
 
         <AppShell.Navbar p="xs">
           <AppShell.Section grow mt="xs">
-
             {/* Nav Component */}
             <SidebarNav sections={navSections} pathname={pathname} />
-
           </AppShell.Section>
 
           <AppShell.Section
             p="xs"
             style={{ borderTop: "1px solid var(--mantine-color-gray-2)" }}
           >
-
             {/* User Card */}
             <UserCard user={user} userRole={userRole} />
-
           </AppShell.Section>
         </AppShell.Navbar>
 
-        <AppShell.Main
-          bg="gray.0"
-          h="100dvh"
-        >{children}</AppShell.Main>
+        <AppShell.Main bg="gray.0" h="100dvh">
+          {children}
+        </AppShell.Main>
       </AppShell>
     </DispatchProvider>
   );
