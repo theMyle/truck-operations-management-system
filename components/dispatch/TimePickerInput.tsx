@@ -2,7 +2,7 @@
 
 import { ActionIcon, Group, Select, Stack, Text, Tooltip } from "@mantine/core";
 import { IconX } from "@tabler/icons-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 export function TimePickerInput({
   label,
@@ -21,16 +21,19 @@ export function TimePickerInput({
     return String(hh).padStart(2, "0");
   };
 
-  const parsed = value ? value.split(":") : [];
-  const rawHour = parsed[0] ? parseInt(parsed[0]) : null;
+  const [hour, setHour] = useState<string | null>(null);
+  const [minute, setMinute] = useState<string | null>(null);
+  const [period, setPeriod] = useState<string | null>(null);
 
-  const [hour, setHour] = useState<string | null>(
-    rawHour !== null ? toHour12(rawHour) : null,
-  );
-  const [minute, setMinute] = useState<string | null>(parsed[1] ?? null);
-  const [period, setPeriod] = useState<string | null>(
-    rawHour !== null ? (rawHour >= 12 ? "PM" : "AM") : null,
-  );
+  useEffect(() => {
+    const parsed = value ? value.split(":") : [];
+    const rawHour = parsed[0] ? parseInt(parsed[0]) : null;
+
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setHour(rawHour !== null ? toHour12(rawHour) : null);
+    setMinute(parsed[1] ?? null);
+    setPeriod(rawHour !== null ? (rawHour >= 12 ? "PM" : "AM") : null);
+  }, [value]);
 
   const hours = Array.from({ length: 12 }, (_, i) =>
     String(i + 1).padStart(2, "0"),

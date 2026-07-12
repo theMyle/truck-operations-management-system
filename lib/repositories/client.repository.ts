@@ -1,12 +1,15 @@
-import { eq } from "drizzle-orm";
+import { count, eq } from "drizzle-orm";
 import { db } from "../db";
 import {
+  booking,
   Client,
   clients,
   clientRoutes,
   NewClient,
   ClientWithRoutes,
+  dispatch as dispatchRecords,
 } from "../db/schema";
+import { throwIfDeleteBlocked } from "./delete-guards";
 
 export type RouteInput = { route: string, rate?: string };
 
@@ -86,11 +89,29 @@ export const makeClientRepository = (database = db) => {
     },
 
     delete: async function (id: string): Promise<Client | null> {
-      // cascade delete handles clientRoutes automatically (defined in schema)
+      const [{ count: bookingCount }] = await database
+        .select({ count: count() })
+        .from(booking)
+        .where(eq(booking.clientId, id));
+      const [{ count: dispatchCount }] = await database
+        .select({ count: count() })
+        .from(dispatchRecords)
+        .where(eq(dispatchRecords.clientId, id));
+
+      throwIfDeleteBlocked("client", [
+        { count: bookingCount, singular: "booking" },
+        { count: dispatchCount, singular: "dispatch record" },
+      ]);
+
       const [deleted] = await database
         .delete(clients)
         .where(eq(clients.id, id))
         .returning();
+
+      if (!deleted) {
+        throw new Error("Client was not found or has already been deleted.");
+      }
+
       return deleted ?? null;
     },
   };

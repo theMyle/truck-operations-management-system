@@ -8,6 +8,7 @@ import { DataTable } from "mantine-datatable";
 import { useDisclosure } from "@mantine/hooks";
 import { modals } from "@mantine/modals";
 import { notifications } from "@mantine/notifications";
+import { useRouter } from "next/navigation";
 import type { Driver } from "@/lib/db/schema/drivers";
 import { deleteDriverAction } from "@/lib/actions/drivers";
 import { TableHeader } from "./TableHeader";
@@ -22,6 +23,7 @@ const PAGE_SIZE = 7;
 const UNIFORM_TABLE_HEIGHT = "21rem";
 
 export function DriversTable({ data }: Props) {
+  const router = useRouter();
   const [addOpened, { open: openAdd, close: closeAdd }] = useDisclosure(false);
   const [editDriver, setEditDriver] = useState<Driver | null>(null);
   const [viewDriver, setViewDriver] = useState<Driver | null>(null);
@@ -47,10 +49,10 @@ export function DriversTable({ data }: Props) {
       confirmProps: { color: "red" },
       onConfirm: async () => {
         const result = await deleteDriverAction({ id: driver.id });
-        if (result?.validationErrors || result?.serverError) {
+        if (!result || result.validationErrors || result.serverError) {
           notifications.show({
             title: "Error",
-            message: "Failed to delete driver",
+            message: result?.serverError ?? "Failed to delete driver",
             color: "red",
           });
         } else {
@@ -59,6 +61,7 @@ export function DriversTable({ data }: Props) {
             message: "Driver deleted successfully",
             color: "green",
           });
+          router.refresh();
         }
       },
     });

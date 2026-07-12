@@ -1,6 +1,7 @@
-import { eq } from "drizzle-orm";
+import { count, eq } from "drizzle-orm";
 import { db } from "../db";
-import { Helper, helpers, NewHelper } from "../db/schema";
+import { bookingToHelpers, Helper, helpers, NewHelper } from "../db/schema";
+import { throwIfDeleteBlocked } from "./delete-guards";
 
 export const makeHelperRepository = (database = db) => {
     return {
@@ -29,10 +30,24 @@ export const makeHelperRepository = (database = db) => {
         },
 
         delete: async function (id: string): Promise<Helper | null> {
+            const [{ count: assignmentCount }] = await database
+                .select({ count: count() })
+                .from(bookingToHelpers)
+                .where(eq(bookingToHelpers.helperId, id));
+
+            throwIfDeleteBlocked("helper", [
+                { count: assignmentCount, singular: "booking assignment" },
+            ]);
+
             const [deleted] = await database
                 .delete(helpers)
                 .where(eq(helpers.id, id))
                 .returning();
+
+            if (!deleted) {
+                throw new Error("Helper was not found or has already been deleted.");
+            }
+
             return deleted ?? null;
         }
     }

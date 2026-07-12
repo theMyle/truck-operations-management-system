@@ -8,6 +8,7 @@ import { DataTable } from "mantine-datatable";
 import { useDisclosure } from "@mantine/hooks";
 import { modals } from "@mantine/modals";
 import { notifications } from "@mantine/notifications";
+import { useRouter } from "next/navigation";
 import type { ClientWithRoutes } from "@/lib/db/schema/clients";
 import { deleteClientAction } from "@/lib/actions/clients";
 import { TableHeader } from "./TableHeader";
@@ -22,6 +23,7 @@ const PAGE_SIZE = 7;
 const UNIFORM_TABLE_HEIGHT = "21rem";
 
 export function ClientsTable({ data }: Props) {
+  const router = useRouter();
   const [addOpened, { open: openAdd, close: closeAdd }] = useDisclosure(false);
   const [editClient, setEditClient] = useState<ClientWithRoutes | null>(null);
   const [viewClient, setViewClient] = useState<ClientWithRoutes | null>(null);
@@ -47,10 +49,10 @@ export function ClientsTable({ data }: Props) {
       confirmProps: { color: "red" },
       onConfirm: async () => {
         const result = await deleteClientAction({ id: client.id });
-        if (result?.validationErrors || result?.serverError) {
+        if (!result || result.validationErrors || result.serverError) {
           notifications.show({
             title: "Error",
-            message: "Failed to delete client",
+            message: result?.serverError ?? "Failed to delete client",
             color: "red",
           });
         } else {
@@ -59,6 +61,7 @@ export function ClientsTable({ data }: Props) {
             message: "Client deleted successfully",
             color: "green",
           });
+          router.refresh();
         }
       },
     });
