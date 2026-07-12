@@ -22,7 +22,6 @@ import {
 import { DispatchRecord } from "@/app/(app)/constant";
 import { STATUS_META } from "./TripDetailsModal";
 
-
 const headerCellStyle: React.CSSProperties = {
   fontSize: "9px",
   fontWeight: 800,
@@ -47,10 +46,10 @@ const COLUMNS = [
   { key: "bookingDate", label: "Date Booked" },
   { key: "bookingDRNo", label: "Booking / DR#" },
   { key: "clientName", label: "Client" },
+  { key: "driverName", label: "Driver" },
   { key: "pickUpDate", label: "Pickup Date" },
   { key: "pickUpTime", label: "Pickup Time" },
   { key: "status", label: "Status" },
-  { key: "driverName", label: "Driver" },
   { key: "trucker", label: "Trucker" },
   { key: "helper", label: "Helper" },
   { key: "fleetType", label: "Unit Type" },
@@ -72,7 +71,6 @@ interface BookingTableProps {
   onEdit: (record: DispatchRecord) => void;
   onDelete: (record: DispatchRecord) => void;
 }
-
 
 export function BookingTable({
   records,
@@ -221,6 +219,9 @@ export function BookingTable({
                     {record.clientName || record.client || "—"}
                   </Table.Td>
                   <Table.Td style={cellStyle}>
+                    {record.driverName || record.driver || "—"}
+                  </Table.Td>
+                  <Table.Td style={cellStyle}>
                     {record.pickUpDate || record.date || "—"}
                   </Table.Td>
                   <Table.Td style={cellStyle}>
@@ -238,9 +239,6 @@ export function BookingTable({
                     >
                       {record.status}
                     </Badge>
-                  </Table.Td>
-                  <Table.Td style={cellStyle}>
-                    {record.driverName || record.driver || "—"}
                   </Table.Td>
                   <Table.Td style={cellStyle}>{record.trucker || "—"}</Table.Td>
                   <Table.Td style={cellStyle}>{record.helper || "—"}</Table.Td>
