@@ -20,7 +20,7 @@ export const getBillingRecordsAction = actionClient
 
     // Build where clauses dynamically
     const conditions = [];
-    conditions.push(eq(booking.deliveryStatus, "Completed"))
+    conditions.push(eq(booking.deliveryStatus, "Completed"));
     if (client) conditions.push(eq(booking.clientName, client));
     if (from) conditions.push(gte(booking.pickupDate, from));
     if (to) conditions.push(lte(booking.pickupDate, to));
@@ -109,5 +109,31 @@ export const getBillingRecordsAction = actionClient
       podFile: b.PODLink ? (b.PODLink.split("/").pop() ?? "") : "",
       podFileUrl: b.PODLink ?? "",
       podFileType: "",
+    }));
+  });
+
+const GetIncomeSchema = z.object({
+  from: z.string(), // "YYYY-MM-DD"
+  to: z.string(), // "YYYY-MM-DD"
+});
+
+export const getIncomeRecordsAction = actionClient
+  .schema(GetIncomeSchema)
+  .action(async ({ parsedInput }) => {
+    const { from, to } = parsedInput;
+
+    // No status filter, no POD gating — every booking counts toward
+    // Gross Income the moment it exists, per pickupDate.
+    const rows = await db
+      .select({
+        pickupDate: booking.pickupDate,
+        clientRate: booking.clientRate,
+      })
+      .from(booking)
+      .where(and(gte(booking.pickupDate, from), lte(booking.pickupDate, to)));
+
+    return rows.map((r) => ({
+      date: r.pickupDate,
+      tripRate: r.clientRate,
     }));
   });

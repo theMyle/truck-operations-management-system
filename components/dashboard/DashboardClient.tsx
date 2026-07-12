@@ -7,14 +7,17 @@ import { DailyOperationsTable } from "@/components/dashboard/DailyOperationsTabl
 import { WeeklyOperationsTable } from "@/components/dashboard/WeeklyOperationsTable";
 import { MonthlyOperationsTable } from "@/components/dashboard/MonthlyOperationsTable";
 import { LiveFleetTable } from "@/components/dashboard/LiveFleetTable";
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Truck } from "@/lib/db/schema";
 import { getTruckStatusLabel } from "@/lib/utils/truckStatus";
+import { getIncomeRecordsAction } from "@/lib/actions/billing";
 
 type FleetCount = {
   status: "available" | "on trip" | "maintenance" | "unavailable";
   count: number;
 };
+
+type IncomeRecord = { date: string; tripRate: string | number | null };
 
 type Props = {
   fleetCounts: FleetCount[];
@@ -26,16 +29,98 @@ type Props = {
 
 type TruckList = "available" | "on trip" | "maintenance" | "unavailable";
 
-export default function DashboardClient({ fleetCounts, truckList, dailyOperations, weeklyOperations, monthlyOperations }: Props) {
-  const [isFleetTableOpen, setIsFleetTableOpen] = useState(false);
-  const [activeFleetStatus, setActiveFleetStatus] = useState<string | null>(null);
-  const [fleetSearch, setFleetSearch] = useState("");
+// ── date helpers (local-time safe — avoid toISOString() shifting the day) ──
+function toISODate(d: Date) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
 
-  const incomeStats = [
-    { label: "Daily Income", value: "P 100,000" },
-    { label: "Weekly Income", value: "P 700,000" },
-    { label: "Monthly Income", value: "P 3,200,000" },
-  ];
+function parseLocalDate(dateStr: string) {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  return new Date(y, m - 1, d);
+}
+
+function getMondayOfWeek(ref: Date) {
+  const d = new Date(ref.getFullYear(), ref.getMonth(), ref.getDate());
+  const day = d.getDay(); // 0 = Sun
+  const diffToMonday = day === 0 ? 6 : day - 1;
+  d.setDate(d.getDate() - diffToMonday);
+  return d;
+}
+
+export default function DashboardClient({
+  fleetCounts,
+  truckList,
+  dailyOperations,
+  weeklyOperations,
+  monthlyOperations,
+}: Props) {
+  const [isFleetTableOpen, setIsFleetTableOpen] = useState(false);
+  const [activeFleetStatus, setActiveFleetStatus] = useState<string | null>(
+    null,
+  );
+  const [fleetSearch, setFleetSearch] = useState("");
+  const [incomeRecords, setIncomeRecords] = useState<IncomeRecord[]>([]);
+
+  // Fetch from the earlier of (start of month, start of this week) up to today.
+  // pickupDate-based range naturally excludes future-dated bookings
+  // (e.g. booked today for an Aug 23 delivery).
+  useEffect(() => {
+    async function loadIncomeData() {
+      const today = new Date();
+      const monday = getMondayOfWeek(today);
+      const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+      const rangeStart = monday < startOfMonth ? monday : startOfMonth;
+
+      const result = await getIncomeRecordsAction({
+        from: toISODate(rangeStart),
+        to: toISODate(today),
+      });
+
+      if (result?.data) {
+        setIncomeRecords(result.data as IncomeRecord[]);
+      }
+    }
+
+    loadIncomeData();
+  }, []);
+
+  const incomeStats = useMemo(() => {
+    const today = new Date();
+    const todayStr = toISODate(today);
+    const todayMidnight = new Date(
+      today.getFullYear(),
+      today.getMonth(),
+      today.getDate(),
+    );
+    const monday = getMondayOfWeek(today);
+    const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+
+    const sumWhere = (predicate: (r: IncomeRecord) => boolean) =>
+      incomeRecords
+        .filter(predicate)
+        .reduce((sum, r) => sum + (Number(r.tripRate) || 0), 0);
+
+    const daily = sumWhere((r) => r.date === todayStr);
+    const weekly = sumWhere((r) => {
+      const d = parseLocalDate(r.date);
+      return d >= monday && d <= todayMidnight;
+    });
+    const monthly = sumWhere((r) => {
+      const d = parseLocalDate(r.date);
+      return d >= startOfMonth && d <= todayMidnight;
+    });
+
+    const fmt = (n: number) => `₱${n.toLocaleString()}`;
+
+    return [
+      { label: "Daily Income", value: fmt(daily) },
+      { label: "Weekly Income", value: fmt(weekly) },
+      { label: "Monthly Income", value: fmt(monthly) },
+    ];
+  }, [incomeRecords]);
 
   const fleetStatus: {
     label: TruckList;
@@ -140,7 +225,10 @@ export default function DashboardClient({ fleetCounts, truckList, dailyOperation
             <WeeklyOperationsTable data={weeklyOperations} />
           </Box>
           <Box style={{ flex: 1 }}>
-            <MonthlyOperationsTable year={new Date().getFullYear()} data={monthlyOperations} />
+            <MonthlyOperationsTable
+              year={new Date().getFullYear()}
+              data={monthlyOperations}
+            />
           </Box>
         </Flex>
       </Stack>
