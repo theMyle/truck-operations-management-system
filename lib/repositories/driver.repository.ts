@@ -1,6 +1,7 @@
-import { eq } from "drizzle-orm";
+import { count, eq } from "drizzle-orm";
 import { db } from "../db";
-import { Driver, drivers, NewDriver } from "../db/schema";
+import { booking, dispatch as dispatchRecords, Driver, drivers, NewDriver } from "../db/schema";
+import { throwIfDeleteBlocked } from "./delete-guards";
 
 export const makeDriverRepository = (database = db) => {
     return {
@@ -29,10 +30,29 @@ export const makeDriverRepository = (database = db) => {
         },
 
         delete: async function (id: string): Promise<Driver | null> {
+            const [{ count: bookingCount }] = await database
+                .select({ count: count() })
+                .from(booking)
+                .where(eq(booking.driverId, id));
+            const [{ count: dispatchCount }] = await database
+                .select({ count: count() })
+                .from(dispatchRecords)
+                .where(eq(dispatchRecords.driverId, id));
+
+            throwIfDeleteBlocked("driver", [
+                { count: bookingCount, singular: "booking" },
+                { count: dispatchCount, singular: "dispatch record" },
+            ]);
+
             const [deleted] = await database
                 .delete(drivers)
                 .where(eq(drivers.id, id))
                 .returning();
+
+            if (!deleted) {
+                throw new Error("Driver was not found or has already been deleted.");
+            }
+
             return deleted ?? null;
         }
     }

@@ -8,6 +8,7 @@ import { DataTable } from "mantine-datatable";
 import { useDisclosure } from "@mantine/hooks";
 import { modals } from "@mantine/modals";
 import { notifications } from "@mantine/notifications";
+import { useRouter } from "next/navigation";
 import type { Truck } from "@/lib/db/schema/trucks";
 import { deleteTruckAction } from "@/lib/actions/trucks";
 import { TableHeader } from "./TableHeader";
@@ -29,6 +30,7 @@ const truckStatusColors: Record<string, string> = {
 };
 
 export function TrucksTable({ data }: Props) {
+  const router = useRouter();
   const [addOpened, { open: openAdd, close: closeAdd }] = useDisclosure(false);
   const [editTruck, setEditTruck] = useState<Truck | null>(null);
   const [search, setSearch] = useState("");
@@ -57,10 +59,10 @@ export function TrucksTable({ data }: Props) {
       confirmProps: { color: "red" },
       onConfirm: async () => {
         const result = await deleteTruckAction({ plateNumber: truck.plateNumber });
-        if (result?.validationErrors || result?.serverError) {
+        if (!result || result.validationErrors || result.serverError) {
           notifications.show({
             title: "Error",
-            message: "Failed to delete truck",
+            message: result?.serverError ?? "Failed to delete truck",
             color: "red",
           });
         } else {
@@ -69,6 +71,7 @@ export function TrucksTable({ data }: Props) {
             message: "Truck deleted successfully",
             color: "green",
           });
+          router.refresh();
         }
       },
     });

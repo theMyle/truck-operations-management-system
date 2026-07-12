@@ -8,6 +8,7 @@ import { DataTable } from "mantine-datatable";
 import { useDisclosure } from "@mantine/hooks";
 import { modals } from "@mantine/modals";
 import { notifications } from "@mantine/notifications";
+import { useRouter } from "next/navigation";
 import type { Helper } from "@/lib/db/schema/helpers";
 import { deleteHelperAction } from "@/lib/actions/helpers";
 import { TableHeader } from "./TableHeader";
@@ -22,6 +23,7 @@ const PAGE_SIZE = 7;
 const UNIFORM_TABLE_HEIGHT = "21rem";
 
 export function HelpersTable({ data }: Props) {
+  const router = useRouter();
   const [addOpened, { open: openAdd, close: closeAdd }] = useDisclosure(false);
   const [editHelper, setEditHelper] = useState<Helper | null>(null);
   const [viewHelper, setViewHelper] = useState<Helper | null>(null);
@@ -47,10 +49,10 @@ export function HelpersTable({ data }: Props) {
       confirmProps: { color: "red" },
       onConfirm: async () => {
         const result = await deleteHelperAction({ id: helper.id });
-        if (result?.validationErrors || result?.serverError) {
+        if (!result || result.validationErrors || result.serverError) {
           notifications.show({
             title: "Error",
-            message: "Failed to delete helper",
+            message: result?.serverError ?? "Failed to delete helper",
             color: "red",
           });
         } else {
@@ -59,6 +61,7 @@ export function HelpersTable({ data }: Props) {
             message: "Helper deleted successfully",
             color: "green",
           });
+          router.refresh();
         }
       },
     });

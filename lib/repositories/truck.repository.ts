@@ -1,6 +1,7 @@
-import { eq } from "drizzle-orm";
+import { count, eq } from "drizzle-orm";
 import { db } from "../db";
-import { NewTruck, Truck, trucks, UpdateTruck } from "../db/schema";
+import { booking, dispatch as dispatchRecords, NewTruck, Truck, trucks, UpdateTruck } from "../db/schema";
+import { throwIfDeleteBlocked } from "./delete-guards";
 
 export const makeTruckRepository = (database = db) => {
     return {
@@ -24,10 +25,29 @@ export const makeTruckRepository = (database = db) => {
         },
 
         delete: async function (plateNumber: string): Promise<Truck | null> {
+            const [{ count: bookingCount }] = await database
+                .select({ count: count() })
+                .from(booking)
+                .where(eq(booking.plateNumber, plateNumber));
+            const [{ count: dispatchCount }] = await database
+                .select({ count: count() })
+                .from(dispatchRecords)
+                .where(eq(dispatchRecords.plateNumber, plateNumber));
+
+            throwIfDeleteBlocked("truck", [
+                { count: bookingCount, singular: "booking" },
+                { count: dispatchCount, singular: "dispatch record" },
+            ]);
+
             const [deleted] = await database
                 .delete(trucks)
                 .where(eq(trucks.plateNumber, plateNumber))
                 .returning();
+
+            if (!deleted) {
+                throw new Error("Truck was not found or has already been deleted.");
+            }
+
             return deleted ?? null;
         }
     }
