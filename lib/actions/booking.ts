@@ -74,6 +74,7 @@ export const deleteBookingAction = actionClient
       const { id } = parsedInput as { id: string };
       await bookingRepository.delete(id);
       revalidatePath("/");
+      revalidatePath("/dashboard");
       return { success: true };
     } catch (error) {
       console.error("❌ DELETE ACTION CRASHED:", error);
@@ -85,6 +86,7 @@ export const updateTripMonitoringAction = actionClient
   .schema(updateTripMonitoringSchema)
   .action(async ({ parsedInput }) => {
     await bookingRepository.updateTripDetails(parsedInput);
+    revalidatePath("/dashboard");
   });
 
 export const updateTripDetailAction = actionClient

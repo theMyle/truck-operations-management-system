@@ -1,5 +1,6 @@
 import { eq, inArray } from "drizzle-orm";
 import { db } from "../db";
+import { syncTruckStatusForPlate } from "../services/syncFleetStatus";
 import {
   booking,
   BookingWithRelations,
@@ -160,6 +161,11 @@ export const makeBookingRepository = (database = db) => {
     updateTripDetails: async function (
       data: UpdateTripMonitoringInput,
     ): Promise<void> {
+      const existingBooking = await database.query.booking.findFirst({
+        where: eq(booking.id, data.id),
+        columns: { plateNumber: true },
+      });
+
       const toTs = (time?: string): Date | null => {
         if (!time || !data.pickupDate) return null;
         const d = new Date(`${data.pickupDate}T${time}:00`);
@@ -179,6 +185,10 @@ export const makeBookingRepository = (database = db) => {
           PODLink: data.PODLink ?? null,
         })
         .where(eq(booking.id, data.id));
+
+      if (existingBooking?.plateNumber) {
+        await syncTruckStatusForPlate(existingBooking.plateNumber);
+      }
     },
 
     updateTripFinanceOdo: async function (
@@ -287,6 +297,11 @@ export const makeBookingRepository = (database = db) => {
     },
 
     delete: async function (id: string): Promise<boolean> {
+      const existingBooking = await database.query.booking.findFirst({
+        where: eq(booking.id, id),
+        columns: { plateNumber: true },
+      });
+
       await database.transaction(async (tx) => {
         await tx.delete(bookingDrops).where(eq(bookingDrops.bookingId, id));
         await tx
@@ -294,6 +309,11 @@ export const makeBookingRepository = (database = db) => {
           .where(eq(bookingToHelpers.bookingId, id));
         await tx.delete(booking).where(eq(booking.id, id));
       });
+
+      if (existingBooking?.plateNumber) {
+        await syncTruckStatusForPlate(existingBooking.plateNumber);
+      }
+
       return true;
     },
   };
