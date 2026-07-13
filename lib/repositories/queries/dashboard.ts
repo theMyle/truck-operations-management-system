@@ -12,15 +12,23 @@ export async function getDailyOperations(dateStr: string) {
     })
     .from(booking)
     .innerJoin(trucks, eq(booking.plateNumber, trucks.plateNumber))
-    .where(eq(booking.bookingDate, dateStr))
+    .where(eq(booking.pickupDate, dateStr))
     .groupBy(booking.clientName, trucks.isSubcon);
 
-  const formatted: Record<string, { id: number; name: string; kts: number; subcon: number }> = {};
+  const formatted: Record<
+    string,
+    { id: number; name: string; kts: number; subcon: number }
+  > = {};
   let idCounter = 1;
 
   for (const row of result) {
     if (!formatted[row.clientName]) {
-      formatted[row.clientName] = { id: idCounter++, name: row.clientName, kts: 0, subcon: 0 };
+      formatted[row.clientName] = {
+        id: idCounter++,
+        name: row.clientName,
+        kts: 0,
+        subcon: 0,
+      };
     }
     if (row.isSubcon) {
       formatted[row.clientName].subcon += row.count;
@@ -32,7 +40,10 @@ export async function getDailyOperations(dateStr: string) {
   return Object.values(formatted);
 }
 
-export async function getWeeklyOperations(startDateStr: string, endDateStr: string) {
+export async function getWeeklyOperations(
+  startDateStr: string,
+  endDateStr: string,
+) {
   const result = await db
     .select({
       bookingDate: booking.bookingDate,
@@ -44,8 +55,8 @@ export async function getWeeklyOperations(startDateStr: string, endDateStr: stri
     .where(
       and(
         gte(booking.bookingDate, startDateStr),
-        lte(booking.bookingDate, endDateStr)
-      )
+        lte(booking.bookingDate, endDateStr),
+      ),
     )
     .groupBy(booking.bookingDate, trucks.isSubcon);
 
@@ -81,10 +92,13 @@ export async function getMonthlyOperations(year: number) {
     .where(
       and(
         gte(booking.bookingDate, startDateStr),
-        lte(booking.bookingDate, endDateStr)
-      )
+        lte(booking.bookingDate, endDateStr),
+      ),
     )
-    .groupBy(sql`EXTRACT(MONTH FROM ${booking.bookingDate}::date)`, trucks.isSubcon);
+    .groupBy(
+      sql`EXTRACT(MONTH FROM ${booking.bookingDate}::date)`,
+      trucks.isSubcon,
+    );
 
   const byMonth: Record<number, { kts: number; subcon: number }> = {};
   for (const row of result) {
