@@ -18,6 +18,7 @@ import {
   Progress,
   Tooltip,
   ActionIcon,
+  Menu,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import React, {
@@ -37,7 +38,10 @@ import {
   IconPhotoOff,
   IconAdjustmentsHorizontal,
   IconX,
+  IconFileSpreadsheet,
+  IconChevronDown,
 } from "@tabler/icons-react";
+import * as XLSX from "xlsx-js-style";
 
 import { DispatchRecord } from "../constant";
 import { usePodDownload, type PodRecord } from "@/app/hooks/usePodDownload";
@@ -53,7 +57,22 @@ export type BillingRecord = DispatchRecord & {
   podFile?: string | null;
   podFileUrl?: string | null;
   podFileType?: string | null;
+
+  odoDetails?: { tripIndex: number; odoStart: number; odoEnd: number }[];
+  budget?: string | number | null;
+  budgetFrom?: string | null;
+  rfidLoad?: string | number | null;
+  fuel?: string | number | null;
+  customerCollection?: string | number | null;
+  cashOnHandReturned?: string | number | null;
+  cashOnHandReturnedTo?: string | null;
+  autoCash?: boolean | null;
+  driverRate?: string | number | null;
+  helperRate?: string | number | null;
+  expenses?: { expenseType: string; amount: string | number }[];
 };
+
+type ExportRow = Record<string, string | number>;
 
 export interface BillingFilters {
   client: string | null;
@@ -179,6 +198,58 @@ export default function BillingModule() {
   >([]);
   const [dbFleetTypes, setDbFleetTypes] = useState<string[]>([]);
 
+  const numOrBlank = (v: unknown) =>
+    v === null || v === undefined || v === "" ? "" : Number(v);
+
+  function buildExportRow(r: BillingRecord): ExportRow {
+    const totalKm = (r.odoDetails ?? []).reduce(
+      (sum, o) => sum + Math.max(0, (o.odoEnd || 0) - (o.odoStart || 0)),
+      0,
+    );
+    const expensesTotal = (r.expenses ?? []).reduce(
+      (sum, e) => sum + (Number(e.amount) || 0),
+      0,
+    );
+    return {
+      Date: r.date,
+      Client: r.client,
+      "Fleet Type": r.unit,
+      "Plate No": r.plateNo,
+      "Booking / DR#": r.bookingDr,
+      "No. of Drops": r.noOfDrops ?? "",
+      "Pickup Location": r.pickLocation || "",
+      "Drop-off Location": r.dropOffLocation || "",
+      "Rate (PHP)": numOrBlank(r.tripRate),
+      Status: r.status,
+      "Total KM": totalKm || "",
+      Budget: numOrBlank(r.budget),
+      "Budget From": r.budgetFrom ?? "",
+      "RFID Load": numOrBlank(r.rfidLoad),
+      Fuel: numOrBlank(r.fuel),
+      "Customer Collection": numOrBlank(r.customerCollection),
+      "Cash on Hand Returned": numOrBlank(r.cashOnHandReturned),
+      "Returned To": r.cashOnHandReturnedTo ?? "",
+      "Auto Cash Advance": r.autoCash ? "Yes" : "No",
+      "Driver Rate": numOrBlank(r.driverRate),
+      "Helper Rate": numOrBlank(r.helperRate),
+      "Expenses Total": expensesTotal || "",
+      "Expenses Breakdown": (r.expenses ?? [])
+        .map((e) => `${e.expenseType}: ₱${e.amount}`)
+        .join("; "),
+    };
+  }
+
+  function buildExportFilename(
+    filters: BillingFilters | null,
+    ext: "csv" | "xlsx",
+  ) {
+    const parts = ["Billing"];
+    if (filters?.client) parts.push(filters.client.replace(/\s+/g, "_"));
+    if (filters?.from) parts.push(filters.from);
+    if (filters?.to) parts.push(filters.to);
+    return parts.join("_") + "." + ext;
+  }
+
   useEffect(() => {
     async function loadFilterOptions() {
       try {
@@ -254,12 +325,12 @@ export default function BillingModule() {
 
   const stats = useMemo(
     () => ({
-      totalRate: records.reduce((s, r) => s + (Number(r.tripRate) || 0), 0),
-      totalDrops: records.reduce((s, r) => s + (r.noOfDrops || 0), 0),
-      completed: records.filter((r) => r.status === "Completed").length,
-      withPod: records.filter((r) => Boolean(r.podFileUrl)).length,
+      totalRate: filtered.reduce((s, r) => s + (Number(r.tripRate) || 0), 0),
+      totalDrops: filtered.reduce((s, r) => s + (r.noOfDrops || 0), 0),
+      completed: filtered.filter((r) => r.status === "Completed").length,
+      withPod: filtered.filter((r) => Boolean(r.podFileUrl)).length,
     }),
-    [records],
+    [filtered],
   );
 
   const billingLabel = activeFilters
@@ -310,40 +381,39 @@ export default function BillingModule() {
       });
       return;
     }
-    const headers = [
-      "Date",
-      "Client",
-      "Fleet Type",
-      "Plate No",
-      "Booking / DR#",
-      "No. of Drops",
-      "Pickup Location",
-      "Drop-off Location",
-      "Rate (PHP)",
-      "Status",
-      "POD File",
+    const rows = filtered.map(buildExportRow);
+    const headers = Object.keys(rows[0]);
+
+    // Build metadata header rows
+    const metaRows: string[] = [
+      `"BILLING STATEMENT EXPORT"`,
+      `"Generated:","${new Date().toLocaleString()}"`,
+      `"Client:","${activeFilters?.client || "All Clients"}"`,
+      `"Period:","${activeFilters?.from ? formatDate(activeFilters.from) : "—"} to ${activeFilters?.to ? formatDate(activeFilters.to) : "—"}"`,
+      `"Total Records:","${filtered.length}"`,
+      `"Total Amount (PHP):","${stats.totalRate.toLocaleString()}"`,
+      `""`, // blank separator
     ];
-    const rows = filtered.map((r) =>
-      [
-        r.date,
-        r.client,
-        r.unit,
-        r.plateNo,
-        r.bookingDr,
-        r.noOfDrops ?? "",
-        `"${r.pickLocation || ""}"`,
-        `"${r.dropOffLocation || ""}"`,
-        r.tripRate ?? "",
-        r.status,
-        r.podFileUrl ?? "", // use the real Supabase URL in CSV
-      ].join(","),
+
+    const csvRows = rows.map((row) =>
+      headers
+        .map((h) => `"${String(row[h] ?? "").replace(/"/g, '""')}"`)
+        .join(","),
     );
-    const csv = [headers.join(","), ...rows].join("\n");
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+
+    // UTF-8 BOM + metadata + headers + data
+    const BOM = "\uFEFF";
+    const csv = [
+      ...metaRows,
+      headers.map((h) => `"${h}"`).join(","),
+      ...csvRows,
+    ].join("\n");
+
+    const blob = new Blob([BOM + csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = buildCsvFilename(activeFilters);
+    a.download = buildExportFilename(activeFilters, "csv");
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -354,7 +424,99 @@ export default function BillingModule() {
       color: "green",
       icon: <IconFileTypeCsv size={16} />,
     });
-  }, [filtered, activeFilters]);
+  }, [filtered, activeFilters, stats.totalRate]);
+
+  const handleExportXLSX = useCallback(() => {
+    if (!filtered.length) {
+      notifications.show({
+        title: "No data",
+        message: "Nothing to export.",
+        color: "orange",
+      });
+      return;
+    }
+
+    const exportRows = filtered.map(buildExportRow);
+    const headers = Object.keys(exportRows[0]);
+
+    // ── Build worksheet from array of arrays so we can insert metadata rows ──
+    const metaData: (string | number)[][] = [
+      ["BILLING STATEMENT EXPORT"],
+      ["Generated:", new Date().toLocaleString()],
+      ["Client:", activeFilters?.client || "All Clients"],
+      ["Period:", `${activeFilters?.from ? formatDate(activeFilters.from) : "—"} to ${activeFilters?.to ? formatDate(activeFilters.to) : "—"}`],
+      ["Total Records:", filtered.length],
+      ["Total Amount (PHP):", stats.totalRate],
+      [], // blank separator
+      headers, // column header row
+    ];
+
+    const dataRows = exportRows.map((row) => headers.map((h) => row[h] ?? ""));
+    const allRows = [...metaData, ...dataRows];
+
+    const ws = XLSX.utils.aoa_to_sheet(allRows);
+
+    // ── Column widths ──
+    ws["!cols"] = headers.map((h) => {
+      const maxLen = Math.max(
+        h.length,
+        ...exportRows.map((r) => String(r[h] ?? "").length),
+      );
+      return { wch: Math.min(Math.max(maxLen + 2, 12), 50) };
+    });
+
+    // ── Style the title row (row 0, col 0) as large bold ──
+    const titleRef = XLSX.utils.encode_cell({ r: 0, c: 0 });
+    if (!ws[titleRef]) ws[titleRef] = { v: "BILLING STATEMENT EXPORT", t: "s" };
+    ws[titleRef].s = {
+      font: { bold: true, sz: 14, color: { rgb: "1a56db" } },
+    };
+
+    // ── Style the column header row (row index = metaData.length - 1) ──
+    const headerRowIdx = metaData.length - 1;
+    headers.forEach((_, colIdx) => {
+      const ref = XLSX.utils.encode_cell({ r: headerRowIdx, c: colIdx });
+      if (!ws[ref]) return;
+      ws[ref].s = {
+        font: { bold: true, sz: 10, color: { rgb: "FFFFFF" } },
+        fill: { fgColor: { rgb: "1a56db" } },
+        alignment: { horizontal: "center", vertical: "center", wrapText: true },
+        border: {
+          bottom: { style: "thin", color: { rgb: "CCCCCC" } },
+        },
+      };
+    });
+
+    // ── Stripe data rows alternating light blue / white ──
+    dataRows.forEach((_, rowOffset) => {
+      const rowIdx = headerRowIdx + 1 + rowOffset;
+      const isEven = rowOffset % 2 === 0;
+      headers.forEach((_, colIdx) => {
+        const ref = XLSX.utils.encode_cell({ r: rowIdx, c: colIdx });
+        if (!ws[ref]) return;
+        ws[ref].s = {
+          fill: isEven
+            ? { fgColor: { rgb: "EEF4FF" } }
+            : { fgColor: { rgb: "FFFFFF" } },
+          alignment: { vertical: "center" },
+          border: {
+            bottom: { style: "hair", color: { rgb: "DDDDDD" } },
+            right: { style: "hair", color: { rgb: "DDDDDD" } },
+          },
+        };
+      });
+    });
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Billing");
+    XLSX.writeFile(wb, buildExportFilename(activeFilters, "xlsx"));
+    notifications.show({
+      title: "XLSX exported",
+      message: `${filtered.length} records saved.`,
+      color: "green",
+      icon: <IconFileSpreadsheet size={16} />,
+    });
+  }, [filtered, activeFilters, stats.totalRate]);
 
   return (
     <Box pos="relative" style={{ height: "calc(100vh - 72px)" }}>
@@ -530,17 +692,35 @@ export default function BillingModule() {
               >
                 Filters
               </Button>
-              <Button
-                size="xs"
-                variant="light"
-                color="green"
-                leftSection={<IconFileTypeCsv size={13} />}
-                styles={{ label: { fontSize: "10px", fontWeight: 700 } }}
-                onClick={handleExportCSV}
-                disabled={!filtered.length}
-              >
-                Export CSV
-              </Button>
+              <Menu shadow="md" width={140} position="bottom-end">
+                <Menu.Target>
+                  <Button
+                    size="xs"
+                    variant="light"
+                    color="green"
+                    leftSection={<IconFileTypeCsv size={13} />}
+                    rightSection={<IconChevronDown size={12} />}
+                    styles={{ label: { fontSize: "10px", fontWeight: 700 } }}
+                    disabled={!filtered.length}
+                  >
+                    Export
+                  </Button>
+                </Menu.Target>
+                <Menu.Dropdown>
+                  <Menu.Item
+                    leftSection={<IconFileTypeCsv size={13} />}
+                    onClick={handleExportCSV}
+                  >
+                    CSV
+                  </Menu.Item>
+                  <Menu.Item
+                    leftSection={<IconFileSpreadsheet size={13} />}
+                    onClick={handleExportXLSX}
+                  >
+                    XLSX
+                  </Menu.Item>
+                </Menu.Dropdown>
+              </Menu>
               <Tooltip
                 label={
                   downloading
@@ -581,13 +761,21 @@ export default function BillingModule() {
             <SimpleGrid cols={3} spacing="sm">
               <SummaryCard
                 label="Total Trips"
-                value={records.length}
-                sub="in period"
+                value={filtered.length}
+                sub={
+                  filtered.length !== records.length
+                    ? `of ${records.length} in period`
+                    : "in period"
+                }
               />
               <SummaryCard
                 label="Total Amount"
                 value={`₱${stats.totalRate.toLocaleString()}`}
-                sub="billable rate"
+                sub={
+                  filtered.length !== records.length
+                    ? "filtered billable rate"
+                    : "billable rate"
+                }
               />
               <SummaryCard
                 label="PODs on File"
@@ -595,7 +783,7 @@ export default function BillingModule() {
                   <Text size="xl" fw={500} component="span">
                     {stats.withPod}
                     <Text size="sm" c="dimmed" fw={400} component="span">
-                      /{records.length}
+                      /{filtered.length}
                     </Text>
                   </Text>
                 }
@@ -627,20 +815,6 @@ export default function BillingModule() {
                   </ActionIcon>
                 ) : null
               }
-            />
-            <Select
-              placeholder="All Statuses"
-              data={[
-                { value: "Completed", label: "Completed" },
-                { value: "In Transit", label: "In Transit" },
-                { value: "Pending", label: "Pending" },
-              ]}
-              value={statusFilter}
-              onChange={setStatusFilter}
-              clearable
-              styles={{ input: { fontSize: "11px", fontWeight: 500 } }}
-              radius="md"
-              style={{ width: 150 }}
             />
             <Select
               placeholder="All Fleet Types"

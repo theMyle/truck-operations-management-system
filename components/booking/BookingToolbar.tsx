@@ -7,6 +7,10 @@ import {
   Button,
   Text,
   Badge,
+  Tooltip,
+  Modal,
+  Stack,
+  SimpleGrid,
 } from "@mantine/core";
 import { useForm } from "@mantine/form";
 import {
@@ -17,13 +21,16 @@ import {
   IconFileTypeXls,
   IconFileTypeDoc,
   IconFileTypeJpg,
+  IconCalendar,
 } from "@tabler/icons-react";
 import { notifications } from "@mantine/notifications";
-import React from "react";
+import React, { useState } from "react";
 
 interface FilterValues {
   search: string;
   status: string | null;
+  dateFrom: string;
+  dateTo: string;
 }
 
 interface BookingToolbarProps {
@@ -34,6 +41,10 @@ interface BookingToolbarProps {
   onPrint: () => void;
 }
 
+function todayStr() {
+  return new Date().toISOString().slice(0, 10);
+}
+
 export function BookingToolbar({
   totalFiltered,
   totalRecords,
@@ -41,18 +52,140 @@ export function BookingToolbar({
   onExport,
   onPrint,
 }: BookingToolbarProps) {
+  const [dateModalOpen, setDateModalOpen] = useState(false);
+  const [pendingFrom, setPendingFrom] = useState("");
+  const [pendingTo, setPendingTo] = useState("");
+
   const form = useForm<FilterValues>({
     initialValues: {
       search: "",
       status: null,
+      dateFrom: "",
+      dateTo: "",
     },
     onValuesChange: (values) => {
       onFiltersChange(values);
     },
   });
 
+  const hasDateFilter = form.values.dateFrom || form.values.dateTo;
+
+  const openDateModal = () => {
+    setPendingFrom(form.values.dateFrom);
+    setPendingTo(form.values.dateTo);
+    setDateModalOpen(true);
+  };
+
+  const applyDates = () => {
+    form.setValues({
+      ...form.values,
+      dateFrom: pendingFrom,
+      dateTo: pendingTo,
+    });
+    onFiltersChange({
+      ...form.values,
+      dateFrom: pendingFrom,
+      dateTo: pendingTo,
+    });
+    setDateModalOpen(false);
+  };
+
+  const clearDates = () => {
+    setPendingFrom("");
+    setPendingTo("");
+    form.setValues({
+      ...form.values,
+      dateFrom: "",
+      dateTo: "",
+    });
+    onFiltersChange({
+      ...form.values,
+      dateFrom: "",
+      dateTo: "",
+    });
+    setDateModalOpen(false);
+  };
+
+  const setToday = () => {
+    const today = todayStr();
+    setPendingFrom(today);
+    setPendingTo(today);
+  };
+
   return (
     <>
+      {/* Date Range Modal */}
+      <Modal
+        opened={dateModalOpen}
+        onClose={() => setDateModalOpen(false)}
+        title={
+          <Group gap={8}>
+            <IconCalendar size={16} color="var(--mantine-color-blue-6)" />
+            <Text fw={700} size="sm">Date Range Filter</Text>
+          </Group>
+        }
+        centered
+        size="xs"
+      >
+        <Stack gap="sm">
+          <SimpleGrid cols={2} spacing="sm">
+            <TextInput
+              label="Date From"
+              type="date"
+              value={pendingFrom}
+              onChange={(e) => setPendingFrom(e.currentTarget.value || "")}
+              max={pendingTo || undefined}
+              styles={{ input: { fontSize: "12px" } }}
+              radius="md"
+            />
+            <TextInput
+              label="Date To"
+              type="date"
+              value={pendingTo}
+              min={pendingFrom || undefined}
+              onChange={(e) => setPendingTo(e.currentTarget.value || "")}
+              styles={{ input: { fontSize: "12px" } }}
+              radius="md"
+            />
+          </SimpleGrid>
+
+          {/* Today shortcut */}
+          <Button
+            variant="light"
+            color="blue"
+            size="xs"
+            leftSection={<IconCalendar size={13} />}
+            styles={{ label: { fontSize: "10px", fontWeight: 700 } }}
+            onClick={setToday}
+          >
+            Today
+          </Button>
+
+          <Group justify="flex-end" gap="sm" mt="xs">
+            {(pendingFrom || pendingTo) && (
+              <Button
+                variant="subtle"
+                color="gray"
+                size="xs"
+                styles={{ label: { fontSize: "10px", fontWeight: 700 } }}
+                onClick={clearDates}
+              >
+                Clear
+              </Button>
+            )}
+            <Button
+              size="xs"
+              leftSection={<IconCalendar size={13} />}
+              styles={{ label: { fontSize: "10px", fontWeight: 700 } }}
+              onClick={applyDates}
+            >
+              Apply
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
+
+      {/* Header row */}
       <Group justify="space-between" align="center">
         <Group gap={8}>
           <Badge
@@ -68,6 +201,12 @@ export function BookingToolbar({
           </Badge>
           <Text style={{ fontSize: "10px" }} c="dimmed" fw={500}>
             {totalFiltered} of {totalRecords} records
+          </Text>
+          <Text style={{ fontSize: "10px" }} c="blue.6" fw={600}>
+            · {(() => {
+              const today = new Date();
+              return `${String(today.getMonth() + 1).padStart(2, '0')}/${String(today.getDate()).padStart(2, '0')}/${today.getFullYear()}`;
+            })()}
           </Text>
         </Group>
 
@@ -140,6 +279,7 @@ export function BookingToolbar({
         </Group>
       </Group>
 
+      {/* Filter row */}
       <Group gap="sm">
         <TextInput
           placeholder="Search by client, driver, plate, booking, route..."
@@ -163,6 +303,20 @@ export function BookingToolbar({
           radius="md"
           style={{ width: 160 }}
         />
+
+        {/* Date range button */}
+        <Tooltip label="Date Range" withArrow position="bottom">
+          <Button
+            variant={hasDateFilter ? "filled" : "default"}
+            color={hasDateFilter ? "blue" : undefined}
+            size="xs"
+            leftSection={<IconCalendar size={13} />}
+            styles={{ label: { fontSize: "10px", fontWeight: 700 } }}
+            onClick={openDateModal}
+          >
+            {hasDateFilter ? "Date Active" : "Date Range"}
+          </Button>
+        </Tooltip>
       </Group>
     </>
   );

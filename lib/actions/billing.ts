@@ -54,6 +54,8 @@ export const getBillingRecordsAction = actionClient
               },
             },
             drops: true,
+            odoDetails: true,
+            expenses: true,
           },
           orderBy: (b, { desc }) => [desc(b.pickupDate)],
         })
@@ -109,6 +111,26 @@ export const getBillingRecordsAction = actionClient
       podFile: b.PODLink ? (b.PODLink.split("/").pop() ?? "") : "",
       podFileUrl: b.PODLink ?? "",
       podFileType: "",
+      // Trip log fields
+      budget: b.budget ?? null,
+      budgetFrom: b.budgetFrom ?? null,
+      rfidLoad: b.rfidLoad ?? null,
+      fuel: b.fuel ?? null,
+      customerCollection: b.customerCollection ?? null,
+      cashOnHandReturned: b.cashOnHandReturned ?? null,
+      cashOnHandReturnedTo: b.cashOnHandReturnedTo ?? null,
+      autoCash: b.autoCash ?? null,
+      driverRate: b.driverRate ?? null,
+      helperRate: b.helperRate ?? null,
+      odoDetails: (b.odoDetails ?? []).map((o) => ({
+        tripIndex: o.tripIndex,
+        odoStart: Number(o.odoStart),
+        odoEnd: Number(o.odoEnd),
+      })),
+      expenses: (b.expenses ?? []).map((e) => ({
+        expenseType: e.expenseType,
+        amount: e.amount,
+      })),
     }));
   });
 

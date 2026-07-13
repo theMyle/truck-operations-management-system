@@ -106,6 +106,7 @@ export function TripDetailsModal({
     useEffect(() => {
         if (opened) {
             form.initialize(initialData || defaultForm());
+            // eslint-disable-next-line react-hooks/set-state-in-effect
             setActiveTab("odometer");
         }
     }, [opened, initialData]);

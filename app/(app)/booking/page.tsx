@@ -52,6 +52,8 @@ const BOOKING_EXPORT_COLUMNS = [
 interface FilterValues {
   search: string;
   status: string | null;
+  dateFrom: string;
+  dateTo: string;
 }
 
 export default function BookingRecordsPage() {
@@ -63,6 +65,8 @@ export default function BookingRecordsPage() {
   const [filters, setFilters] = useState<FilterValues>({
     search: "",
     status: null,
+    dateFrom: "",
+    dateTo: "",
   });
   const [page, setPage] = useState(1);
 
@@ -170,7 +174,11 @@ export default function BookingRecordsPage() {
       const matchesStatus = filters.status
         ? r.status === filters.status
         : r.status !== "Completed";
-      return matchesSearch && matchesStatus;
+      // Pickup date is stored as YYYY-MM-DD — string comparison works correctly
+      const pickupDate = r.pickUpDate ?? r.date ?? "";
+      const matchesDateFrom = !filters.dateFrom || pickupDate >= filters.dateFrom;
+      const matchesDateTo = !filters.dateTo || pickupDate <= filters.dateTo;
+      return matchesSearch && matchesStatus && matchesDateFrom && matchesDateTo;
     });
   }, [filters, records]);
 
