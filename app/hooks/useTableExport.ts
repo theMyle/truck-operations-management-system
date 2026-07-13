@@ -56,26 +56,77 @@ export function useTableExport(
 
   /* ── XLSX ── */
   const exportToXlsx = useCallback(async () => {
-    const XLSX = await import("xlsx");
+    const XLSX = await import("xlsx-js-style");
 
-    const ws = XLSX.utils.aoa_to_sheet([
-      columns.map((c) => c.label),
-      ...getRows(records, columns),
-    ]);
+    const exportRows = getRows(records, columns);
+    const headers = columns.map((c) => c.label);
 
-    // Column widths
-    ws["!cols"] = columns.map(() => ({ wch: 18 }));
+    // ── Build worksheet from array of arrays so we can insert metadata rows ──
+    const metaData: (string | number)[][] = [
+      [title.toUpperCase()],
+      ["Generated:", new Date().toLocaleString()],
+      ["Total Records:", records.length],
+      [], // blank separator
+      headers, // column header row
+    ];
 
-    // Bold header row
-    columns.forEach((_, i) => {
-      const cellRef = XLSX.utils.encode_cell({ r: 0, c: i });
-      if (ws[cellRef]) {
-        ws[cellRef].s = { font: { bold: true } };
-      }
+    const allRows = [...metaData, ...exportRows];
+
+    const ws = XLSX.utils.aoa_to_sheet(allRows);
+
+    // ── Column widths ──
+    ws["!cols"] = columns.map((col, colIdx) => {
+      const maxLen = Math.max(
+        col.label.length,
+        ...exportRows.map((r) => String(r[colIdx] ?? "").length)
+      );
+      return { wch: Math.min(Math.max(maxLen + 2, 12), 50) };
+    });
+
+    // ── Style the title row (row 0, col 0) as large bold ──
+    const titleRef = XLSX.utils.encode_cell({ r: 0, c: 0 });
+    if (!ws[titleRef]) ws[titleRef] = { v: title.toUpperCase(), t: "s" };
+    ws[titleRef].s = {
+      font: { bold: true, sz: 14, color: { rgb: "1a56db" } },
+    };
+
+    // ── Style the column header row (row index = metaData.length - 1) ──
+    const headerRowIdx = metaData.length - 1;
+    headers.forEach((_, colIdx) => {
+      const ref = XLSX.utils.encode_cell({ r: headerRowIdx, c: colIdx });
+      if (!ws[ref]) return;
+      ws[ref].s = {
+        font: { bold: true, sz: 10, color: { rgb: "FFFFFF" } },
+        fill: { fgColor: { rgb: "1a56db" } },
+        alignment: { horizontal: "center", vertical: "center", wrapText: true },
+        border: {
+          bottom: { style: "thin", color: { rgb: "CCCCCC" } },
+        },
+      };
+    });
+
+    // ── Stripe data rows alternating light blue / white ──
+    exportRows.forEach((_, rowOffset) => {
+      const rowIdx = headerRowIdx + 1 + rowOffset;
+      const isEven = rowOffset % 2 === 0;
+      headers.forEach((_, colIdx) => {
+        const ref = XLSX.utils.encode_cell({ r: rowIdx, c: colIdx });
+        if (!ws[ref]) return;
+        ws[ref].s = {
+          fill: isEven
+            ? { fgColor: { rgb: "EEF4FF" } }
+            : { fgColor: { rgb: "FFFFFF" } },
+          alignment: { vertical: "center" },
+          border: {
+            bottom: { style: "hair", color: { rgb: "DDDDDD" } },
+            right: { style: "hair", color: { rgb: "DDDDDD" } },
+          },
+        };
+      });
     });
 
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, title);
+    XLSX.utils.book_append_sheet(wb, ws, title.slice(0, 31)); // Excel sheet names limited to 31 chars
 
     const filename = title.toLowerCase().replace(/\s+/g, "-");
     XLSX.writeFile(wb, `${filename}-${Date.now()}.xlsx`);
