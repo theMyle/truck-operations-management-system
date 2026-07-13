@@ -582,6 +582,7 @@ export function TripDetailsModal({
         key={record.id}
         opened={opened}
         onClose={handleClose}
+        closeOnClickOutside={false}
         title={
           <Stack gap={2}>
             <Group gap={8}>
