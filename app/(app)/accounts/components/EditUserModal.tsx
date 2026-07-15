@@ -3,6 +3,7 @@
 import { Modal, Button, TextInput, PasswordInput, Select, Stack, Group, Alert } from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { useUpdateUser } from "@/app/hooks/use-users";
+import { CreateUserDto } from "@/lib/validations/user";
 import { useAuth } from "@clerk/nextjs";
 import { IconAlertCircle } from "@tabler/icons-react";
 import { useState, useEffect } from "react";
@@ -120,10 +121,11 @@ export function EditUserModal({ user, onClose }: EditUserModalProps) {
             form.reset();
             onClose();
         } catch (err) {
-            console.log(err)
-            setError(err as string | null);
-
-            if (!Array.isArray(err)) {
+            console.log(err);
+            if (Array.isArray(err)) {
+                setError(err as CreateUserErrorItem[]);
+            } else {
+                setError(null);
                 notifications.show({
                     title: "Failed to Update Account",
                     message: (err as { message?: string })?.message || "Something went wrong.",

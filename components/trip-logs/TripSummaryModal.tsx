@@ -221,7 +221,7 @@ export function TripSummaryModal({
       rfidLoad: rfidAmount,
       rfidPaymentType: (booking.rfidPaymentType as "cash" | "card") || "cash",
       fuelAmount: fuelAmt,
-      fuelPaymentType: (booking.fuelPaymentType as "cash" | "card") || "cash",
+      fuelPaymentType: (booking.fuelPaymentType as "cash" | "shell card") || "cash",
       collectionFromCustomer: collectionAmount,
       cashOnHandReturned: cashReturned,
       cashOnHandReturnedToWhom: booking.cashOnHandReturnedTo || "",
