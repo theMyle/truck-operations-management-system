@@ -84,3 +84,35 @@ export async function replaceFile(formData: FormData) {
   // Proceed with uploading the new file
   return await uploadFile(formData);
 }
+
+/**
+ * Server action to generate a secure signed upload URL for direct-to-Supabase client upload.
+ */
+export async function getSignedUploadUrlAction(filePath: string) {
+  try {
+    const { data, error } = await supabaseAdmin.storage
+      .from("images")
+      .createSignedUploadUrl(filePath, { upsert: true });
+
+    if (error) {
+      console.error("Supabase createSignedUploadUrl error:", error);
+      return { error: `Failed to create upload URL: ${error.message}` };
+    }
+
+    // Get the Public URL that the file will reside at after upload
+    const {
+      data: { publicUrl },
+    } = supabaseAdmin.storage.from("images").getPublicUrl(filePath);
+
+    return {
+      success: true,
+      signedUrl: data.signedUrl,
+      publicUrl,
+      path: filePath,
+    };
+  } catch (err) {
+    console.error("getSignedUploadUrlAction error:", err);
+    return { error: "Internal server error during URL signing" };
+  }
+}
+
