@@ -1,4 +1,4 @@
-import { eq, inArray } from "drizzle-orm";
+import { eq, inArray, and, ne, sql } from "drizzle-orm";
 import { db } from "../db";
 import { syncTruckStatusForPlate } from "../services/syncFleetStatus";
 import {
@@ -36,6 +36,25 @@ export const makeBookingRepository = (database = db) => {
         odoDetails: b.odoDetails ?? [],
         expenses: b.expenses ?? [],
       }));
+    },
+
+    checkDuplicateDRNo: async function (
+      bookingDRNo: string,
+      excludeId?: string,
+    ): Promise<boolean> {
+      const normalized = bookingDRNo.trim().toLowerCase();
+      if (!normalized) return false;
+
+      const b = await database.query.booking.findFirst({
+        where: excludeId
+          ? and(
+              eq(sql`LOWER(${booking.bookingDRNo})`, normalized),
+              ne(booking.id, excludeId),
+            )
+          : eq(sql`LOWER(${booking.bookingDRNo})`, normalized),
+        columns: { id: true },
+      });
+      return !!b;
     },
 
     add: async function (

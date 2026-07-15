@@ -18,6 +18,14 @@ export const createBookingAction = actionClient
   .action(async ({ parsedInput }) => {
     try {
       const { drops, helpers, ...bookingData } = parsedInput;
+
+      if (bookingData.bookingDRNo) {
+        const isDuplicate = await bookingRepository.checkDuplicateDRNo(bookingData.bookingDRNo);
+        if (isDuplicate) {
+          throw new Error(`Booking / DR# "${bookingData.bookingDRNo}" is already recorded in the system.`);
+        }
+      }
+
       const newBooking = await bookingRepository.add(
         bookingData,
         drops,
@@ -26,6 +34,7 @@ export const createBookingAction = actionClient
       return newBooking;
     } catch (error) {
       console.log(error);
+      throw error;
     }
   });
 
@@ -46,6 +55,13 @@ export const updateBookingAction = actionClient
     try {
       const { id, drops, helpers, ...bookingData } = parsedInput;
 
+      if (bookingData.bookingDRNo) {
+        const isDuplicate = await bookingRepository.checkDuplicateDRNo(bookingData.bookingDRNo, id);
+        if (isDuplicate) {
+          throw new Error(`Booking / DR# "${bookingData.bookingDRNo}" is already recorded in the system.`);
+        }
+      }
+
       const dropsWithBookingId = drops.map((drop) => ({
         ...drop,
         bookingId: id,
@@ -63,7 +79,7 @@ export const updateBookingAction = actionClient
       return updatedBooking;
     } catch (error) {
       console.error("Update Error:", error);
-      return { serverError: "Failed to update booking in database." };
+      throw error;
     }
   });
 
@@ -92,6 +108,12 @@ export const deleteBookingAction = actionClient
 export const updateTripMonitoringAction = actionClient
   .schema(updateTripMonitoringSchema)
   .action(async ({ parsedInput }) => {
+    if (parsedInput.bookingDRNo) {
+      const isDuplicate = await bookingRepository.checkDuplicateDRNo(parsedInput.bookingDRNo, parsedInput.id);
+      if (isDuplicate) {
+        throw new Error(`Booking / DR# "${parsedInput.bookingDRNo}" is already recorded in the system.`);
+      }
+    }
     await bookingRepository.updateTripDetails(parsedInput);
     revalidatePath("/dashboard");
   });
