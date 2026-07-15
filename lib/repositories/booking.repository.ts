@@ -12,6 +12,7 @@ import { bookingDrops, NewBookingDrop } from "../db/schema/bookingDrops";
 import { bookingToHelpers } from "../db/schema/bookingHelpers";
 import { tripOdoDetails } from "../db/schema/tripOdo";
 import { tripExpenses } from "../db/schema/tripExpense";
+import { deleteFileFromUrl } from "../actions/file-upload";
 
 export const makeBookingRepository = (database = db) => {
   return {
@@ -318,7 +319,7 @@ export const makeBookingRepository = (database = db) => {
     delete: async function (id: string): Promise<boolean> {
       const existingBooking = await database.query.booking.findFirst({
         where: eq(booking.id, id),
-        columns: { plateNumber: true },
+        columns: { plateNumber: true, PODLink: true },
       });
 
       await database.transaction(async (tx) => {
@@ -328,6 +329,10 @@ export const makeBookingRepository = (database = db) => {
           .where(eq(bookingToHelpers.bookingId, id));
         await tx.delete(booking).where(eq(booking.id, id));
       });
+
+      if (existingBooking?.PODLink) {
+        await deleteFileFromUrl(existingBooking.PODLink);
+      }
 
       if (existingBooking?.plateNumber) {
         await syncTruckStatusForPlate(existingBooking.plateNumber);

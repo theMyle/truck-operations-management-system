@@ -29,6 +29,7 @@ export async function uploadFile(formData: FormData) {
       .from("images")
       .upload(filePath, buffer, {
         contentType: file.type,
+        upsert: true,
       });
 
     if (error) {
