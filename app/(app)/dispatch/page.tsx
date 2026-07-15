@@ -233,8 +233,12 @@ export default function DispatchPage() {
 
     if (result.serverError) {
       console.error("❌ SERVER ERROR DETAILS:", result.serverError);
+      const isDuplicate = result.serverError.toLowerCase().includes("already recorded");
+      if (isDuplicate) {
+        form.setFieldError("bookingDr", "This Booking / DR# is already recorded in the system.");
+      }
       notifications.show({
-        title: "Database Transaction Failed",
+        title: isDuplicate ? "Duplicate Record" : "Database Transaction Failed",
         message: result.serverError,
         color: "red",
       });
