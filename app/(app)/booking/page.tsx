@@ -221,14 +221,14 @@ export default function BookingRecordsPage() {
       password,
     });
 
-    if (result?.serverError) {
+    if (result.serverError) {
       notifications.show({
         title: "Error",
         message: result.serverError,
         color: "red",
         icon: <IconError404 size={16} />,
       });
-      return result;
+      return; // ← stop here — don't remove the record or show "deleted"
     }
 
     setRecords((prev) => prev.filter((r) => r.id !== deleteRecord.id));
