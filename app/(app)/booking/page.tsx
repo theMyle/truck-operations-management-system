@@ -13,7 +13,7 @@ import {
   TripDetailsForm,
 } from "@/components/booking/TripDetailsModal";
 import { ViewModal } from "@/components/booking/ViewModal";
-import { DeleteModal } from "@/components/booking/DeleteModal";
+import { DeleteConfirmModal } from "@/components/booking/DeleteConfirmModal";
 import { BookingTable } from "@/components/booking/BookingTable";
 import { BookingToolbar } from "@/components/booking/BookingToolbar";
 import { useTableExport } from "@/app/hooks/useTableExport";
@@ -86,7 +86,7 @@ export default function BookingRecordsPage() {
         getAllBookingAction({}),
         getAllClientsAction(),
       ]);
-      
+
       const podMap = new Map(
         (clientsRes?.data ?? []).map((c) => [c.clientName, c.podRequired]),
       );
@@ -213,11 +213,13 @@ export default function BookingRecordsPage() {
     setDeleteRecord(record);
     setDeleteOpened(true);
   };
-
-  const handleDeleteConfirm = async () => {
+  const handleDeleteConfirm = async (password: string) => {
     if (!deleteRecord) return;
 
-    const result = await deleteBookingAction({ id: String(deleteRecord.id) });
+    const result = await deleteBookingAction({
+      id: String(deleteRecord.id),
+      password,
+    });
 
     if (result.serverError) {
       notifications.show({
@@ -226,6 +228,7 @@ export default function BookingRecordsPage() {
         color: "red",
         icon: <IconError404 size={16} />,
       });
+      return; // ← stop here — don't remove the record or show "deleted"
     }
 
     setRecords((prev) => prev.filter((r) => r.id !== deleteRecord.id));
@@ -300,11 +303,15 @@ export default function BookingRecordsPage() {
         record={viewRecord}
         onEdit={handleEdit}
       />
-      <DeleteModal
+      <DeleteConfirmModal
         opened={deleteOpened}
         onClose={() => setDeleteOpened(false)}
         onConfirm={handleDeleteConfirm}
-        record={deleteRecord}
+        itemLabel={
+          deleteRecord
+            ? `Booking ${deleteRecord.displayBookingNo ?? deleteRecord.bookingDRNo ?? `#${deleteRecord.id}`}`
+            : ""
+        }
       />
       <TripDetailsModal
         key={tripRecord?.id ?? "trip-details-modal"}

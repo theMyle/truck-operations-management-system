@@ -95,15 +95,15 @@ export function CreateUserModal({ opened, onClose }: CreateUserModalProps) {
 
             form.reset();
             onClose();
-        } catch (err: any) {
-            console.log(err)
-            setError(err || "Something went wrong.");
-
-            // Pop a failure notification if it's a general non-validation error
-            if (!Array.isArray(err)) {
+        } catch (err) {
+            console.log(err);
+            if (Array.isArray(err)) {
+                setError(err as CreateUserErrorItem[]);
+            } else {
+                setError(null);
                 notifications.show({
                     title: "Failed to Create Account",
-                    message: err.message || "Something went wrong.",
+                    message: (err as { message?: string })?.message || "Something went wrong.",
                     color: "red",
                 });
             }

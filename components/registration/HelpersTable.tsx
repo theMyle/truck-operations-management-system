@@ -6,7 +6,6 @@ import { IconHelmet } from "@tabler/icons-react";
 import { TableRowActions } from "../TableRowActions";
 import { DataTable } from "mantine-datatable";
 import { useDisclosure } from "@mantine/hooks";
-import { modals } from "@mantine/modals";
 import { notifications } from "@mantine/notifications";
 import { useRouter } from "next/navigation";
 import type { Helper } from "@/lib/db/schema/helpers";
@@ -14,6 +13,7 @@ import { deleteHelperAction } from "@/lib/actions/helpers";
 import { TableHeader } from "./TableHeader";
 import { HelperModal } from "./HelperModal";
 import { ViewHelperModal } from "./ViewHelperModal";
+import { DeleteConfirmModal } from "@/components/booking/DeleteConfirmModal";
 
 interface Props {
   data: Helper[];
@@ -27,6 +27,8 @@ export function HelpersTable({ data }: Props) {
   const [addOpened, { open: openAdd, close: closeAdd }] = useDisclosure(false);
   const [editHelper, setEditHelper] = useState<Helper | null>(null);
   const [viewHelper, setViewHelper] = useState<Helper | null>(null);
+  const [deleteHelper, setDeleteHelper] = useState<Helper | null>(null);
+  const [deleteOpened, setDeleteOpened] = useState(false);
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
 
@@ -35,36 +37,24 @@ export function HelpersTable({ data }: Props) {
   );
   const paged = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
-  const openDeleteConfirm = (helper: Helper) => {
-    modals.openConfirmModal({
-      title: "Delete Helper",
-      centered: true,
-      children: (
-        <Text size="sm">
-          Are you sure you want to delete helper <b>{helper.helperName}</b>? This
-          action cannot be undone.
-        </Text>
-      ),
-      labels: { confirm: "Delete", cancel: "Cancel" },
-      confirmProps: { color: "red" },
-      onConfirm: async () => {
-        const result = await deleteHelperAction({ id: helper.id });
-        if (!result || result.validationErrors || result.serverError) {
-          notifications.show({
-            title: "Error",
-            message: result?.serverError ?? "Failed to delete helper",
-            color: "red",
-          });
-        } else {
-          notifications.show({
-            title: "Success",
-            message: "Helper deleted successfully",
-            color: "green",
-          });
-          router.refresh();
-        }
-      },
-    });
+  const handleDeleteConfirm = async (password: string) => {
+    if (!deleteHelper) return;
+    const result = await deleteHelperAction({ id: deleteHelper.id, password });
+    if (!result || result.validationErrors || result.serverError) {
+      notifications.show({
+        title: "Error",
+        message: result?.serverError ?? "Failed to delete helper",
+        color: "red",
+      });
+      return result;
+    } else {
+      notifications.show({
+        title: "Success",
+        message: "Helper deleted successfully",
+        color: "green",
+      });
+      router.refresh();
+    }
   };
 
   return (
@@ -80,6 +70,15 @@ export function HelpersTable({ data }: Props) {
         opened={!!viewHelper}
         onClose={() => setViewHelper(null)}
         helper={viewHelper}
+      />
+      <DeleteConfirmModal
+        opened={deleteOpened}
+        onClose={() => {
+          setDeleteOpened(false);
+          setDeleteHelper(null);
+        }}
+        onConfirm={handleDeleteConfirm}
+        itemLabel={deleteHelper?.helperName ?? ""}
       />
 
       <TableHeader
@@ -140,7 +139,10 @@ export function HelpersTable({ data }: Props) {
                 <TableRowActions
                   onView={() => setViewHelper(row)}
                   onEdit={() => setEditHelper(row)}
-                  onDelete={() => openDeleteConfirm(row)}
+                  onDelete={() => {
+                    setDeleteHelper(row);
+                    setDeleteOpened(true);
+                  }}
                 />
               ),
             },

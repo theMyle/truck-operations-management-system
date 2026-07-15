@@ -83,7 +83,7 @@ export default function DispatchPage() {
       pickupDate: null,
       pickupTime: "",
       dropOffs: [
-        { id: Date.now(), location: "", contactPerson: "", contactNo: "" },
+        { id: 1, location: "", contactPerson: "", contactNo: "" },
       ],
       plateNo: null,
       truckerRate: "",
@@ -203,7 +203,7 @@ export default function DispatchPage() {
       clientName: selectedClient.clientName,
       clientRate: form.values.clientRate,
       ruta: form.values.ruta,
-      pickupDate: form.values.pickupDate?.toISOString()!,
+      pickupDate: form.values.pickupDate ? form.values.pickupDate.toISOString() : "",
       pickupTime: form.values.pickupTime,
       pickupLocation: form.values.pickupLocation,
       driverId: selectedDriver.id,

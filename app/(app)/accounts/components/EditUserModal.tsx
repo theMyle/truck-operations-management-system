@@ -3,6 +3,7 @@
 import { Modal, Button, TextInput, PasswordInput, Select, Stack, Group, Alert } from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { useUpdateUser } from "@/app/hooks/use-users";
+import { CreateUserDto } from "@/lib/validations/user";
 import { useAuth } from "@clerk/nextjs";
 import { IconAlertCircle } from "@tabler/icons-react";
 import { useState, useEffect } from "react";
@@ -95,7 +96,7 @@ export function EditUserModal({ user, onClose }: EditUserModalProps) {
         setError(null);
         try {
             // Build the update payload (omit confirmPassword, and only include password if typed)
-            const payload: any = {
+            const payload: Partial<CreateUserDto> = {
                 username: values.username,
                 firstName: values.firstName,
                 lastName: values.lastName,
@@ -119,14 +120,15 @@ export function EditUserModal({ user, onClose }: EditUserModalProps) {
 
             form.reset();
             onClose();
-        } catch (err: any) {
-            console.log(err)
-            setError(err || "Something went wrong.");
-
-            if (!Array.isArray(err)) {
+        } catch (err) {
+            console.log(err);
+            if (Array.isArray(err)) {
+                setError(err as CreateUserErrorItem[]);
+            } else {
+                setError(null);
                 notifications.show({
                     title: "Failed to Update Account",
-                    message: err.message || "Something went wrong.",
+                    message: (err as { message?: string })?.message || "Something went wrong.",
                     color: "red",
                 });
             }

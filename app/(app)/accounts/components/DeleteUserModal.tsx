@@ -25,10 +25,10 @@ export function DeleteUserModal({ user, onClose }: DeleteUserModalProps) {
                 color: "green",
             });
             onClose();
-        } catch (err: any) {
+        } catch (err) {
             notifications.show({
                 title: "Error",
-                message: err.message || "Failed to delete user account.",
+                message: (err as { message?: string })?.message || "Failed to delete user account.",
                 color: "red",
             });
         }

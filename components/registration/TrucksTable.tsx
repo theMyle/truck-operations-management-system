@@ -6,7 +6,6 @@ import { IconTruck } from "@tabler/icons-react";
 import { TableRowActions } from "../TableRowActions";
 import { DataTable } from "mantine-datatable";
 import { useDisclosure } from "@mantine/hooks";
-import { modals } from "@mantine/modals";
 import { notifications } from "@mantine/notifications";
 import { useRouter } from "next/navigation";
 import type { Truck } from "@/lib/db/schema/trucks";
@@ -14,6 +13,7 @@ import { deleteTruckAction } from "@/lib/actions/trucks";
 import { TableHeader } from "./TableHeader";
 import { TruckModal } from "./TruckModal";
 import { getTruckStatusLabel } from "@/lib/utils/truckStatus";
+import { DeleteConfirmModal } from "@/components/booking/DeleteConfirmModal";
 
 interface Props {
   data: Truck[];
@@ -33,6 +33,8 @@ export function TrucksTable({ data }: Props) {
   const router = useRouter();
   const [addOpened, { open: openAdd, close: closeAdd }] = useDisclosure(false);
   const [editTruck, setEditTruck] = useState<Truck | null>(null);
+  const [deleteTruck, setDeleteTruck] = useState<Truck | null>(null);
+  const [deleteOpened, setDeleteOpened] = useState(false);
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
 
@@ -45,36 +47,24 @@ export function TrucksTable({ data }: Props) {
   );
   const paged = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
-  const openDeleteConfirm = (truck: Truck) => {
-    modals.openConfirmModal({
-      title: "Delete Truck",
-      centered: true,
-      children: (
-        <Text size="sm">
-          Are you sure you want to delete truck <b>{truck.plateNumber}</b>? This
-          action cannot be undone.
-        </Text>
-      ),
-      labels: { confirm: "Delete", cancel: "Cancel" },
-      confirmProps: { color: "red" },
-      onConfirm: async () => {
-        const result = await deleteTruckAction({ plateNumber: truck.plateNumber });
-        if (!result || result.validationErrors || result.serverError) {
-          notifications.show({
-            title: "Error",
-            message: result?.serverError ?? "Failed to delete truck",
-            color: "red",
-          });
-        } else {
-          notifications.show({
-            title: "Success",
-            message: "Truck deleted successfully",
-            color: "green",
-          });
-          router.refresh();
-        }
-      },
-    });
+  const handleDeleteConfirm = async (password: string) => {
+    if (!deleteTruck) return;
+    const result = await deleteTruckAction({ plateNumber: deleteTruck.plateNumber, password });
+    if (!result || result.validationErrors || result.serverError) {
+      notifications.show({
+        title: "Error",
+        message: result?.serverError ?? "Failed to delete truck",
+        color: "red",
+      });
+      return result;
+    } else {
+      notifications.show({
+        title: "Success",
+        message: "Truck deleted successfully",
+        color: "green",
+      });
+      router.refresh();
+    }
   };
 
   return (
@@ -85,6 +75,15 @@ export function TrucksTable({ data }: Props) {
         opened={!!editTruck}
         onClose={() => setEditTruck(null)}
         truck={editTruck}
+      />
+      <DeleteConfirmModal
+        opened={deleteOpened}
+        onClose={() => {
+          setDeleteOpened(false);
+          setDeleteTruck(null);
+        }}
+        onConfirm={handleDeleteConfirm}
+        itemLabel={deleteTruck?.plateNumber ?? ""}
       />
 
       <TableHeader
@@ -145,7 +144,10 @@ export function TrucksTable({ data }: Props) {
               render: (row) => (
                 <TableRowActions
                   onEdit={() => setEditTruck(row)}
-                  onDelete={() => openDeleteConfirm(row)}
+                  onDelete={() => {
+                    setDeleteTruck(row);
+                    setDeleteOpened(true);
+                  }}
                 />
               ),
             },
