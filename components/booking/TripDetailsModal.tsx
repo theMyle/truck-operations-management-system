@@ -44,7 +44,7 @@ import {
   IconUser,
   IconX,
 } from "@tabler/icons-react";
-import { uploadFile, replaceFile } from "@/lib/actions/file-upload";
+import { uploadFile, replaceFile, getSignedUploadUrlAction, deleteFileFromUrl } from "@/lib/actions/file-upload";
 import { compressImage, mergeImagesToPdf } from "@/lib/utils/imageUtils";
 import { compressPdf } from "@/lib/utils/pdfCompression";
 import { inputStyles } from "@/app/(app)/dispatch/page";
@@ -484,6 +484,7 @@ export function TripDetailsModal({
   // The actual File object for the pending upload — separate from form
   // because form.podFileUrl is just a blob preview URL (not uploadable)
   const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [isGeneratedPdf, setIsGeneratedPdf] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadStatus, setUploadStatus] = useState("Uploading…");
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -498,6 +499,7 @@ export function TripDetailsModal({
     setUploadError(null);
     if (!fileInput) {
       setPendingFile(null);
+      setIsGeneratedPdf(false);
       setForm((prev) => ({
         ...prev,
         podFile: "",
@@ -528,6 +530,7 @@ export function TripDetailsModal({
         const originalFile = fileInput[0];
         const ext = originalFile.name.split(".").pop() ?? "jpg";
         file = new File([originalFile], `${recordName}.${ext}`, { type: originalFile.type });
+        setIsGeneratedPdf(false);
       } else {
         // If there are multiple files, verify they are all images
         const hasPdf = fileInput.some(
@@ -546,6 +549,7 @@ export function TripDetailsModal({
         try {
           const mergedFile = await mergeImagesToPdf(fileInput);
           file = new File([mergedFile], `${recordName}.pdf`, { type: "application/pdf" });
+          setIsGeneratedPdf(true);
         } catch (err) {
           setUploadError("Failed to merge images into PDF.");
           setIsUploading(false);
@@ -559,6 +563,7 @@ export function TripDetailsModal({
     } else {
       const ext = fileInput.name.split(".").pop() ?? "jpg";
       file = new File([fileInput], `${recordName}.${ext}`, { type: fileInput.type });
+      setIsGeneratedPdf(false);
     }
 
     setPendingFile(file);
@@ -621,17 +626,19 @@ export function TripDetailsModal({
         // Compress: PDF via Ghostscript WASM (in Web Worker), images via Canvas API
         setUploadProgress(20);
         const compressed = isPdfFile
-          ? await compressPdf(pendingFile, (p) => {
-              setUploadStatus(p.message);
-              if (p.message.includes("Compressing")) {
-                setUploadProgress(40);
-              } else if (p.message.includes("Compressed") || p.message.includes("optimised")) {
-                setUploadProgress(65);
-              }
-            })
+          ? (isGeneratedPdf 
+              ? pendingFile 
+              : await compressPdf(pendingFile, (p) => {
+                  setUploadStatus(p.message);
+                  if (p.message.includes("Compressing")) {
+                    setUploadProgress(40);
+                  } else if (p.message.includes("Compressed") || p.message.includes("optimised")) {
+                    setUploadProgress(65);
+                  }
+                }))
           : await compressImage(pendingFile);
 
-        setUploadStatus("Uploading to server…");
+        setUploadStatus("Preparing upload details…");
         setUploadProgress(70);
 
         // e.g. "Lazada_2025-06-13_DR-00421.jpg" / ".pdf"
@@ -651,14 +658,27 @@ export function TripDetailsModal({
           ? "pdf"
           : (compressed.name.split(".").pop() ?? "jpg");
 
-        const fd = new FormData();
-        fd.append("file", compressed);
-        fd.append("folder", "pod");
-        fd.append("name", `${safeName}.${ext}`); // ← custom name
+        const filePath = `pod/${safeName}.${ext}`;
 
-        let res: { success?: boolean; url?: string; error?: string };
+        // If replacing an old POD file, delete it first to avoid orphans
+        if (record.podFileUrl && record.podFileUrl.startsWith("http")) {
+          await deleteFileFromUrl(record.podFileUrl);
+        }
 
-        // Start a smooth fake progress interval to crawl from 70% to 95% while uploading
+        setUploadStatus("Requesting upload signature…");
+        setUploadProgress(75);
+
+        const res = await getSignedUploadUrlAction(filePath);
+        if (res.error || !res.signedUrl || !res.publicUrl) {
+          setUploadError(res.error ?? "Failed to authorize upload. Try again.");
+          setUploadProgress(0);
+          return;
+        }
+
+        setUploadStatus("Uploading directly to storage…");
+        setUploadProgress(80);
+
+        // Start a smooth fake progress interval to crawl from 80% to 95% while uploading
         const interval = setInterval(() => {
           setUploadProgress((prev) => {
             if (prev < 95) return prev + 2;
@@ -666,22 +686,23 @@ export function TripDetailsModal({
           });
         }, 300);
 
-        if (record.podFileUrl && record.podFileUrl.startsWith("http")) {
-          fd.append("oldUrl", record.podFileUrl);
-          res = await replaceFile(fd);
-        } else {
-          res = await uploadFile(fd);
-        }
+        const uploadRes = await fetch(res.signedUrl, {
+          method: "PUT",
+          body: compressed,
+          headers: {
+            "Content-Type": compressed.type,
+          },
+        });
 
         clearInterval(interval);
 
-        if (res.error || !res.url) {
-          setUploadError(res.error ?? "Upload failed. Try again.");
+        if (!uploadRes.ok) {
+          setUploadError("Failed to upload file directly to storage.");
           setUploadProgress(0);
           return;
         }
 
-        finalPodUrl = res.url;
+        finalPodUrl = res.publicUrl;
       }
 
       setUploadProgress(100);
