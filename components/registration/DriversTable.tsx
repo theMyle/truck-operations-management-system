@@ -6,7 +6,6 @@ import { IconUser } from "@tabler/icons-react";
 import { TableRowActions } from "../TableRowActions";
 import { DataTable } from "mantine-datatable";
 import { useDisclosure } from "@mantine/hooks";
-import { modals } from "@mantine/modals";
 import { notifications } from "@mantine/notifications";
 import { useRouter } from "next/navigation";
 import type { Driver } from "@/lib/db/schema/drivers";
@@ -14,6 +13,7 @@ import { deleteDriverAction } from "@/lib/actions/drivers";
 import { TableHeader } from "./TableHeader";
 import { DriverModal } from "./DriverModal";
 import { ViewDriverModal } from "./ViewDriverModal";
+import { DeleteConfirmModal } from "@/components/booking/DeleteConfirmModal";
 
 interface Props {
   data: Driver[];
@@ -27,6 +27,8 @@ export function DriversTable({ data }: Props) {
   const [addOpened, { open: openAdd, close: closeAdd }] = useDisclosure(false);
   const [editDriver, setEditDriver] = useState<Driver | null>(null);
   const [viewDriver, setViewDriver] = useState<Driver | null>(null);
+  const [deleteDriver, setDeleteDriver] = useState<Driver | null>(null);
+  const [deleteOpened, setDeleteOpened] = useState(false);
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
 
@@ -35,36 +37,24 @@ export function DriversTable({ data }: Props) {
   );
   const paged = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
-  const openDeleteConfirm = (driver: Driver) => {
-    modals.openConfirmModal({
-      title: "Delete Driver",
-      centered: true,
-      children: (
-        <Text size="sm">
-          Are you sure you want to delete driver <b>{driver.driverName}</b>? This
-          action cannot be undone.
-        </Text>
-      ),
-      labels: { confirm: "Delete", cancel: "Cancel" },
-      confirmProps: { color: "red" },
-      onConfirm: async () => {
-        const result = await deleteDriverAction({ id: driver.id });
-        if (!result || result.validationErrors || result.serverError) {
-          notifications.show({
-            title: "Error",
-            message: result?.serverError ?? "Failed to delete driver",
-            color: "red",
-          });
-        } else {
-          notifications.show({
-            title: "Success",
-            message: "Driver deleted successfully",
-            color: "green",
-          });
-          router.refresh();
-        }
-      },
-    });
+  const handleDeleteConfirm = async (password: string) => {
+    if (!deleteDriver) return;
+    const result = await deleteDriverAction({ id: deleteDriver.id, password });
+    if (!result || result.validationErrors || result.serverError) {
+      notifications.show({
+        title: "Error",
+        message: result?.serverError ?? "Failed to delete driver",
+        color: "red",
+      });
+      return result;
+    } else {
+      notifications.show({
+        title: "Success",
+        message: "Driver deleted successfully",
+        color: "green",
+      });
+      router.refresh();
+    }
   };
 
   return (
@@ -80,6 +70,15 @@ export function DriversTable({ data }: Props) {
         opened={!!viewDriver}
         onClose={() => setViewDriver(null)}
         driver={viewDriver}
+      />
+      <DeleteConfirmModal
+        opened={deleteOpened}
+        onClose={() => {
+          setDeleteOpened(false);
+          setDeleteDriver(null);
+        }}
+        onConfirm={handleDeleteConfirm}
+        itemLabel={deleteDriver?.driverName ?? ""}
       />
 
       <TableHeader
@@ -140,7 +139,10 @@ export function DriversTable({ data }: Props) {
                 <TableRowActions
                   onView={() => setViewDriver(row)}
                   onEdit={() => setEditDriver(row)}
-                  onDelete={() => openDeleteConfirm(row)}
+                  onDelete={() => {
+                    setDeleteDriver(row);
+                    setDeleteOpened(true);
+                  }}
                 />
               ),
             },

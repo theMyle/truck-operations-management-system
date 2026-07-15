@@ -22,7 +22,7 @@ export function useUsers({ getToken, enabled }: UseUsersProps) {
             if (!res.ok) throw new Error('Failed to fetch users');
 
             const rawData = await res.json();
-            return rawData.map((user: any) => ({
+            return rawData.map((user: Omit<User, "createdAt" | "updatedAt"> & { createdAt: string; updatedAt: string }) => ({
                 ...user,
                 createdAt: new Date(user.createdAt),
                 updatedAt: new Date(user.updatedAt),

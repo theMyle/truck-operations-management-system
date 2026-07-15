@@ -12,7 +12,7 @@ import {
 import { revalidatePath } from "next/cache";
 import { updateTripMonitoringSchema, updateTripDetailsSchema } from "../db/schema/booking";
 import { z } from "zod";
-
+import { verifyUserPassword } from "@/lib/auth/verify-password";
 export const createBookingAction = actionClient
   .inputSchema(createBookingActionSchema)
   .action(async ({ parsedInput }) => {
@@ -67,18 +67,25 @@ export const updateBookingAction = actionClient
     }
   });
 
+// booking actions
 export const deleteBookingAction = actionClient
   .inputSchema(deleteBookingActionSchema)
-  .action(async ({ parsedInput }) => {
+  .action(async ({ parsedInput, ctx }) => {
+    const { id, password } = parsedInput;
+
+    const passwordValid = await verifyUserPassword(ctx.userId, password);
+    if (!passwordValid) {
+      throw new Error("Incorrect password.");
+    }
+
     try {
-      const { id } = parsedInput as { id: string };
       await bookingRepository.delete(id);
       revalidatePath("/");
       revalidatePath("/dashboard");
       return { success: true };
     } catch (error) {
       console.error("❌ DELETE ACTION CRASHED:", error);
-      return { serverError: "Failed to delete bokking" };
+      throw new Error("Failed to delete booking.");
     }
   });
 

@@ -205,7 +205,7 @@ export function TripSummaryModal({
       bookingDr: booking.bookingDRNo || "—",
       ruta: booking.ruta,
       noOfDrops: booking.numberOfDrops || 0,
-      status: (booking.deliveryStatus as any) || "Pending",
+      status: (booking.deliveryStatus as DispatchRecord["status"]) || "Pending",
     };
 
     const formValues = {
@@ -219,9 +219,9 @@ export function TripSummaryModal({
       budget: budgetAmount,
       budgetFrom: booking.budgetFrom || "",
       rfidLoad: rfidAmount,
-      rfidPaymentType: (booking.rfidPaymentType as any) || "cash",
+      rfidPaymentType: (booking.rfidPaymentType as "cash" | "card") || "cash",
       fuelAmount: fuelAmt,
-      fuelPaymentType: (booking.fuelPaymentType as any) || "cash",
+      fuelPaymentType: (booking.fuelPaymentType as "cash" | "card") || "cash",
       collectionFromCustomer: collectionAmount,
       cashOnHandReturned: cashReturned,
       cashOnHandReturnedToWhom: booking.cashOnHandReturnedTo || "",

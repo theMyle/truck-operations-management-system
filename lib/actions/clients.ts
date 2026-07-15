@@ -56,12 +56,22 @@ export const updateClientAction = actionClient
     return updated;
   });
 
+import { verifyUserPassword } from "@/lib/auth/verify-password";
+
 export const deleteClientAction = actionClient
   .inputSchema(
-    z.object({ id: z.string().uuid("Client id is required for deletion") }),
+    z.object({
+      id: z.string().uuid("Client id is required for deletion"),
+      password: z.string().min(1, "Password is required"),
+    }),
   )
-  .action(async ({ parsedInput }) => {
-    const deleted = await clientRepository.delete(parsedInput.id);
+  .action(async ({ parsedInput, ctx }) => {
+    const { id, password } = parsedInput;
+    const passwordValid = await verifyUserPassword(ctx.userId, password);
+    if (!passwordValid) {
+      throw new Error("Incorrect password.");
+    }
+    const deleted = await clientRepository.delete(id);
     revalidatePath("/registration");
     return deleted;
   });

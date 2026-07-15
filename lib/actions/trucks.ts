@@ -36,10 +36,20 @@ export const createTruckAction = actionClient
         return { success: true, data: newTruck };
     });
 
+import { verifyUserPassword } from "@/lib/auth/verify-password";
+
 export const deleteTruckAction = actionClient
-    .inputSchema(z.object({ plateNumber: z.string().min(1, "Plate number is required for deletion") }))
-    .action(async ({ parsedInput }) => {
-        const deleted = await truckRepository.delete(parsedInput.plateNumber);
+    .inputSchema(z.object({
+        plateNumber: z.string().min(1, "Plate number is required for deletion"),
+        password: z.string().min(1, "Password is required"),
+    }))
+    .action(async ({ parsedInput, ctx }) => {
+        const { plateNumber, password } = parsedInput;
+        const passwordValid = await verifyUserPassword(ctx.userId, password);
+        if (!passwordValid) {
+            throw new Error("Incorrect password.");
+        }
+        const deleted = await truckRepository.delete(plateNumber);
         revalidatePath("/registration");
         return deleted;
-    })
+    });

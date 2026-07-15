@@ -6,7 +6,6 @@ import { IconUsers } from "@tabler/icons-react";
 import { TableRowActions } from "../TableRowActions";
 import { DataTable } from "mantine-datatable";
 import { useDisclosure } from "@mantine/hooks";
-import { modals } from "@mantine/modals";
 import { notifications } from "@mantine/notifications";
 import { useRouter } from "next/navigation";
 import type { ClientWithRoutes } from "@/lib/db/schema/clients";
@@ -14,6 +13,7 @@ import { deleteClientAction } from "@/lib/actions/clients";
 import { TableHeader } from "./TableHeader";
 import { ClientModal } from "./ClientModal";
 import { ViewClientModal } from "./ViewClientModal";
+import { DeleteConfirmModal } from "@/components/booking/DeleteConfirmModal";
 
 interface Props {
   data: ClientWithRoutes[];
@@ -27,6 +27,8 @@ export function ClientsTable({ data }: Props) {
   const [addOpened, { open: openAdd, close: closeAdd }] = useDisclosure(false);
   const [editClient, setEditClient] = useState<ClientWithRoutes | null>(null);
   const [viewClient, setViewClient] = useState<ClientWithRoutes | null>(null);
+  const [deleteClient, setDeleteClient] = useState<ClientWithRoutes | null>(null);
+  const [deleteOpened, setDeleteOpened] = useState(false);
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
 
@@ -35,36 +37,24 @@ export function ClientsTable({ data }: Props) {
   );
   const paged = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
-  const openDeleteConfirm = (client: ClientWithRoutes) => {
-    modals.openConfirmModal({
-      title: "Delete Client",
-      centered: true,
-      children: (
-        <Text size="sm">
-          Are you sure you want to delete <b>{client.clientName}</b>? This
-          action cannot be undone.
-        </Text>
-      ),
-      labels: { confirm: "Delete", cancel: "Cancel" },
-      confirmProps: { color: "red" },
-      onConfirm: async () => {
-        const result = await deleteClientAction({ id: client.id });
-        if (!result || result.validationErrors || result.serverError) {
-          notifications.show({
-            title: "Error",
-            message: result?.serverError ?? "Failed to delete client",
-            color: "red",
-          });
-        } else {
-          notifications.show({
-            title: "Success",
-            message: "Client deleted successfully",
-            color: "green",
-          });
-          router.refresh();
-        }
-      },
-    });
+  const handleDeleteConfirm = async (password: string) => {
+    if (!deleteClient) return;
+    const result = await deleteClientAction({ id: deleteClient.id, password });
+    if (!result || result.validationErrors || result.serverError) {
+      notifications.show({
+        title: "Error",
+        message: result?.serverError ?? "Failed to delete client",
+        color: "red",
+      });
+      return result;
+    } else {
+      notifications.show({
+        title: "Success",
+        message: "Client deleted successfully",
+        color: "green",
+      });
+      router.refresh();
+    }
   };
 
   return (
@@ -84,6 +74,15 @@ export function ClientsTable({ data }: Props) {
         opened={!!viewClient}
         onClose={() => setViewClient(null)}
         client={viewClient}
+      />
+      <DeleteConfirmModal
+        opened={deleteOpened}
+        onClose={() => {
+          setDeleteOpened(false);
+          setDeleteClient(null);
+        }}
+        onConfirm={handleDeleteConfirm}
+        itemLabel={deleteClient?.clientName ?? ""}
       />
 
       <TableHeader
@@ -145,7 +144,10 @@ export function ClientsTable({ data }: Props) {
                 <TableRowActions
                   onView={() => setViewClient(row)}
                   onEdit={() => setEditClient(row)}
-                  onDelete={() => openDeleteConfirm(row)}
+                  onDelete={() => {
+                    setDeleteClient(row);
+                    setDeleteOpened(true);
+                  }}
                 />
               ),
             },

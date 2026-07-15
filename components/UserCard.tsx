@@ -6,7 +6,7 @@ import { UserButton } from "@clerk/nextjs";
 import { toTitleCase } from "@/lib/utils/stringFormat";
 
 interface UserCardProps {
-    user: any;
+    user: { firstName?: string | null } | null;
     userRole: string;
 }
 

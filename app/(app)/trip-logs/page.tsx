@@ -16,6 +16,7 @@ import {
   Tooltip,
   Pagination,
   Select,
+  PasswordInput,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { useRouter } from "next/navigation";
@@ -37,7 +38,11 @@ import { useDispatch } from "../context/dispatch-context";
 import { TripDetailsModal } from "@/components/trip-logs/TripDetailsModal";
 import type { NewTripDetailsFormData } from "@/components/trip-logs/TripDetailsModal";
 import { DispatchRecord } from "@/app/(app)/constant";
-import { getAllBookingAction, deleteBookingAction, updateTripDetailAction } from "@/lib/actions/booking";
+import {
+  getAllBookingAction,
+  deleteBookingAction,
+  updateTripDetailAction,
+} from "@/lib/actions/booking";
 import { formatTime12Hour, formatTimeHHMM } from "@/lib/utils/stringFormat";
 import { TripLogsTable } from "@/components/trip-logs/TripLogsTable";
 import { TripLogsModuleSkeleton } from "@/components/ui/ModuleSkeletons";
@@ -205,14 +210,35 @@ function DeleteModal({
 }: {
   opened: boolean;
   onClose: () => void;
-  onConfirm: () => void;
+  onConfirm: (password: string) => Promise<{ serverError?: string } | void>;
   record: DispatchRecord | null;
 }) {
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+
   if (!record) return null;
+
+  const handleConfirm = async () => {
+    if (!password) return setError("Password is required.");
+    setLoading(true);
+    const result = await onConfirm(password);
+    setLoading(false);
+    if (result?.serverError) return setError(result.serverError);
+    setPassword("");
+    setError(null);
+  };
+
+  const handleClose = () => {
+    setPassword("");
+    setError(null);
+    onClose();
+  };
+
   return (
     <Modal
       opened={opened}
-      onClose={onClose}
+      onClose={handleClose}
       title={
         <Group gap={8}>
           <IconAlertTriangle size={16} color="var(--mantine-color-red-6)" />
@@ -237,26 +263,42 @@ function DeleteModal({
           <strong>#{record.id}</strong> for <strong>{record.client}</strong> on{" "}
           <strong>{record.date}</strong>? This action cannot be undone.
         </Text>
+        <PasswordInput
+          label="Confirm your password"
+          placeholder="Account password"
+          value={password}
+          onChange={(e) => {
+            setPassword(e.currentTarget.value);
+            if (error) setError(null);
+          }}
+          onKeyDown={(e) => e.key === "Enter" && handleConfirm()}
+          error={error}
+          styles={{ label: { fontSize: "11px", fontWeight: 600 } }}
+          radius="md"
+          autoFocus
+        />
         <Group justify="flex-end" gap="sm">
           <Button
             variant="light"
             color="gray"
+            onClick={handleClose}
+            disabled={loading}
             styles={{
               root: { height: 34 },
               label: { fontSize: "11px", fontWeight: 700 },
             }}
-            onClick={onClose}
           >
             Cancel
           </Button>
           <Button
             color="red"
             leftSection={<IconTrash size={14} />}
+            onClick={handleConfirm}
+            loading={loading}
             styles={{
               root: { height: 34 },
               label: { fontSize: "11px", fontWeight: 700 },
             }}
-            onClick={onConfirm}
           >
             Delete
           </Button>
@@ -313,9 +355,13 @@ export default function DispatchRecordsPage() {
   const [deleteRecord, setDeleteRecord] = useState<DispatchRecord | null>(null);
   const [deleteOpened, setDeleteOpened] = useState(false);
 
-  const [seletectedTrip, setSeletectedTrip] = useState<DispatchRecord | null>(null);
+  const [seletectedTrip, setSeletectedTrip] = useState<DispatchRecord | null>(
+    null,
+  );
   const [detailsOpened, setDetailsOpened] = useState(false);
-  const [detailsData, setDetailsData] = useState<Record<string | number, NewTripDetailsFormData>>({});
+  const [detailsData, setDetailsData] = useState<
+    Record<string | number, NewTripDetailsFormData>
+  >({});
   const [page, setPage] = useState(1);
   const { setEditingRecord } = useDispatch();
 
@@ -364,32 +410,37 @@ export default function DispatchRecordsPage() {
           loadingEnd: formatTimeHHMM(b.loadingEndTime),
           departurePickup: formatTimeHHMM(b.pickupDepartureTime),
           finishDelivery: formatTimeHHMM(b.finishedDeliveryTime),
-          podFile: b.PODLink ? b.PODLink.split("/").pop() ?? "" : "",
+          podFile: b.PODLink ? (b.PODLink.split("/").pop() ?? "") : "",
           podFileUrl: b.PODLink ?? "",
-          podFileType: ""
+          podFileType: "",
         }));
 
         // Populate Odometer & Budget & Expenses initial data from database
-        const initialOdoData: Record<string | number, NewTripDetailsFormData> = {};
+        const initialOdoData: Record<string | number, NewTripDetailsFormData> =
+          {};
         res.data.forEach((b) => {
           initialOdoData[b.id] = {
             tripType: b.odoDetails.length > 1 ? "multiple" : "single",
-            trips: b.odoDetails.length > 0
-              ? b.odoDetails.map((odo) => ({
-                tripNumber: odo.tripIndex,
-                odoStart: odo.odoStart,
-                odoEnd: odo.odoEnd,
-              }))
-              : [{ tripNumber: 1, odoStart: 0, odoEnd: 0 }],
-            totalKm: b.odoDetails.length > 0
-              ? b.odoDetails[b.odoDetails.length - 1].odoEnd - b.odoDetails[0].odoStart
-              : 0,
+            trips:
+              b.odoDetails.length > 0
+                ? b.odoDetails.map((odo) => ({
+                    tripNumber: odo.tripIndex,
+                    odoStart: odo.odoStart,
+                    odoEnd: odo.odoEnd,
+                  }))
+                : [{ tripNumber: 1, odoStart: 0, odoEnd: 0 }],
+            totalKm:
+              b.odoDetails.length > 0
+                ? b.odoDetails[b.odoDetails.length - 1].odoEnd -
+                  b.odoDetails[0].odoStart
+                : 0,
             budget: Number(b.budget || 0),
             budgetFrom: b.budgetFrom || "",
             rfidLoad: Number(b.rfidLoad || 0),
             rfidPaymentType: (b.rfidPaymentType as "cash" | "card") || "cash",
             fuelAmount: Number(b.fuel || 0),
-            fuelPaymentType: b.fuelPaymentType === "card" ? "shell card" : "cash",
+            fuelPaymentType:
+              b.fuelPaymentType === "card" ? "shell card" : "cash",
             collectionFromCustomer: Number(b.customerCollection || 0),
             cashOnHandReturned: Number(b.cashOnHandReturned || 0),
             cashOnHandReturnedToWhom: b.cashOnHandReturnedTo || "",
@@ -401,7 +452,9 @@ export default function DispatchRecordsPage() {
               let assignedTo = "";
               if (exp.expenseType.startsWith("Cash Advance, ")) {
                 category = "cash_advance";
-                assignedTo = exp.expenseType.replace("Cash Advance, ", "").split(" (")[0];
+                assignedTo = exp.expenseType
+                  .replace("Cash Advance, ", "")
+                  .split(" (")[0];
               }
               return {
                 expenseId: idx + 1,
@@ -427,19 +480,41 @@ export default function DispatchRecordsPage() {
     return records.filter((r) => {
       return (
         !q ||
-        String(r.displayBookingNo || "").toLowerCase().includes(q) ||
-        String(r.clientName || r.client || "").toLowerCase().includes(q) ||
-        String(r.driverName || r.driver || "").toLowerCase().includes(q) ||
-        String(r.plateNo || "").toLowerCase().includes(q) ||
-        String(r.bookingDRNo || r.bookingDr || "").toLowerCase().includes(q) ||
-        String(r.ruta || "").toLowerCase().includes(q) ||
-        String(r.bookedBy || "").toLowerCase().includes(q)
+        String(r.displayBookingNo || "")
+          .toLowerCase()
+          .includes(q) ||
+        String(r.clientName || r.client || "")
+          .toLowerCase()
+          .includes(q) ||
+        String(r.driverName || r.driver || "")
+          .toLowerCase()
+          .includes(q) ||
+        String(r.plateNo || "")
+          .toLowerCase()
+          .includes(q) ||
+        String(r.bookingDRNo || r.bookingDr || "")
+          .toLowerCase()
+          .includes(q) ||
+        String(r.ruta || "")
+          .toLowerCase()
+          .includes(q) ||
+        String(r.bookedBy || "")
+          .toLowerCase()
+          .includes(q)
       );
     });
   }, [search, records]);
 
-  const { handleExport } = useTableExport(filtered, TRIP_LOG_EXPORT_COLUMNS, "Trip Logs");
-  const { handlePrint } = useTablePrint(filtered, TRIP_LOG_EXPORT_COLUMNS, "Trip Logs");
+  const { handleExport } = useTableExport(
+    filtered,
+    TRIP_LOG_EXPORT_COLUMNS,
+    "Trip Logs",
+  );
+  const { handlePrint } = useTablePrint(
+    filtered,
+    TRIP_LOG_EXPORT_COLUMNS,
+    "Trip Logs",
+  );
 
   const paginated = useMemo(
     () => filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
@@ -459,17 +534,19 @@ export default function DispatchRecordsPage() {
     setDeleteRecord(record);
     setDeleteOpened(true);
   };
-
-  const handleDeleteConfirm = async () => {
+  const handleDeleteConfirm = async (password: string) => {
     if (!deleteRecord) return;
-    const result = await deleteBookingAction({ id: String(deleteRecord.id) });
+    const result = await deleteBookingAction({
+      id: String(deleteRecord.id),
+      password,
+    });
     if (result.serverError) {
       notifications.show({
         title: "Error",
         message: result.serverError,
         color: "red",
       });
-      return;
+      return result;
     }
     setRecords((prev) => prev.filter((r) => r.id !== deleteRecord.id));
     setDeleteOpened(false);
@@ -493,7 +570,10 @@ export default function DispatchRecordsPage() {
       rfidLoad: String(data.rfidLoad),
       rfidPaymentType: data.rfidPaymentType,
       fuel: String(data.fuelAmount),
-      fuelPaymentType: data.fuelPaymentType === "shell card" ? ("card" as const) : ("cash" as const),
+      fuelPaymentType:
+        data.fuelPaymentType === "shell card"
+          ? ("card" as const)
+          : ("cash" as const),
       customerCollection: String(data.collectionFromCustomer),
       cashOnHandReturned: String(data.cashOnHandReturned),
       cashOnHandReturnedTo: data.cashOnHandReturnedToWhom,
@@ -508,11 +588,21 @@ export default function DispatchRecordsPage() {
       expenses: data.expenses.map((e, index) => {
         let expenseType = e.expenseCategory;
         if (e.expenseCategory === "cash_advance" && e.assignedTo) {
-          const isDriver = e.assignedTo === seletectedTrip.driverName || e.assignedTo === seletectedTrip.driver;
-          const isHelper = seletectedTrip.helper && seletectedTrip.helper.includes(e.assignedTo);
+          const isDriver =
+            e.assignedTo === seletectedTrip.driverName ||
+            e.assignedTo === seletectedTrip.driver;
+          const isHelper =
+            seletectedTrip.helper &&
+            seletectedTrip.helper.includes(e.assignedTo);
           const isTrucker = e.assignedTo === seletectedTrip.trucker;
 
-          const role = isDriver ? "Driver" : isHelper ? "Helper" : isTrucker ? "Trucker" : "";
+          const role = isDriver
+            ? "Driver"
+            : isHelper
+              ? "Helper"
+              : isTrucker
+                ? "Trucker"
+                : "";
           const suffix = role ? ` (${role})` : "";
           expenseType = `Cash Advance, ${e.assignedTo}${suffix}`;
         }
@@ -547,7 +637,6 @@ export default function DispatchRecordsPage() {
     // Re-load bookings to sync with DB
     window.location.reload();
   };
-
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect

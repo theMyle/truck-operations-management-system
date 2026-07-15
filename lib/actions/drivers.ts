@@ -38,10 +38,20 @@ export const updateDriverAction = actionClient
         return updated;
     });
 
+import { verifyUserPassword } from "@/lib/auth/verify-password";
+
 export const deleteDriverAction = actionClient
-    .inputSchema(z.object({ id: z.string().uuid("Driver id is required for deletion") }))
-    .action(async ({ parsedInput }) => {
-        const deleted = await driverRepository.delete(parsedInput.id);
+    .inputSchema(z.object({
+        id: z.string().uuid("Driver id is required for deletion"),
+        password: z.string().min(1, "Password is required"),
+    }))
+    .action(async ({ parsedInput, ctx }) => {
+        const { id, password } = parsedInput;
+        const passwordValid = await verifyUserPassword(ctx.userId, password);
+        if (!passwordValid) {
+            throw new Error("Incorrect password.");
+        }
+        const deleted = await driverRepository.delete(id);
 
         if (deleted) {
             await deleteFileFromUrl(deleted.idFrontLink);

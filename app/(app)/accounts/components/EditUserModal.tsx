@@ -95,7 +95,7 @@ export function EditUserModal({ user, onClose }: EditUserModalProps) {
         setError(null);
         try {
             // Build the update payload (omit confirmPassword, and only include password if typed)
-            const payload: any = {
+            const payload: Partial<CreateUserDto> = {
                 username: values.username,
                 firstName: values.firstName,
                 lastName: values.lastName,
@@ -119,14 +119,14 @@ export function EditUserModal({ user, onClose }: EditUserModalProps) {
 
             form.reset();
             onClose();
-        } catch (err: any) {
+        } catch (err) {
             console.log(err)
-            setError(err || "Something went wrong.");
+            setError(err as string | null);
 
             if (!Array.isArray(err)) {
                 notifications.show({
                     title: "Failed to Update Account",
-                    message: err.message || "Something went wrong.",
+                    message: (err as { message?: string })?.message || "Something went wrong.",
                     color: "red",
                 });
             }

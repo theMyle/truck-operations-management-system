@@ -12,6 +12,7 @@ export const updateBookingActionSchema = createBookingActionSchema.extend({
 
 export const deleteBookingActionSchema = z.object({
   id: z.string(),
+  password: z.string().min(1, "You must enter your password to confirm this deletion")
 });
 export type CreateBookingInput = z.infer<typeof createBookingActionSchema>;
 export type UpdateBookingInput = z.infer<typeof updateBookingActionSchema>;
