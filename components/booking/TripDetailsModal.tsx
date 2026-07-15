@@ -35,6 +35,7 @@ import {
   IconClock,
   IconEye,
   IconFileDescription,
+  IconFileTypePdf,
   IconRoute,
   IconTrash,
   IconTruck,
@@ -44,7 +45,8 @@ import {
   IconX,
 } from "@tabler/icons-react";
 import { uploadFile, replaceFile } from "@/lib/actions/file-upload";
-import { compressImage } from "@/lib/utils/imageUtils";
+import { compressImage, mergeImagesToPdf } from "@/lib/utils/imageUtils";
+import { compressPdf } from "@/lib/utils/pdfCompression";
 import { inputStyles } from "@/app/(app)/dispatch/page";
 
 export interface TripDetailsForm {
@@ -229,6 +231,8 @@ function PodUploadField({
   fileUrl,
   fileType,
   isUploading,
+  uploadStatus,
+  uploadProgress,
   onUploadClick,
   onFileChange,
   onClear,
@@ -239,19 +243,27 @@ function PodUploadField({
   fileUrl: string;
   fileType: string;
   isUploading: boolean;
+  uploadStatus: string;
+  uploadProgress: number;
   onUploadClick: () => void;
-  onFileChange: (file: File | null) => void;
+  onFileChange: (file: File | File[] | null) => void;
   onClear: () => void;
   onPreview: () => void;
   podRequired: boolean;
 }) {
   const [isDragging, setIsDragging] = useState(false);
   const isImage = fileType.startsWith("image/");
+  const isPdf = fileType === "application/pdf" || fileName.toLowerCase().endsWith(".pdf");
 
   const handleDrop = (event: DragEvent<HTMLDivElement>) => {
     event.preventDefault();
     setIsDragging(false);
-    onFileChange(event.dataTransfer.files?.[0] ?? null);
+    const files = event.dataTransfer.files;
+    if (files && files.length > 0) {
+      onFileChange(Array.from(files));
+    } else {
+      onFileChange(null);
+    }
   };
 
   return (
@@ -302,10 +314,10 @@ function PodUploadField({
         {isUploading ? (
           <Stack align="center" gap={8} style={{ width: "65%" }}>
             <Text style={{ fontSize: "11px" }} fw={800} c="blue.7">
-              Uploading…
+              {uploadStatus} {uploadProgress > 0 && `(${uploadProgress}%)`}
             </Text>
             <Progress
-              value={100}
+              value={uploadProgress}
               animated
               color="blue.5"
               size={4}
@@ -319,10 +331,10 @@ function PodUploadField({
               <IconUpload size={15} />
             </ThemeIcon>
             <Text style={{ fontSize: "11px" }} fw={800} c="blue.7">
-              Upload File
+              Upload File(s)
             </Text>
             <Text style={{ fontSize: "10px" }} c="dimmed" fw={500}>
-              JPG, PNG or WEBP
+              Single PDF or Multiple Images (JPG, PNG, WEBP)
             </Text>
           </Stack>
         )}
@@ -350,6 +362,16 @@ function PodUploadField({
                 h={24}
                 radius={4}
                 fit="cover"
+                style={{ flexShrink: 0, cursor: "pointer" }}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onPreview();
+                }}
+              />
+            ) : isPdf ? (
+              <IconFileTypePdf
+                size={16}
+                color="var(--mantine-color-red-6)"
                 style={{ flexShrink: 0, cursor: "pointer" }}
                 onClick={(event) => {
                   event.stopPropagation();
@@ -388,7 +410,7 @@ function PodUploadField({
           </Group>
 
           <Group gap={4} wrap="nowrap">
-            {isImage && fileUrl && !isUploading && (
+            {(isImage || isPdf) && fileUrl && !isUploading && (
               <Tooltip label="Preview POD" withArrow fz={10}>
                 <ActionIcon
                   size="sm"
@@ -463,6 +485,8 @@ export function TripDetailsModal({
   // because form.podFileUrl is just a blob preview URL (not uploadable)
   const [pendingFile, setPendingFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [uploadStatus, setUploadStatus] = useState("Uploading…");
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
   const podInputRef = useRef<HTMLInputElement>(null);
@@ -470,9 +494,9 @@ export function TripDetailsModal({
   const set = (key: keyof TripDetailsForm, val: string) =>
     setForm((prev) => ({ ...prev, [key]: val }));
 
-  const handlePodChange = (file: File | null) => {
+  const handlePodChange = async (fileInput: File | File[] | null) => {
     setUploadError(null);
-    if (!file) {
+    if (!fileInput) {
       setPendingFile(null);
       setForm((prev) => ({
         ...prev,
@@ -481,6 +505,60 @@ export function TripDetailsModal({
         podFileType: "",
       }));
       return;
+    }
+
+    const recordName = [
+      record?.clientName ?? record?.client,
+      record?.pickUpDate ?? record?.date,
+      form.bookingDRNo || record?.bookingDRNo || record?.bookingDr,
+    ]
+      .map((s) =>
+        String(s ?? "")
+          .replace(/[^a-zA-Z0-9-]/g, "_")
+          .trim(),
+      )
+      .filter(Boolean)
+      .join("_");
+
+    let file: File;
+
+    if (Array.isArray(fileInput)) {
+      if (fileInput.length === 0) return;
+      if (fileInput.length === 1) {
+        const originalFile = fileInput[0];
+        const ext = originalFile.name.split(".").pop() ?? "jpg";
+        file = new File([originalFile], `${recordName}.${ext}`, { type: originalFile.type });
+      } else {
+        // If there are multiple files, verify they are all images
+        const hasPdf = fileInput.some(
+          (f) =>
+            f.type === "application/pdf" ||
+            f.name.toLowerCase().endsWith(".pdf"),
+        );
+        if (hasPdf) {
+          setUploadError("To upload a PDF, please upload a single PDF file.");
+          return;
+        }
+
+        setIsUploading(true);
+        setUploadStatus("Merging images…");
+        setUploadProgress(15);
+        try {
+          const mergedFile = await mergeImagesToPdf(fileInput);
+          file = new File([mergedFile], `${recordName}.pdf`, { type: "application/pdf" });
+        } catch (err) {
+          setUploadError("Failed to merge images into PDF.");
+          setIsUploading(false);
+          return;
+        } finally {
+          setIsUploading(false);
+          setUploadProgress(0);
+          setUploadStatus("Uploading…");
+        }
+      }
+    } else {
+      const ext = fileInput.name.split(".").pop() ?? "jpg";
+      file = new File([fileInput], `${recordName}.${ext}`, { type: fileInput.type });
     }
 
     setPendingFile(file);
@@ -494,7 +572,12 @@ export function TripDetailsModal({
   };
 
   const handlePodInputChange = (event: ChangeEvent<HTMLInputElement>) => {
-    handlePodChange(event.currentTarget.files?.[0] ?? null);
+    const files = event.currentTarget.files;
+    if (files && files.length > 0) {
+      handlePodChange(Array.from(files));
+    } else {
+      handlePodChange(null);
+    }
     event.currentTarget.value = "";
   };
 
@@ -516,24 +599,46 @@ export function TripDetailsModal({
     setForm(initial);
     setPendingFile(null);
     setUploadError(null);
+    setUploadStatus("Uploading…");
+    setUploadProgress(0);
     onClose();
   };
 
   const handleSave = async () => {
     setIsUploading(true);
     setUploadError(null);
+    setUploadProgress(10);
+    setUploadStatus("Preparing…");
 
     try {
       let finalPodUrl = form.podFileUrl;
 
       if (pendingFile) {
-        const compressed = await compressImage(pendingFile);
+        const isPdfFile =
+          pendingFile.type === "application/pdf" ||
+          pendingFile.name.toLowerCase().endsWith(".pdf");
 
-        // e.g. "Lazada_2025-06-13_DR-00421.jpg"
+        // Compress: PDF via Ghostscript WASM (in Web Worker), images via Canvas API
+        setUploadProgress(20);
+        const compressed = isPdfFile
+          ? await compressPdf(pendingFile, (p) => {
+              setUploadStatus(p.message);
+              if (p.message.includes("Compressing")) {
+                setUploadProgress(40);
+              } else if (p.message.includes("Compressed") || p.message.includes("optimised")) {
+                setUploadProgress(65);
+              }
+            })
+          : await compressImage(pendingFile);
+
+        setUploadStatus("Uploading to server…");
+        setUploadProgress(70);
+
+        // e.g. "Lazada_2025-06-13_DR-00421.jpg" / ".pdf"
         const safeName = [
           record.clientName ?? record.client,
           record.pickUpDate ?? record.date,
-          record.bookingDRNo ?? record.bookingDr,
+          form.bookingDRNo || record.bookingDRNo || record.bookingDr,
         ]
           .map((s) =>
             String(s ?? "")
@@ -542,7 +647,9 @@ export function TripDetailsModal({
           )
           .join("_");
 
-        const ext = compressed.name.split(".").pop() ?? "jpg";
+        const ext = isPdfFile
+          ? "pdf"
+          : (compressed.name.split(".").pop() ?? "jpg");
 
         const fd = new FormData();
         fd.append("file", compressed);
@@ -551,6 +658,14 @@ export function TripDetailsModal({
 
         let res: { success?: boolean; url?: string; error?: string };
 
+        // Start a smooth fake progress interval to crawl from 70% to 95% while uploading
+        const interval = setInterval(() => {
+          setUploadProgress((prev) => {
+            if (prev < 95) return prev + 2;
+            return prev;
+          });
+        }, 300);
+
         if (record.podFileUrl && record.podFileUrl.startsWith("http")) {
           fd.append("oldUrl", record.podFileUrl);
           res = await replaceFile(fd);
@@ -558,18 +673,23 @@ export function TripDetailsModal({
           res = await uploadFile(fd);
         }
 
+        clearInterval(interval);
+
         if (res.error || !res.url) {
           setUploadError(res.error ?? "Upload failed. Try again.");
+          setUploadProgress(0);
           return;
         }
 
         finalPodUrl = res.url;
       }
 
+      setUploadProgress(100);
       onSave(record.id, { ...form, podFileUrl: finalPodUrl });
       onClose();
     } catch (err) {
       setUploadError("Unexpected error during upload.");
+      setUploadProgress(0);
       console.error("POD upload error:", err);
     } finally {
       setIsUploading(false);
@@ -747,7 +867,8 @@ export function TripDetailsModal({
             <input
               ref={podInputRef}
               type="file"
-              accept="image/png,image/jpeg,image/webp"
+              multiple
+              accept="image/png,image/jpeg,image/webp,application/pdf,.pdf"
               onChange={handlePodInputChange}
               style={{ display: "none" }}
             />
@@ -756,6 +877,8 @@ export function TripDetailsModal({
               fileUrl={form.podFileUrl}
               fileType={form.podFileType}
               isUploading={isUploading}
+              uploadStatus={uploadStatus}
+              uploadProgress={uploadProgress}
               onUploadClick={() => podInputRef.current?.click()}
               onFileChange={handlePodChange}
               onClear={() => handlePodChange(null)}
@@ -813,7 +936,7 @@ export function TripDetailsModal({
               }}
               onClick={handleSave}
             >
-              {isUploading ? "Saving…" : "Save Trip Details"}
+              {isUploading ? uploadStatus : "Save Trip Details"}
             </Button>
           </Group>
         </Stack>
@@ -838,13 +961,27 @@ export function TripDetailsModal({
         centered
         zIndex={1000}
       >
-        <Image
-          src={form.podFileUrl}
-          alt={form.podFile}
-          radius="md"
-          fit="contain"
-          mah={600}
-        />
+        {form.podFileType === "application/pdf" ||
+        form.podFile.toLowerCase().endsWith(".pdf") ? (
+          <iframe
+            src={form.podFileUrl}
+            title="POD PDF Preview"
+            style={{
+              width: "100%",
+              height: 500,
+              border: "1px solid var(--mantine-color-gray-3)",
+              borderRadius: 8,
+            }}
+          />
+        ) : (
+          <Image
+            src={form.podFileUrl}
+            alt={form.podFile}
+            radius="md"
+            fit="contain"
+            mah={600}
+          />
+        )}
         <Group justify="space-between" mt="sm">
           <Text style={{ fontSize: "11px" }} c="dimmed" fw={600}>
             {form.podFile}

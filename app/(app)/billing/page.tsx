@@ -632,19 +632,33 @@ export default function BillingModule() {
         }}
       >
         {podPreview?.podFileUrl ? (
-          <Box
-            component="img"
-            src={podPreview.podFileUrl}
-            alt={podPreview.podFile ?? "POD"}
-            style={{
-              maxWidth: "100%",
-              maxHeight: "70vh",
-              objectFit: "contain",
-              borderRadius: 8,
-              display: "block",
-              margin: "0 auto",
-            }}
-          />
+          podPreview.podFile?.toLowerCase().endsWith(".pdf") ||
+          podPreview.podFileUrl.toLowerCase().includes(".pdf") ? (
+            <iframe
+              src={podPreview.podFileUrl}
+              title="POD PDF Preview"
+              style={{
+                width: "100%",
+                height: 500,
+                border: "1px solid var(--mantine-color-gray-3)",
+                borderRadius: 8,
+              }}
+            />
+          ) : (
+            <Box
+              component="img"
+              src={podPreview.podFileUrl}
+              alt={podPreview.podFile ?? "POD"}
+              style={{
+                maxWidth: "100%",
+                maxHeight: "70vh",
+                objectFit: "contain",
+                borderRadius: 8,
+                display: "block",
+                margin: "0 auto",
+              }}
+            />
+          )
         ) : (
           <Stack align="center" gap="sm" py="xl">
             <IconPhotoOff size={40} color="var(--mantine-color-gray-4)" />

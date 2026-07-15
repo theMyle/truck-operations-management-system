@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import {
   Grid,
   Stack,
@@ -27,6 +28,10 @@ export function LocationSection({
 }: {
   form: UseFormReturnType<DispatchFormValues>;
 }) {
+  const [popoverOpened, setPopoverOpened] = useState(false);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
   const addDropOff = () => {
     form.insertListItem("dropOffs", {
       id: Date.now(),
@@ -98,7 +103,14 @@ export function LocationSection({
 
             <Grid gap="sm">
               <Grid.Col span={6}>
-                <Popover position="bottom-start" shadow="md" radius="md" withinPortal>
+                <Popover
+                  opened={popoverOpened}
+                  onChange={setPopoverOpened}
+                  position="bottom-start"
+                  shadow="md"
+                  radius="md"
+                  withinPortal
+                >
                   <Popover.Target>
                     <TextInput
                       label="Pickup Date"
@@ -114,17 +126,32 @@ export function LocationSection({
                       styles={inputStyles}
                       error={form.errors.pickupDate}
                       style={{ cursor: "pointer" }}
+                      onClick={() => setPopoverOpened((o) => !o)}
                     />
                   </Popover.Target>
-                  <Popover.Dropdown p="sm">
-                    <DatePicker
-                      value={form.values.pickupDate}
-                      onChange={(date) => {
-                        if (!date) return;
-                        form.setFieldValue("pickupDate", new Date(date))
-                      }
-                      }
-                    />
+                  <Popover.Dropdown p="xs">
+                    <Stack gap="xs" align="stretch">
+                      <DatePicker
+                        value={form.values.pickupDate}
+                        minDate={today}
+                        onChange={(date) => {
+                          if (!date) return;
+                          form.setFieldValue("pickupDate", new Date(date));
+                          setPopoverOpened(false);
+                        }}
+                      />
+                      <Button
+                        size="xs"
+                        variant="light"
+                        color="blue"
+                        onClick={() => {
+                          form.setFieldValue("pickupDate", new Date());
+                          setPopoverOpened(false);
+                        }}
+                      >
+                        Today
+                      </Button>
+                    </Stack>
                   </Popover.Dropdown>
                 </Popover>
               </Grid.Col>
