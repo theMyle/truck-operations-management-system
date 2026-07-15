@@ -11,6 +11,7 @@ export function ReviewModal({
   onEdit,
   values,
   selectedTruck,
+  loading = false,
 }: {
   opened: boolean;
   onClose: () => void;
@@ -18,6 +19,7 @@ export function ReviewModal({
   onEdit: () => void;
   values: DispatchFormValues;
   selectedTruck: Truck | null;
+  loading?: boolean;
 }) {
   const formatDate = (date: Date | null): string => {
     if (!date) return "";
@@ -172,6 +174,7 @@ export function ReviewModal({
               label: { fontSize: "11px", fontWeight: 700 },
             }}
             onClick={onEdit}
+            disabled={loading}
           >
             Edit
           </Button>
@@ -183,6 +186,7 @@ export function ReviewModal({
               label: { fontSize: "11px", fontWeight: 700 },
             }}
             onClick={onConfirm}
+            loading={loading}
           >
             Confirm & Submit
           </Button>

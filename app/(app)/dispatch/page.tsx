@@ -71,6 +71,7 @@ export default function DispatchPage() {
   const isEditMode = !!editingRecord;
 
   const [reviewOpened, setReviewOpened] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const form = useForm<DispatchFormValues>({
     initialValues: {
@@ -171,7 +172,8 @@ export default function DispatchPage() {
   };
 
   const handleConfirmSubmit = async () => {
-    setReviewOpened(false);
+    if (isSubmitting) return;
+    setIsSubmitting(true);
 
     const selectedClient = clients.find(
       (client) => client.clientName.trim() == form.values.clientName!.trim(),
@@ -242,6 +244,8 @@ export default function DispatchPage() {
         message: result.serverError,
         color: "red",
       });
+      setIsSubmitting(false);
+      setReviewOpened(false);
       return;
     }
 
@@ -252,6 +256,8 @@ export default function DispatchPage() {
         color: "red",
         icon: <IconX size={16} />,
       });
+      setIsSubmitting(false);
+      setReviewOpened(false);
       return;
     }
 
@@ -261,6 +267,8 @@ export default function DispatchPage() {
         message: "The booking action finished without returning saved data.",
         color: "red",
       });
+      setIsSubmitting(false);
+      setReviewOpened(false);
       return;
     }
 
@@ -271,6 +279,8 @@ export default function DispatchPage() {
       icon: <IconCheck size={16} />,
     });
     form.reset();
+    setIsSubmitting(false);
+    setReviewOpened(false);
   };
 
   const handleEditRedirect = () => {
@@ -341,6 +351,7 @@ export default function DispatchPage() {
         onEdit={handleEditRedirect}
         values={form.values}
         selectedTruck={selectedTruck}
+        loading={isSubmitting}
       />
 
       <ScrollArea h="calc(100vh - 72px)" scrollbars="y">
