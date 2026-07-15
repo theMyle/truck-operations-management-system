@@ -31,13 +31,10 @@ const PAGE_SIZE = 10;
 
 /** Columns matching the BookingTable display */
 const BOOKING_EXPORT_COLUMNS = [
-  { key: "displayBookingNo", label: "Booking ID" },
-  { key: "bookingDate", label: "Date Booked" },
   { key: "bookingDRNo", label: "Booking / DR#" },
   { key: "clientName", label: "Client" },
   { key: "pickUpDate", label: "Pickup Date" },
   { key: "pickUpTime", label: "Pickup Time" },
-  { key: "status", label: "Status" },
   { key: "driverName", label: "Driver" },
   { key: "trucker", label: "Trucker" },
   { key: "helper", label: "Helper" },
