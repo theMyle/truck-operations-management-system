@@ -23,6 +23,7 @@ export const trucks = pgTable("trucks", {
   rate: decimal("rate"),
   isSubcon: boolean("is_subcon").notNull().default(false),
   status: truckStatusEnum("status").notNull().default("available"),
+  isActive: boolean("is_active").notNull().default(true),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });

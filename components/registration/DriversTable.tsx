@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Box, Text } from "@mantine/core";
+import { Box, Text, Badge } from "@mantine/core";
 import { IconUser } from "@tabler/icons-react";
 import { TableRowActions } from "../TableRowActions";
 import { DataTable } from "mantine-datatable";
@@ -153,6 +153,15 @@ export function DriversTable({ data }: Props) {
                 <Text size="sm" fw={500}>
                   {row.driverName}
                 </Text>
+              ),
+            },
+            {
+              accessor: "isActive",
+              title: "Status",
+              render: (row) => (
+                <Badge size="sm" color={row.isActive ? "green" : "gray"}>
+                  {row.isActive ? "Active" : "Inactive"}
+                </Badge>
               ),
             },
             {

@@ -422,14 +422,14 @@ export default function DispatchPage() {
 
               <TruckSection
                 form={form}
-                trucks={trucks}
+                trucks={trucks.filter((t) => t.isActive || t.plateNumber === form.values.plateNo)}
                 selectedTruck={selectedTruck}
               />
 
               <PersonnelSection
                 form={form}
-                drivers={drivers}
-                helpers={helpers}
+                drivers={drivers.filter((d) => d.isActive || d.driverName === form.values.driverName)}
+                helpers={helpers.filter((h) => h.isActive || form.values.helpers.some((sh) => sh.id === h.id))}
               />
 
               <Divider my="md" />

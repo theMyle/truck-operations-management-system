@@ -9,6 +9,7 @@ import {
   Modal,
   SimpleGrid,
   Stack,
+  Switch,
   TextInput,
   Title,
 } from "@mantine/core";
@@ -37,6 +38,7 @@ export function HelperModal({ opened, onClose, helper }: Props) {
       contactNumber: helper?.contactNumber ?? "",
       emergencyContact: helper?.emergencyContact ?? "",
       address: helper?.address ?? "",
+      isActive: helper?.isActive ?? true,
     },
     validate: {
       helperName: (value) => (value.trim().length < 1 ? "Helper name is required" : null),
@@ -206,6 +208,12 @@ export function HelperModal({ opened, onClose, helper }: Props) {
               label="Address"
               placeholder="e.g. 123 Main St, Manila"
               {...form.getInputProps("address")}
+            />
+            <Switch
+              label="Active Status"
+              description="Disable if the helper has resigned or is inactive"
+              checked={form.values.isActive}
+              {...form.getInputProps("isActive", { type: "checkbox" })}
             />
           </Stack>
 
