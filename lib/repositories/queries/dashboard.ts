@@ -46,7 +46,7 @@ export async function getWeeklyOperations(
 ) {
   const result = await db
     .select({
-      bookingDate: booking.bookingDate,
+      pickupDate: booking.pickupDate,
       isSubcon: trucks.isSubcon,
       count: sql<number>`count(*)::int`,
     })
@@ -54,22 +54,22 @@ export async function getWeeklyOperations(
     .innerJoin(trucks, eq(booking.plateNumber, trucks.plateNumber))
     .where(
       and(
-        gte(booking.bookingDate, startDateStr),
-        lte(booking.bookingDate, endDateStr),
+        gte(booking.pickupDate, startDateStr),
+        lte(booking.pickupDate, endDateStr),
       ),
     )
-    .groupBy(booking.bookingDate, trucks.isSubcon);
+    .groupBy(booking.pickupDate, trucks.isSubcon);
 
-  // Organize by bookingDate
+  // Organize by pickupDate
   const byDate: Record<string, { kts: number; subcon: number }> = {};
   for (const row of result) {
-    if (!byDate[row.bookingDate]) {
-      byDate[row.bookingDate] = { kts: 0, subcon: 0 };
+    if (!byDate[row.pickupDate]) {
+      byDate[row.pickupDate] = { kts: 0, subcon: 0 };
     }
     if (row.isSubcon) {
-      byDate[row.bookingDate].subcon += row.count;
+      byDate[row.pickupDate].subcon += row.count;
     } else {
-      byDate[row.bookingDate].kts += row.count;
+      byDate[row.pickupDate].kts += row.count;
     }
   }
 
@@ -83,7 +83,7 @@ export async function getMonthlyOperations(year: number) {
 
   const result = await db
     .select({
-      month: sql<number>`EXTRACT(MONTH FROM ${booking.bookingDate}::date)::int`,
+      month: sql<number>`EXTRACT(MONTH FROM ${booking.pickupDate}::date)::int`,
       isSubcon: trucks.isSubcon,
       count: sql<number>`count(*)::int`,
     })
@@ -91,12 +91,12 @@ export async function getMonthlyOperations(year: number) {
     .innerJoin(trucks, eq(booking.plateNumber, trucks.plateNumber))
     .where(
       and(
-        gte(booking.bookingDate, startDateStr),
-        lte(booking.bookingDate, endDateStr),
+        gte(booking.pickupDate, startDateStr),
+        lte(booking.pickupDate, endDateStr),
       ),
     )
     .groupBy(
-      sql`EXTRACT(MONTH FROM ${booking.bookingDate}::date)`,
+      sql`EXTRACT(MONTH FROM ${booking.pickupDate}::date)`,
       trucks.isSubcon,
     );
 

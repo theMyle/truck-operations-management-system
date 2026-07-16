@@ -8,6 +8,10 @@ import {
   getMonthlyOperations,
 } from "@/lib/repositories/queries/dashboard";
 import DashboardClient from "@/components/dashboard/DashboardClient";
+import { db } from "@/lib/db";
+import { booking } from "@/lib/db/schema/booking";
+import { Truck } from "@/lib/db/schema";
+import { and, eq, ne, or, isNull } from "drizzle-orm";
 
 export const dynamic = "force-dynamic";
 
@@ -46,13 +50,58 @@ export default async function DashboardPage() {
     dailyOperations,
     weeklyData,
     monthlyData,
+    todayBookings,
   ] = await Promise.all([
     getFleetStatusCounts(),
     getTruckList(),
     getDailyOperations(todayStr),
     getWeeklyOperations(weekDatesStr[0], weekDatesStr[6]),
     getMonthlyOperations(currentYear),
+    db
+      .select({ plateNumber: booking.plateNumber })
+      .from(booking)
+      .where(
+        and(
+          eq(booking.pickupDate, todayStr),
+          or(
+            ne(booking.deliveryStatus, "Completed"),
+            isNull(booking.deliveryStatus)
+          )
+        )
+      ),
   ]);
+
+  const activePlatesToday = new Set(
+    todayBookings
+      .map((b) => b.plateNumber)
+      .filter((p): p is string => typeof p === "string" && p.trim().length > 0)
+  );
+
+  const updatedTruckList: Truck[] = truckList.map((truck) => {
+    if (truck.status === "maintenance" || truck.status === "unavailable") {
+      return truck as Truck;
+    }
+    if (activePlatesToday.has(truck.plateNumber)) {
+      return { ...truck, status: "on trip" };
+    }
+    return truck as Truck;
+  });
+
+  const updatedFleetCounts = [
+    { status: "available" as const, count: 0 },
+    { status: "on trip" as const, count: 0 },
+    { status: "maintenance" as const, count: 0 },
+    { status: "unavailable" as const, count: 0 },
+  ];
+
+  updatedTruckList.forEach((truck) => {
+    const item = updatedFleetCounts.find((f) => f.status === truck.status);
+    if (item) {
+      item.count++;
+    } else {
+      updatedFleetCounts.push({ status: truck.status as any, count: 1 });
+    }
+  });
 
   // Format weekly data
   const weeklyOperations = weekDatesStr.map((dateStr) => {
@@ -84,8 +133,8 @@ export default async function DashboardPage() {
 
   return (
     <DashboardClient
-      fleetCounts={fleetCounts}
-      truckList={truckList}
+      fleetCounts={updatedFleetCounts}
+      truckList={updatedTruckList}
       dailyOperations={dailyOperations}
       weeklyOperations={weeklyOperations}
       monthlyOperations={monthlyOperations}
