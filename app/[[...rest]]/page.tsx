@@ -5,13 +5,16 @@ import Image from "next/image";
 import logoImg from "../assets/logo.png";
 
 export default function Home() {
-  const { isSignedIn } = useUser();
+  const { isSignedIn, isLoaded } = useUser();
 
   return (
     <div className="flex h-screen w-full overflow-hidden bg-slate-50 relative">
 
-      {isSignedIn && (
-        <div className="absolute inset-0 bg-slate-50 z-50" />
+      {(!isLoaded || isSignedIn) && (
+        <div className="absolute inset-0 bg-slate-50 z-50 flex items-center justify-center">
+          {/* Show a loading spinner during checking or redirection */}
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-slate-800" />
+        </div>
       )}
 
       {/* Brand Header */}
