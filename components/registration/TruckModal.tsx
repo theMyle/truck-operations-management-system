@@ -36,6 +36,7 @@ export function TruckModal({ opened, onClose, truck }: Props) {
       rate: truck?.rate ?? "",
       isSubcon: truck?.isSubcon ?? false,
       status: (truck?.status ?? "available") as TruckStatus,
+      isActive: truck?.isActive ?? true,
     },
     validate: {
       plateNumber: (v) =>
@@ -117,10 +118,18 @@ export function TruckModal({ opened, onClose, truck }: Props) {
             {...form.getInputProps("rate")}
           />
 
-          <Switch
+           <Switch
             id="input-truck-is-subcon"
             label="Is Subcontractor?"
             {...form.getInputProps("isSubcon", { type: "checkbox" })}
+          />
+
+          <Switch
+            id="input-truck-is-active"
+            label="Active Status"
+            description="Disable if the truck is retired or out of service"
+            checked={form.values.isActive}
+            {...form.getInputProps("isActive", { type: "checkbox" })}
           />
           {isEditMode && (
             <Select

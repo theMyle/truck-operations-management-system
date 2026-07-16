@@ -9,6 +9,7 @@ import {
   Modal,
   SimpleGrid,
   Stack,
+  Switch,
   TextInput,
   Title,
 } from "@mantine/core";
@@ -37,6 +38,7 @@ export function DriverModal({ opened, onClose, driver }: Props) {
       contactNumber: driver?.contactNumber ?? "",
       emergencyContact: driver?.emergencyContact ?? "",
       address: driver?.address ?? "",
+      isActive: driver?.isActive ?? true,
     },
     validate: {
       driverName: (value) => (value.trim().length < 1 ? "Driver name is required" : null),
@@ -206,6 +208,12 @@ export function DriverModal({ opened, onClose, driver }: Props) {
               label="Address"
               placeholder="e.g. 123 Main St, Manila"
               {...form.getInputProps("address")}
+            />
+            <Switch
+              label="Active Status"
+              description="Disable if the driver has resigned or is inactive"
+              checked={form.values.isActive}
+              {...form.getInputProps("isActive", { type: "checkbox" })}
             />
           </Stack>
 

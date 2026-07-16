@@ -175,6 +175,20 @@ export function TrucksTable({ data }: Props) {
                 ),
             },
             {
+              accessor: "isActive",
+              title: "Active",
+              render: (row) =>
+                row.isActive ? (
+                  <Badge size="sm" color="green">
+                    Yes
+                  </Badge>
+                ) : (
+                  <Badge size="sm" color="gray">
+                    No
+                  </Badge>
+                ),
+            },
+            {
               accessor: "fleetType",
               title: "Fleet Type",
             },

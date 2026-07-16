@@ -39,7 +39,7 @@ export function PersonnelSection({
       <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm" mb="md">
         <Select
           label="Driver"
-          placeholder="Search or add driver"
+          placeholder="Search driver"
           data={drivers.map((driver) => driver.driverName)}
           {...form.getInputProps("driverName")}
           styles={inputStyles}
@@ -50,7 +50,7 @@ export function PersonnelSection({
         <Stack gap={4}>
           <Select
             label="Helper/s"
-            placeholder="Add helper"
+            placeholder="Search helper"
             searchValue={helperSearch}
             onSearchChange={setHelperSearch}
             data={helpers
