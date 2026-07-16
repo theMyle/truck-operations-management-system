@@ -63,7 +63,7 @@ export const makeBookingRepository = (database = db) => {
       drops?: Omit<NewBookingDrop, "bookingId">[],
       helperIds?: string[],
     ): Promise<BookingWithRelations> {
-      return await database.transaction(async (tx) => {
+      const result = await database.transaction(async (tx) => {
         const [newBooking] = await tx
           .insert(booking)
           .values(bookingData)
@@ -119,6 +119,12 @@ export const makeBookingRepository = (database = db) => {
           expenses: fullBooking.expenses ?? [],
         };
       });
+
+      if (result.plateNumber) {
+        await syncTruckStatusForPlate(result.plateNumber);
+      }
+
+      return result;
     },
 
     update: async function (
@@ -127,7 +133,12 @@ export const makeBookingRepository = (database = db) => {
       drops?: NewBookingDrop[],
       helperIds?: string[],
     ): Promise<BookingWithRelations> {
-      return await database.transaction(async (tx) => {
+      const oldBooking = await database.query.booking.findFirst({
+        where: eq(booking.id, id),
+        columns: { plateNumber: true },
+      });
+
+      const result = await database.transaction(async (tx) => {
         await tx.update(booking).set(bookingData).where(eq(booking.id, id));
 
         if (drops !== undefined) {
@@ -176,6 +187,15 @@ export const makeBookingRepository = (database = db) => {
           expenses: updatedBooking.expenses ?? [],
         };
       });
+
+      if (oldBooking?.plateNumber) {
+        await syncTruckStatusForPlate(oldBooking.plateNumber);
+      }
+      if (result.plateNumber && result.plateNumber !== oldBooking?.plateNumber) {
+        await syncTruckStatusForPlate(result.plateNumber);
+      }
+
+      return result;
     },
 
     updateTripDetails: async function (
