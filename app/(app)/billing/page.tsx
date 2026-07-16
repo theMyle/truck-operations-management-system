@@ -201,43 +201,7 @@ export default function BillingModule() {
   const numOrBlank = (v: unknown) =>
     v === null || v === undefined || v === "" ? "" : Number(v);
 
-  function buildExportRow(r: BillingRecord): ExportRow {
-    const totalKm = (r.odoDetails ?? []).reduce(
-      (sum, o) => sum + Math.max(0, (o.odoEnd || 0) - (o.odoStart || 0)),
-      0,
-    );
-    const expensesTotal = (r.expenses ?? []).reduce(
-      (sum, e) => sum + (Number(e.amount) || 0),
-      0,
-    );
-    return {
-      Date: r.date,
-      Client: r.client,
-      "Fleet Type": r.unit,
-      "Plate No": r.plateNo,
-      "Booking / DR#": r.bookingDr,
-      "No. of Drops": r.noOfDrops ?? "",
-      "Pickup Location": r.pickLocation || "",
-      "Drop-off Location": r.dropOffLocation || "",
-      "Rate (PHP)": numOrBlank(r.tripRate),
-      Status: r.status,
-      "Total KM": totalKm || "",
-      Budget: numOrBlank(r.budget),
-      "Budget From": r.budgetFrom ?? "",
-      "RFID Load": numOrBlank(r.rfidLoad),
-      Fuel: numOrBlank(r.fuel),
-      "Customer Collection": numOrBlank(r.customerCollection),
-      "Cash on Hand Returned": numOrBlank(r.cashOnHandReturned),
-      "Returned To": r.cashOnHandReturnedTo ?? "",
-      "Auto Cash Advance": r.autoCash ? "Yes" : "No",
-      "Driver Rate": numOrBlank(r.driverRate),
-      "Helper Rate": numOrBlank(r.helperRate),
-      "Expenses Total": expensesTotal || "",
-      "Expenses Breakdown": (r.expenses ?? [])
-        .map((e) => `${e.expenseType}: ₱${e.amount}`)
-        .join("; "),
-    };
-  }
+  // buildExportRow moved below to be defined after filtered variable
 
   function buildExportFilename(
     filters: BillingFilters | null,
@@ -322,6 +286,95 @@ export default function BillingModule() {
     () => filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
     [filtered, page],
   );
+
+  const EXPORT_EXPENSE_COLUMNS = [
+    "Expense: Cash Advance (Driver)",
+    "Expense: Cash Advance (Helper)",
+    "Expense: Cash Advance (Trucker)",
+    "Expense: Cash Advance (Others)",
+    "Expense: Toll Fee",
+    "Expense: Cash Out Fee",
+    "Expense: Transportation Penalties",
+    "Expense: Repairs & Maintenance Supply",
+  ];
+
+  const getExportExpenseKey = (expenseType: string): string => {
+    if (expenseType.startsWith("Cash Advance, ")) {
+      if (expenseType.endsWith("(Driver)")) {
+        return "Expense: Cash Advance (Driver)";
+      }
+      if (expenseType.endsWith("(Helper)")) {
+        return "Expense: Cash Advance (Helper)";
+      }
+      if (expenseType.endsWith("(Trucker)")) {
+        return "Expense: Cash Advance (Trucker)";
+      }
+      return "Expense: Cash Advance (Others)";
+    }
+
+    const EXPENSE_LABELS: Record<string, string> = {
+      cash_advance: "Expense: Cash Advance (Others)",
+      toll_fee: "Expense: Toll Fee",
+      cash_out_fee: "Expense: Cash Out Fee",
+      transportation_penalties: "Expense: Transportation Penalties",
+      repairs_maintenance: "Expense: Repairs & Maintenance Supply",
+    };
+
+    return EXPENSE_LABELS[expenseType] || `Expense: ${expenseType}`;
+  };
+
+  function buildExportRow(r: BillingRecord): ExportRow {
+    const totalKm = (r.odoDetails ?? []).reduce(
+      (sum, o) => sum + Math.max(0, (o.odoEnd || 0) - (o.odoStart || 0)),
+      0,
+    );
+    const expensesTotal = (r.expenses ?? []).reduce(
+      (sum, e) => sum + (Number(e.amount) || 0),
+      0,
+    );
+
+    const row: ExportRow = {
+      Date: r.date,
+      Client: r.client,
+      "Fleet Type": r.unit,
+      "Plate No": r.plateNo,
+      "Booking / DR#": r.bookingDr,
+      "No. of Drops": r.noOfDrops ?? "",
+      "Pickup Location": r.pickLocation || "",
+      "Drop-off Location": r.dropOffLocation || "",
+      "Rate (PHP)": numOrBlank(r.tripRate),
+      Status: r.status,
+      "Total KM": totalKm || "",
+      Budget: numOrBlank(r.budget),
+      "Budget From": r.budgetFrom ?? "",
+      "RFID Load": numOrBlank(r.rfidLoad),
+      Fuel: numOrBlank(r.fuel),
+      "Customer Collection": numOrBlank(r.customerCollection),
+      "Cash on Hand Returned": numOrBlank(r.cashOnHandReturned),
+      "Returned To": r.cashOnHandReturnedTo ?? "",
+      "Auto Cash Advance": r.autoCash ? "Yes" : "No",
+      "Driver Rate": numOrBlank(r.driverRate),
+      "Helper Rate": numOrBlank(r.helperRate),
+      Trucker: r.trucker || "",
+      "Trucker Rate": numOrBlank(r.truckerRate),
+      "Expenses Total": expensesTotal || "",
+    };
+
+    // Initialize all standard expense columns to empty
+    EXPORT_EXPENSE_COLUMNS.forEach((colName) => {
+      row[colName] = "";
+    });
+
+    // Sum amounts of expenses belonging to the same mapped category
+    (r.expenses ?? []).forEach((e) => {
+      if (!e.expenseType) return;
+      const colName = getExportExpenseKey(e.expenseType);
+      const currentVal = row[colName] === "" ? 0 : Number(row[colName]);
+      row[colName] = numOrBlank(currentVal + (Number(e.amount) || 0));
+    });
+
+    return row;
+  }
 
   const stats = useMemo(
     () => ({
@@ -474,12 +527,16 @@ export default function BillingModule() {
 
     // ── Style the column header row (row index = metaData.length - 1) ──
     const headerRowIdx = metaData.length - 1;
-    headers.forEach((_, colIdx) => {
+    headers.forEach((h, colIdx) => {
       const ref = XLSX.utils.encode_cell({ r: headerRowIdx, c: colIdx });
       if (!ws[ref]) return;
+
+      const isExpenseCol = h.startsWith("Expense:") || h === "Expenses Total";
+      const bgColor = isExpenseCol ? "16a34a" : "1a56db"; // green for expenses, blue for others
+
       ws[ref].s = {
-        font: { bold: true, sz: 10, color: { rgb: "FFFFFF" } },
-        fill: { fgColor: { rgb: "1a56db" } },
+        font: { bold: true, sz: 12, color: { rgb: "FFFFFF" } },
+        fill: { fgColor: { rgb: bgColor } },
         alignment: { horizontal: "center", vertical: "center", wrapText: true },
         border: {
           bottom: { style: "thin", color: { rgb: "CCCCCC" } },
