@@ -4,6 +4,46 @@ import { booking } from "@/lib/db/schema";
 import { inArray } from "drizzle-orm";
 import JSZip from "jszip";
 
+const MAX_RETRIES = 3;
+const FETCH_TIMEOUT_MS = 15_000; // 15 seconds per image
+const BATCH_SIZE = 5; // fetch 5 images concurrently at a time
+
+/** Fetch with timeout and retries */
+async function fetchWithRetry(
+  url: string,
+  retries = MAX_RETRIES,
+): Promise<ArrayBuffer | null> {
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+
+      const res = await fetch(url, { signal: controller.signal });
+      clearTimeout(timer);
+
+      if (!res.ok) {
+        console.warn(
+          `[POD ZIP] Attempt ${attempt}/${retries} failed for ${url} — ${res.status}`,
+        );
+        if (attempt === retries) return null;
+        // Wait before retrying (exponential backoff: 500ms, 1s, 2s)
+        await new Promise((r) => setTimeout(r, 500 * Math.pow(2, attempt - 1)));
+        continue;
+      }
+
+      return await res.arrayBuffer();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.warn(
+        `[POD ZIP] Attempt ${attempt}/${retries} error for ${url} — ${msg}`,
+      );
+      if (attempt === retries) return null;
+      await new Promise((r) => setTimeout(r, 500 * Math.pow(2, attempt - 1)));
+    }
+  }
+  return null;
+}
+
 export async function POST(req: NextRequest) {
   try {
     const { bookingIds, zipName } = (await req.json()) as {
@@ -39,24 +79,60 @@ export async function POST(req: NextRequest) {
 
     const zip = new JSZip();
     const folder = zip.folder("PODs")!;
+    let successCount = 0;
+    let failCount = 0;
+    const seenFilenames = new Map<string, number>();
 
-    // Fetch all images concurrently — skip failures, don't abort the whole zip
-    await Promise.allSettled(
-      withPod.map(async (row) => {
-        const url = row.PODLink!;
-        const res = await fetch(url);
+    // Process in batches to avoid overwhelming the storage service
+    for (let i = 0; i < withPod.length; i += BATCH_SIZE) {
+      const batch = withPod.slice(i, i + BATCH_SIZE);
 
-        if (!res.ok) {
-          console.warn(`[POD ZIP] Failed to fetch ${url} — ${res.status}`);
-          return;
-        }
+      await Promise.all(
+        batch.map(async (row) => {
+          const url = row.PODLink!;
+          const buffer = await fetchWithRetry(url);
 
-        const buffer = await res.arrayBuffer();
-        const ext = url.split(".").pop()?.split("?")[0] ?? "jpg"; // strip query params if any
-        const filename = `${row.bookingDRNo}.${ext}`;
-        folder.file(filename, buffer);
-      }),
-    );
+          if (!buffer) {
+            failCount++;
+            console.warn(`[POD ZIP] Gave up on ${row.bookingDRNo} (${url})`);
+            return;
+          }
+
+          const urlDecoded = decodeURIComponent(url);
+          const urlParts = urlDecoded.split("/");
+          const lastPart = urlParts[urlParts.length - 1] || "pod.jpg";
+          const cleanFilename = lastPart.split("?")[0] || "pod.jpg";
+
+          const dotIndex = cleanFilename.lastIndexOf(".");
+          let baseName = dotIndex !== -1 ? cleanFilename.substring(0, dotIndex) : cleanFilename;
+          const ext = dotIndex !== -1 ? cleanFilename.substring(dotIndex + 1) : "jpg";
+
+          // Sanitize filename for ZIP compatibility
+          baseName = baseName.trim().replace(/[\\/:*?"<>|]/g, "_");
+          const standardFilename = `${baseName}.${ext}`;
+          
+          let count = seenFilenames.get(standardFilename) || 0;
+          let filename = standardFilename;
+          
+          if (count > 0) {
+            filename = `${baseName}_${count}.${ext}`;
+          }
+          
+          seenFilenames.set(standardFilename, count + 1);
+          folder.file(filename, buffer);
+          successCount++;
+        }),
+      );
+    }
+
+    if (successCount === 0) {
+      return NextResponse.json(
+        {
+          error: `All ${withPod.length} POD downloads failed. The storage service may be temporarily unavailable.`,
+        },
+        { status: 502 },
+      );
+    }
 
     const zipBuffer = await zip.generateAsync({
       type: "arraybuffer",
@@ -68,6 +144,9 @@ export async function POST(req: NextRequest) {
       headers: {
         "Content-Type": "application/zip",
         "Content-Disposition": `attachment; filename="${zipName}"`,
+        "X-Pod-Success": String(successCount),
+        "X-Pod-Failed": String(failCount),
+        "X-Pod-Total": String(withPod.length),
       },
     });
   } catch (err) {
@@ -78,3 +157,4 @@ export async function POST(req: NextRequest) {
     );
   }
 }
+
