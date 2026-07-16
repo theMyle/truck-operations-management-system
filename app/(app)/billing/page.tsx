@@ -344,6 +344,8 @@ export default function BillingModule() {
       "Drop-off Location": r.dropOffLocation || "",
       "Rate (PHP)": numOrBlank(r.tripRate),
       Status: r.status,
+      Driver: r.driver,
+      Helper: r.helper,
       "Total KM": totalKm || "",
       Budget: numOrBlank(r.budget),
       "Budget From": r.budgetFrom ?? "",
@@ -388,10 +390,10 @@ export default function BillingModule() {
 
   const billingLabel = activeFilters
     ? [
-        activeFilters.client || "All Clients",
-        `${formatDate(activeFilters.from)} → ${formatDate(activeFilters.to)}`,
-        `${records.length} trip${records.length !== 1 ? "s" : ""}`,
-      ].join(" · ")
+      activeFilters.client || "All Clients",
+      `${formatDate(activeFilters.from)} → ${formatDate(activeFilters.to)}`,
+      `${records.length} trip${records.length !== 1 ? "s" : ""}`,
+    ].join(" · ")
     : "";
 
   // ── Generate: fetch from DB with server-side filters ──
@@ -690,7 +692,7 @@ export default function BillingModule() {
       >
         {podPreview?.podFileUrl ? (
           podPreview.podFile?.toLowerCase().endsWith(".pdf") ||
-          podPreview.podFileUrl.toLowerCase().includes(".pdf") ? (
+            podPreview.podFileUrl.toLowerCase().includes(".pdf") ? (
             <iframe
               src={podPreview.podFileUrl}
               title="POD PDF Preview"
