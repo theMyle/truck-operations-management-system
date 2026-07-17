@@ -424,15 +424,15 @@ export default function DispatchRecordsPage() {
             trips:
               b.odoDetails.length > 0
                 ? b.odoDetails.map((odo) => ({
-                    tripNumber: odo.tripIndex,
-                    odoStart: odo.odoStart,
-                    odoEnd: odo.odoEnd,
-                  }))
+                  tripNumber: odo.tripIndex,
+                  odoStart: odo.odoStart,
+                  odoEnd: odo.odoEnd,
+                }))
                 : [{ tripNumber: 1, odoStart: 0, odoEnd: 0 }],
             totalKm:
               b.odoDetails.length > 0
                 ? b.odoDetails[b.odoDetails.length - 1].odoEnd -
-                  b.odoDetails[0].odoStart
+                b.odoDetails[0].odoStart
                 : 0,
             budget: Number(b.budget || 0),
             budgetFrom: b.budgetFrom || "",
@@ -585,6 +585,7 @@ export default function DispatchRecordsPage() {
         odoStart: t.odoStart,
         odoEnd: t.odoEnd,
       })),
+
       expenses: data.expenses.map((e, index) => {
         let expenseType = e.expenseCategory;
         if (e.expenseCategory === "cash_advance" && e.assignedTo) {
