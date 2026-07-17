@@ -29,21 +29,21 @@ import { getAllClientsAction } from "@/lib/actions/clients";
 
 const PAGE_SIZE = 10;
 
-/** Columns matching the BookingTable display */
 const BOOKING_EXPORT_COLUMNS = [
   { key: "bookingDRNo", label: "Booking / DR#" },
   { key: "clientName", label: "Client" },
   { key: "pickUpDate", label: "Pickup Date" },
   { key: "pickUpTime", label: "Pickup Time" },
   { key: "driverName", label: "Driver" },
-  { key: "trucker", label: "Trucker" },
   { key: "helper", label: "Helper" },
-  { key: "fleetType", label: "Unit Type" },
+  { key: "arrivalPickup", label: "Pick Up Arrival Time" },
+  { key: "loadingStart", label: "Loading Start Time" },
+  { key: "loadingEnd", label: "Loading End Time" },
+  { key: "departurePickup", label: "Departure Pick Up Time" },
+  { key: "finishDelivery", label: "Finish Delivery Time" },
   { key: "plateNo", label: "Plate #" },
-  { key: "ruta", label: "Route" },
   { key: "pickLocation", label: "Pickup Location" },
   { key: "dropOffLocation", label: "Drop-off Location" },
-  { key: "bookedBy", label: "Booked By" },
 ];
 
 interface FilterValues {
@@ -98,7 +98,7 @@ export default function BookingRecordsPage() {
           pickUpTime: formatTime12Hour(b.pickupTime),
           driverName: b.driverName,
           trucker: b.trucker,
-          helper: b.helpers.map((h) => h.helperName).join(", ") || "No Helper",
+          helper: b.helpers.map((h) => h.helperName).join(", ") || "—",
           fleetType: b.fleetType,
           plateNo: b.plateNumber,
           ruta: b.ruta,
