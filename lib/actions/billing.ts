@@ -122,6 +122,11 @@ export const getBillingRecordsAction = actionClient
       autoCash: b.autoCash ?? null,
       driverRate: b.driverRate ?? null,
       helperRate: b.helperRate ?? null,
+      billingStatus: b.billingStatus,
+      soaNumber: b.soaNumber ?? "",
+      invoiceDate: b.invoiceDate ?? "",
+      dueDate: b.dueDate ?? "",
+      amountPaid: b.amountPaid ?? "0.00",
       odoDetails: (b.odoDetails ?? []).map((o) => ({
         tripIndex: o.tripIndex,
         odoStart: Number(o.odoStart),
@@ -144,8 +149,6 @@ export const getIncomeRecordsAction = actionClient
   .action(async ({ parsedInput }) => {
     const { from, to } = parsedInput;
 
-    // No status filter, no POD gating — every booking counts toward
-    // Gross Income the moment it exists, per pickupDate.
     const rows = await db
       .select({
         pickupDate: booking.pickupDate,
@@ -158,4 +161,66 @@ export const getIncomeRecordsAction = actionClient
       date: r.pickupDate,
       tripRate: r.clientRate,
     }));
+  });
+
+const UpdateBillingStatusSchema = z.object({
+  bookingIds: z.array(z.string().uuid()),
+  soaNumber: z.string().optional(),
+  invoiceDate: z.string().nullable().optional(),
+  dueDate: z.string().nullable().optional(),
+  amountPaid: z.string().optional(),
+});
+
+export const updateBillingStatusAction = actionClient
+  .schema(UpdateBillingStatusSchema)
+  .action(async ({ parsedInput }) => {
+    const { bookingIds, soaNumber, invoiceDate, dueDate, amountPaid } = parsedInput;
+
+    if (!bookingIds.length) return { success: false, error: "No booking IDs provided" };
+
+    for (const id of bookingIds) {
+      const current = await db.query.booking.findFirst({
+        where: (b, { eq }) => eq(b.id, id),
+      });
+
+      if (!current) continue;
+
+      const clientRateVal = Number(current.clientRate) || 0;
+      const amountPaidVal = amountPaid !== undefined ? Number(amountPaid) : (Number(current.amountPaid) || 0);
+
+      // Determine status
+      let billingStatus = "unpaid";
+      if (amountPaidVal >= clientRateVal && clientRateVal > 0) {
+        billingStatus = "paid";
+      } else if (amountPaidVal > 0 && amountPaidVal < clientRateVal) {
+        billingStatus = "partially_paid";
+      } else {
+        const checkDueDate = dueDate !== undefined ? dueDate : current.dueDate;
+        if (checkDueDate) {
+          const due = new Date(checkDueDate);
+          const today = new Date();
+          due.setHours(0, 0, 0, 0);
+          today.setHours(0, 0, 0, 0);
+          if (today > due && amountPaidVal < clientRateVal) {
+            billingStatus = "overdue";
+          }
+        }
+      }
+
+      const updateData: Record<string, any> = {
+        billingStatus,
+      };
+
+      if (soaNumber !== undefined) updateData.soaNumber = soaNumber || null;
+      if (invoiceDate !== undefined) updateData.invoiceDate = invoiceDate || null;
+      if (dueDate !== undefined) updateData.dueDate = dueDate || null;
+      if (amountPaid !== undefined) updateData.amountPaid = amountPaid;
+
+      await db
+        .update(booking)
+        .set(updateData)
+        .where(eq(booking.id, id));
+    }
+
+    return { success: true };
   });
