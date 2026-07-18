@@ -50,7 +50,7 @@ export function useTablePrint(
               padding: 5px 10px;
               font-size: 10px;
               border-bottom: 1px solid #e5e7eb;
-              white-space: nowrap;
+              white-space: pre-wrap;
             }
             tr:nth-child(even) td { background: #f8fafc; }
             @page { margin: 12mm; size: landscape; }

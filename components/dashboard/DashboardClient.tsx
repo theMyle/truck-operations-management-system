@@ -3,6 +3,7 @@
 import { Flex, Stack, Box, Collapse } from "@mantine/core";
 import { IncomeStats } from "@/components/dashboard/IncomeStats";
 import { FleetStatusOverview } from "@/components/dashboard/FleetStatusOverview";
+import { OnTimeDeliveryWidget } from "@/components/dashboard/OnTimeDeliveryWidget";
 import { DailyOperationsTable } from "@/components/dashboard/DailyOperationsTable";
 import { WeeklyOperationsTable } from "@/components/dashboard/WeeklyOperationsTable";
 import { MonthlyOperationsTable } from "@/components/dashboard/MonthlyOperationsTable";
@@ -23,8 +24,10 @@ type Props = {
   fleetCounts: FleetCount[];
   truckList: Truck[];
   dailyOperations: { id: number; name: string; kts: number; subcon: number }[];
-  weeklyOperations: { day: string; kts: number; subcon: number }[];
-  monthlyOperations: { day: string; kts: number; subcon: number }[];
+  weeklyOperations: { day: string; kts: number; subcon: number; ktsTrucks: number; subconTrucks: number; completedDeliveries: number; onTimeDeliveries: number }[];
+  monthlyOperations: { day: string; kts: number; subcon: number; ktsTrucks: number; subconTrucks: number; completedDeliveries: number; onTimeDeliveries: number }[];
+  operationsStartDate?: string;
+  todayStr?: string;
 };
 
 type TruckList = "available" | "on trip" | "maintenance" | "unavailable";
@@ -56,6 +59,8 @@ export default function DashboardClient({
   dailyOperations,
   weeklyOperations,
   monthlyOperations,
+  operationsStartDate,
+  todayStr,
 }: Props) {
   const [isFleetTableOpen, setIsFleetTableOpen] = useState(false);
   const [activeFleetStatus, setActiveFleetStatus] = useState<string | null>(
@@ -194,6 +199,9 @@ export default function DashboardClient({
     setIsFleetTableOpen(true);
   };
 
+  const totalKtsTrucks = useMemo(() => truckList.filter((t) => !t.isSubcon).length, [truckList]);
+  const totalSubconTrucks = useMemo(() => truckList.filter((t) => t.isSubcon).length, [truckList]);
+
   return (
     <Flex gap="md" direction={{ base: "column", lg: "row" }} align="flex-start">
       <Stack style={{ flex: 7.5 }} gap="md" w="100%">
@@ -214,7 +222,9 @@ export default function DashboardClient({
           />
         </Flex>
 
-        <DailyOperationsTable trips={dailyOperations} />
+        <Box>
+          <DailyOperationsTable trips={dailyOperations} />
+        </Box>
 
         <Flex
           gap="md"
@@ -222,12 +232,20 @@ export default function DashboardClient({
           align="stretch"
         >
           <Box style={{ flex: 1 }}>
-            <WeeklyOperationsTable data={weeklyOperations} />
+            <WeeklyOperationsTable
+              data={weeklyOperations}
+              totalKtsTrucks={totalKtsTrucks}
+              totalSubconTrucks={totalSubconTrucks}
+            />
           </Box>
           <Box style={{ flex: 1 }}>
             <MonthlyOperationsTable
               year={new Date().getFullYear()}
               data={monthlyOperations}
+              totalKtsTrucks={totalKtsTrucks}
+              totalSubconTrucks={totalSubconTrucks}
+              operationsStartDate={operationsStartDate}
+              todayStr={todayStr}
             />
           </Box>
         </Flex>

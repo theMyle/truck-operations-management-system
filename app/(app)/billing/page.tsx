@@ -51,6 +51,7 @@ import { getAllClientsAction } from "@/lib/actions/clients";
 import { getTruckAction } from "@/lib/actions/trucks";
 import { BILLING_TABLE_HEADERS } from "@/components/ui/ModuleSkeletons";
 import { TableSkeleton } from "@/components/ui/TableSkeleton";
+import { formatTime12Hour } from "@/lib/utils/stringFormat";
 
 export type BillingRecord = DispatchRecord & {
   tripRate?: string | number;
@@ -89,14 +90,14 @@ const STATUS_COLOR: Record<string, string> = {
 };
 
 const cell: React.CSSProperties = {
-  fontSize: "11px",
+  fontSize: "12px",
   fontWeight: 600,
   whiteSpace: "nowrap",
   padding: "8px 12px",
 };
 
 const headerCell: React.CSSProperties = {
-  fontSize: "9px",
+  fontSize: "10px",
   fontWeight: 800,
   textTransform: "uppercase",
   letterSpacing: "0.8px",
@@ -344,6 +345,11 @@ export default function BillingModule() {
       "Drop-off Location": r.dropOffLocation || "",
       "Rate (PHP)": numOrBlank(r.tripRate),
       Status: r.status,
+      "Pick Up Arrival Time": r.arrivalPickup ? formatTime12Hour(r.arrivalPickup) : "",
+      "Loading Start Time": r.loadingStart ? formatTime12Hour(r.loadingStart) : "",
+      "Loading End Time": r.loadingEnd ? formatTime12Hour(r.loadingEnd) : "",
+      "Departure Pick Up Time": r.departurePickup ? formatTime12Hour(r.departurePickup) : "",
+      "Finish Delivery Time": r.finishDelivery ? formatTime12Hour(r.finishDelivery) : "",
       Driver: r.driver,
       Helper: r.helper,
       "Total KM": totalKm || "",
@@ -524,7 +530,7 @@ export default function BillingModule() {
     const titleRef = XLSX.utils.encode_cell({ r: 0, c: 0 });
     if (!ws[titleRef]) ws[titleRef] = { v: "BILLING STATEMENT EXPORT", t: "s" };
     ws[titleRef].s = {
-      font: { bold: true, sz: 14, color: { rgb: "1a56db" } },
+      font: { bold: true, sz: 16, color: { rgb: "1a56db" } },
     };
 
     // ── Style the column header row (row index = metaData.length - 1) ──
@@ -534,10 +540,26 @@ export default function BillingModule() {
       if (!ws[ref]) return;
 
       const isExpenseCol = h.startsWith("Expense:") || h === "Expenses Total";
-      const bgColor = isExpenseCol ? "16a34a" : "1a56db"; // green for expenses, blue for others
+      const isTimeCol = [
+        "Pick Up Arrival Time",
+        "Loading Start Time",
+        "Loading End Time",
+        "Departure Pick Up Time",
+        "Finish Delivery Time",
+      ].includes(h);
+
+      let bgColor = "1a56db"; // blue for others
+      let textColor = "FFFFFF"; // white
+
+      if (isExpenseCol) {
+        bgColor = "16a34a"; // green for expenses
+      } else if (isTimeCol) {
+        bgColor = "bae6fd"; // light blue for times
+        textColor = "0f172a"; // dark gray text
+      }
 
       ws[ref].s = {
-        font: { bold: true, sz: 12, color: { rgb: "FFFFFF" } },
+        font: { bold: true, sz: 13, color: { rgb: textColor } },
         fill: { fgColor: { rgb: bgColor } },
         alignment: { horizontal: "center", vertical: "center", wrapText: true },
         border: {
@@ -557,7 +579,8 @@ export default function BillingModule() {
           fill: isEven
             ? { fgColor: { rgb: "EEF4FF" } }
             : { fgColor: { rgb: "FFFFFF" } },
-          alignment: { vertical: "center" },
+          font: { sz: 12 },
+          alignment: { vertical: "center", wrapText: true },
           border: {
             bottom: { style: "hair", color: { rgb: "DDDDDD" } },
             right: { style: "hair", color: { rgb: "DDDDDD" } },
@@ -933,24 +956,49 @@ export default function BillingModule() {
                         "No. of Drops",
                         "Pickup Location",
                         "Drop-off Location",
+                        "Pick Up Arrival",
+                        "Loading Start",
+                        "Loading End",
+                        "Departure Pick Up",
+                        "Finish Delivery",
                         "Rate (₱)",
                         "Status",
                         "POD / Receipt",
-                      ].map((col) => (
-                        <Table.Th
-                          key={col}
-                          style={{ ...headerCell, minWidth: 110 }}
-                        >
-                          {col}
-                        </Table.Th>
-                      ))}
+                      ].map((col) => {
+                        const isTimeCol = [
+                          "Pick Up Arrival",
+                          "Loading Start",
+                          "Loading End",
+                          "Departure Pick Up",
+                          "Finish Delivery",
+                        ].includes(col);
+
+                        const customHeaderCell = {
+                          ...headerCell,
+                          backgroundColor: isTimeCol
+                            ? "var(--mantine-color-blue-0)"
+                            : "var(--mantine-color-gray-0)",
+                          color: isTimeCol
+                            ? "var(--mantine-color-blue-8)"
+                            : "var(--mantine-color-gray-6)",
+                        };
+
+                        return (
+                          <Table.Th
+                            key={col}
+                            style={{ ...customHeaderCell, minWidth: 110 }}
+                          >
+                            {col}
+                          </Table.Th>
+                        );
+                      })}
                     </Table.Tr>
                   </Table.Thead>
                   <Table.Tbody>
                     {!activeFilters ? (
                       <Table.Tr>
                         <Table.Td
-                          colSpan={11}
+                          colSpan={16}
                           style={{ textAlign: "center", padding: "40px 0" }}
                         >
                           <Stack align="center" gap={6}>
@@ -967,7 +1015,7 @@ export default function BillingModule() {
                     ) : filtered.length === 0 ? (
                       <Table.Tr>
                         <Table.Td
-                          colSpan={11}
+                          colSpan={16}
                           style={{ textAlign: "center", padding: "32px 0" }}
                         >
                           <Stack align="center" gap={6}>
@@ -1025,6 +1073,21 @@ export default function BillingModule() {
                           </Table.Td>
                           <Table.Td style={cell}>
                             {record.dropOffLocation || "—"}
+                          </Table.Td>
+                          <Table.Td style={{ ...cell, color: "var(--mantine-color-blue-7)" }}>
+                            {record.arrivalPickup ? formatTime12Hour(record.arrivalPickup) : "—"}
+                          </Table.Td>
+                          <Table.Td style={{ ...cell, color: "var(--mantine-color-blue-7)" }}>
+                            {record.loadingStart ? formatTime12Hour(record.loadingStart) : "—"}
+                          </Table.Td>
+                          <Table.Td style={{ ...cell, color: "var(--mantine-color-blue-7)" }}>
+                            {record.loadingEnd ? formatTime12Hour(record.loadingEnd) : "—"}
+                          </Table.Td>
+                          <Table.Td style={{ ...cell, color: "var(--mantine-color-blue-7)" }}>
+                            {record.departurePickup ? formatTime12Hour(record.departurePickup) : "—"}
+                          </Table.Td>
+                          <Table.Td style={{ ...cell, color: "var(--mantine-color-blue-7)" }}>
+                            {record.finishDelivery ? formatTime12Hour(record.finishDelivery) : "—"}
                           </Table.Td>
                           <Table.Td
                             style={{
