@@ -59,30 +59,26 @@ export function useTableExport(
       }),
       startY: 24,
       styles: { 
-        fontSize: 8.5, 
-        cellPadding: 2.5, 
+        fontSize: 7.5, 
+        cellPadding: 1.5, 
         valign: "middle", 
         overflow: "linebreak" 
       },
       columnStyles: {
-        displayBookingNo: { cellWidth: 12 },
-        tripRate: { cellWidth: 18 },
-        date: { cellWidth: 20 },
-        status: { cellWidth: 16 },
-        client: { cellWidth: 32 },
-        driver: { cellWidth: 32 },
-        helper: { cellWidth: 28 },
-        unit: { cellWidth: 18 },
-        plateNo: { cellWidth: 18 },
-        ruta: { cellWidth: 32 },
-        bookingDr: { cellWidth: 26 },
-        bookedBy: { cellWidth: 18 },
+        displayBookingNo: { cellWidth: 8 },
+        tripRate: { cellWidth: 10 },
+        date: { cellWidth: 16 },
+        status: { cellWidth: 12 },
+        unit: { cellWidth: 8 },
+        plateNo: { cellWidth: 14 },
+        bookingDr: { cellWidth: 16 },
+        bookedBy: { cellWidth: 10 },
       },
       headStyles: {
         fillColor: [37, 99, 235],
         textColor: 255,
         fontStyle: "bold",
-        fontSize: 8.5,
+        fontSize: 7.5,
       },
       alternateRowStyles: { fillColor: [245, 247, 250] },
       didParseCell: (data) => {
@@ -187,7 +183,7 @@ export function useTableExport(
             ? { fgColor: { rgb: "EEF4FF" } }
             : { fgColor: { rgb: "FFFFFF" } },
           font: { sz: 12 },
-          alignment: { vertical: "center" },
+          alignment: { vertical: "center", wrapText: true },
           border: {
             bottom: { style: "hair", color: { rgb: "DDDDDD" } },
             right: { style: "hair", color: { rgb: "DDDDDD" } },
@@ -208,15 +204,9 @@ export function useTableExport(
     const { Document, Packer, Paragraph, Table, TableRow, TableCell, TextRun, WidthType, AlignmentType, HeadingLevel, PageOrientation } =
       await import("docx");
 
-    const headerCells = columns.map((col) => {
-      const isTimeCol = [
-        "arrivalPickup",
-        "loadingStart",
-        "loadingEnd",
-        "departurePickup",
-        "finishDelivery",
-      ].includes(col.key);
+    const docxColumns = columns.filter((col) => !TIME_KEYS.includes(col.key));
 
+    const headerCells = docxColumns.map((col) => {
       return new TableCell({
         children: [
           new Paragraph({
@@ -225,13 +215,13 @@ export function useTableExport(
                 text: col.label,
                 bold: true,
                 size: 18,
-                color: isTimeCol ? "0f172a" : "FFFFFF",
+                color: "FFFFFF",
               }),
             ],
             alignment: AlignmentType.CENTER,
           }),
         ],
-        shading: { fill: isTimeCol ? "BAE6FD" : "2563EB" },
+        shading: { fill: "2563EB" },
         margins: {
           top: 100,
           bottom: 100,
@@ -244,19 +234,22 @@ export function useTableExport(
     const dataRows = records.map(
       (record) =>
         new TableRow({
-          children: columns.map(
+          children: docxColumns.map(
             (col) =>
               new TableCell({
-                children: [
-                  new Paragraph({
-                    children: [
-                      new TextRun({
-                        text: getFormattedValue(record, col.key),
-                        size: 16,
-                      }),
-                    ],
-                  }),
-                ],
+                children: getFormattedValue(record, col.key)
+                  .split("\n")
+                  .map(
+                    (line) =>
+                      new Paragraph({
+                        children: [
+                          new TextRun({
+                            text: line,
+                            size: 16,
+                          }),
+                        ],
+                      })
+                  ),
                 margins: {
                   top: 100,
                   bottom: 100,
@@ -300,7 +293,7 @@ export function useTableExport(
             }),
             new Paragraph({ text: "" }),
             new Table({
-              columnWidths: columns.map((col) => {
+              columnWidths: docxColumns.map((col) => {
                 const key = col.key;
                 if (key === "displayBookingNo") return 600;
                 if (key === "tripRate") return 800;
@@ -310,11 +303,8 @@ export function useTableExport(
                 if (key === "driver") return 2200;
                 if (key === "helper") return 2000;
                 if (key === "unit") return 1300;
-                if (key === "arrivalPickup") return 1000;
-                if (key === "loadingStart") return 1000;
-                if (key === "loadingEnd") return 1000;
-                if (key === "departurePickup") return 1000;
-                if (key === "finishDelivery") return 1000;
+                if (key === "pickLocation") return 1800;
+                if (key === "dropOffLocation") return 2000;
                 if (key === "plateNo") return 1100;
                 if (key === "ruta") return 2500;
                 if (key === "bookingDr") return 2000;
@@ -385,8 +375,13 @@ export function useTableExport(
       jpgColumns.forEach((col) => {
         const td = document.createElement("td");
         td.textContent = getFormattedValue(record, col.key);
-        td.style.cssText =
-          "padding:9px 14px;border-bottom:1px solid #e5e7eb;white-space:nowrap;";
+        if (col.key === "dropOffLocation" || col.key === "ruta") {
+          td.style.cssText =
+            "padding:9px 14px;border-bottom:1px solid #e5e7eb;white-space:pre-wrap;min-width:150px;";
+        } else {
+          td.style.cssText =
+            "padding:9px 14px;border-bottom:1px solid #e5e7eb;white-space:nowrap;";
+        }
         tr.appendChild(td);
       });
       tbody.appendChild(tr);

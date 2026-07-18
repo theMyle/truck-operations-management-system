@@ -338,9 +338,15 @@ const TRIP_LOG_EXPORT_COLUMNS = [
   { key: "helper", label: "Helper" },
   { key: "unit", label: "Unit" },
   { key: "plateNo", label: "Plate #" },
+  { key: "pickLocation", label: "Pickup Location" },
+  { key: "dropOffLocation", label: "Drop-off Location" },
+  { key: "arrivalPickup", label: "Pick Up Arrival Time" },
+  { key: "loadingStart", label: "Loading Start Time" },
+  { key: "loadingEnd", label: "Loading End Time" },
+  { key: "departurePickup", label: "Departure Pick Up Time" },
+  { key: "finishDelivery", label: "Finish Delivery Time" },
   { key: "ruta", label: "Route" },
   { key: "bookingDr", label: "Booking / DR#" },
-  { key: "bookedBy", label: "Booked By" },
 ];
 
 export default function DispatchRecordsPage() {
@@ -384,7 +390,9 @@ export default function DispatchRecordsPage() {
           plateNo: b.plateNumber,
           ruta: b.ruta,
           pickLocation: b.pickupLocation,
-          dropOffLocation: b.drops.map((d) => d.locationName).join(", ") || "—",
+          dropOffLocation: b.drops.length > 1
+            ? b.drops.map((d) => `• ${d.locationName}`).join("\n")
+            : b.drops.map((d) => d.locationName).join("\n") || "—",
           bookedBy: b.bookedBy,
           status:
             (b.deliveryStatus as "Pending" | "In Transit" | "Completed") ||
