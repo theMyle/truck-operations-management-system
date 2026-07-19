@@ -40,7 +40,7 @@ export function PersonnelSection({
         <Select
           label="Driver"
           placeholder="Search driver"
-          data={drivers.map((driver) => driver.driverName)}
+          data={drivers.map((driver) => driver.driverName).sort((a, b) => a.localeCompare(b))}
           {...form.getInputProps("driverName")}
           styles={inputStyles}
           searchable
@@ -56,6 +56,7 @@ export function PersonnelSection({
             data={helpers
               .filter((helper) => !form.values.helpers.some((sh) => sh.id === helper.id))
               .map((helper) => helper.helperName)
+              .sort((a, b) => a.localeCompare(b))
             }
             value={""}
             onChange={(val) => {
