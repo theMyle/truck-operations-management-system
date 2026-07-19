@@ -212,7 +212,7 @@ export const makeBookingRepository = (database = db) => {
 
       const toTs = (time?: string): Date | null => {
         if (!time || !data.pickupDate) return null;
-        const d = new Date(`${data.pickupDate}T${time}:00`);
+        const d = new Date(`${data.pickupDate}T${time}:00Z`);
         return isNaN(d.getTime()) ? null : d;
       };
 

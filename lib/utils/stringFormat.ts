@@ -25,7 +25,7 @@ export function formatTimeHHMM(date: Date | string | null | undefined): string {
   if (!date) return "";
   const d = new Date(date);
   if (isNaN(d.getTime())) return "";
-  return `${d.getHours().toString().padStart(2, "0")}:${d.getMinutes().toString().padStart(2, "0")}`;
+  return `${d.getUTCHours().toString().padStart(2, "0")}:${d.getUTCMinutes().toString().padStart(2, "0")}`;
 }
 
 export function getTripRefNumber(bookingId: string, pickupDateStr?: string | null): string {
