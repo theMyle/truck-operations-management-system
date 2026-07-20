@@ -3,6 +3,7 @@
 import { actionClient } from "../safe-action";
 import {
   bookingRepository,
+  generateKtsRentalBookingNo,
 } from "../repositories/booking.repository";
 import {
   createBookingActionSchema,
@@ -10,9 +11,13 @@ import {
   deleteBookingActionSchema,
 } from "../validations/booking";
 import { revalidatePath } from "next/cache";
-import { updateTripMonitoringSchema, updateTripDetailsSchema } from "../db/schema/booking";
+import { updateTripMonitoringSchema, updateTripDetailsSchema, booking } from "../db/schema/booking";
+import { trucks } from "../db/schema/trucks";
+import { db } from "../db";
+import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { verifyUserPassword } from "@/lib/auth/verify-password";
+
 export const createBookingAction = actionClient
   .inputSchema(createBookingActionSchema)
   .action(async ({ parsedInput }) => {
@@ -23,6 +28,22 @@ export const createBookingAction = actionClient
         const isDuplicate = await bookingRepository.checkDuplicateDRNo(bookingData.bookingDRNo);
         if (isDuplicate) {
           throw new Error(`Booking / DR# "${bookingData.bookingDRNo}" is already recorded in the system.`);
+        }
+      } else {
+        // If no bookingDRNo provided, check if truck is KTS Rental
+        const selectedTruck = await db.query.trucks.findFirst({
+          where: eq(trucks.plateNumber, bookingData.plateNumber),
+        });
+        const isSubcon =
+          selectedTruck?.isSubcon ??
+          ((bookingData.trucker || "").toLowerCase().includes("subcon") ||
+            (bookingData.fleetType || "").toLowerCase().includes("subcon"));
+
+        if (!isSubcon) {
+          const yr = bookingData.pickupDate
+            ? new Date(bookingData.pickupDate).getFullYear()
+            : new Date().getFullYear();
+          bookingData.bookingDRNo = await generateKtsRentalBookingNo(db, yr);
         }
       }
 
@@ -83,7 +104,7 @@ export const updateBookingAction = actionClient
     }
   });
 
-// booking actions
+
 export const deleteBookingAction = actionClient
   .inputSchema(deleteBookingActionSchema)
   .action(async ({ parsedInput, ctx }) => {
@@ -108,14 +129,63 @@ export const deleteBookingAction = actionClient
 export const updateTripMonitoringAction = actionClient
   .schema(updateTripMonitoringSchema)
   .action(async ({ parsedInput }) => {
-    if (parsedInput.bookingDRNo) {
-      const isDuplicate = await bookingRepository.checkDuplicateDRNo(parsedInput.bookingDRNo, parsedInput.id);
+    const currentBooking = await db.query.booking.findFirst({
+      where: eq(booking.id, parsedInput.id),
+    });
+
+    if (!currentBooking) {
+      throw new Error("Booking record not found.");
+    }
+
+    const currentTruck = await db.query.trucks.findFirst({
+      where: eq(trucks.plateNumber, currentBooking.plateNumber),
+    });
+
+    const isSubcon =
+      currentTruck?.isSubcon ??
+      (currentBooking.trucker.toLowerCase().includes("subcon") ||
+        currentBooking.fleetType.toLowerCase().includes("subcon"));
+
+    const effectiveBookingDRNo = (
+      parsedInput.bookingDRNo ||
+      currentBooking.bookingDRNo ||
+      ""
+    ).trim();
+
+    if (!effectiveBookingDRNo) {
+      if (isSubcon) {
+        throw new Error(
+          "Booking / DR# is required for Subcon trucks before proceeding.",
+        );
+      } else {
+        const yr = currentBooking.pickupDate
+          ? new Date(currentBooking.pickupDate).getFullYear()
+          : new Date().getFullYear();
+        const autoDrNo = await generateKtsRentalBookingNo(db, yr);
+        parsedInput.bookingDRNo = autoDrNo;
+      }
+    } else if (parsedInput.bookingDRNo) {
+      const isDuplicate = await bookingRepository.checkDuplicateDRNo(
+        parsedInput.bookingDRNo,
+        parsedInput.id,
+      );
       if (isDuplicate) {
-        throw new Error(`Booking / DR# "${parsedInput.bookingDRNo}" is already recorded in the system.`);
+        throw new Error(
+          `Booking / DR# "${parsedInput.bookingDRNo}" is already recorded in the system.`,
+        );
       }
     }
+
     await bookingRepository.updateTripDetails(parsedInput);
     revalidatePath("/dashboard");
+    revalidatePath("/booking");
+  });
+
+export const getNextKtsRentalBookingNoAction = actionClient
+  .action(async () => {
+    const yr = new Date().getFullYear();
+    const drNo = await generateKtsRentalBookingNo(db, yr);
+    return drNo;
   });
 
 export const updateTripDetailAction = actionClient

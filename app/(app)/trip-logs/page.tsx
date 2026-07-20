@@ -43,6 +43,7 @@ import {
   deleteBookingAction,
   updateTripDetailAction,
 } from "@/lib/actions/booking";
+import { getTruckAction } from "@/lib/actions/trucks";
 import { formatTime12Hour, formatTimeHHMM } from "@/lib/utils/stringFormat";
 import { TripLogsTable } from "@/components/trip-logs/TripLogsTable";
 import { TripLogsModuleSkeleton } from "@/components/ui/ModuleSkeletons";
@@ -373,22 +374,38 @@ export default function DispatchRecordsPage() {
 
   useEffect(() => {
     async function loadBookings() {
-      const res = await getAllBookingAction({ deliveryStatus: "Completed" });
+      const [res, trucksRes] = await Promise.all([
+        getAllBookingAction({ deliveryStatus: "Completed" }),
+        getTruckAction(),
+      ]);
+
+      const subconPlateMap = new Set(
+        (trucksRes?.data ?? [])
+          .filter(
+            (t: any) =>
+              t.isSubcon ||
+              (t.unitType || "").toLowerCase().includes("subcon") ||
+              (t.fleetType || "").toLowerCase().includes("subcon"),
+          )
+          .map((t: any) => t.plateNumber.trim().toUpperCase()),
+      );
+
       if (res?.data) {
         // Build map of previous odoEnds per truck plate number across bookings
         const lastOdoEndForBooking: Record<string | number, number> = {};
         const plateOdoTracker: Record<string, number> = {};
 
         // Sort bookings chronologically by pickupDate / bookingDate / id
-        const sortedForOdo = [...res.data].sort((a, b) => {
+        const sortedForOdo = [...res.data].sort((a: any, b: any) => {
           const dateA = new Date(a.pickupDate || a.bookingDate || "").getTime();
           const dateB = new Date(b.pickupDate || b.bookingDate || "").getTime();
           if (dateA !== dateB) return dateA - dateB;
           return Number(a.id) - Number(b.id);
         });
 
-        sortedForOdo.forEach((b) => {
+        sortedForOdo.forEach((b: any) => {
           const isSub =
+            subconPlateMap.has((b.plateNumber || "").trim().toUpperCase()) ||
             (b.trucker && b.trucker.toLowerCase().includes("subcon")) ||
             (b.fleetType && b.fleetType.toLowerCase().includes("subcon")) ||
             false;
@@ -400,20 +417,24 @@ export default function DispatchRecordsPage() {
 
           if (!isSub && plate && b.odoDetails && b.odoDetails.length > 0) {
             const validEnds = b.odoDetails
-              .map((o) => Number(o.odoEnd) || 0)
-              .filter((v) => v > 0);
+              .map((o: any) => Number(o.odoEnd) || 0)
+              .filter((v: number) => v > 0);
             if (validEnds.length > 0) {
               plateOdoTracker[plate] = Math.max(...validEnds);
             }
           }
         });
 
-        const mapped = res.data.map((b) => {
+        const ktsBookings = res.data.filter((b: any) => {
           const isSub =
+            subconPlateMap.has((b.plateNumber || "").trim().toUpperCase()) ||
             (b.trucker && b.trucker.toLowerCase().includes("subcon")) ||
             (b.fleetType && b.fleetType.toLowerCase().includes("subcon")) ||
             false;
+          return !isSub;
+        });
 
+        const mapped = ktsBookings.map((b: any) => {
           return {
             id: b.id,
             displayBookingNo: b.displayBookingNo,
@@ -424,14 +445,14 @@ export default function DispatchRecordsPage() {
             pickUpTime: formatTime12Hour(b.pickupTime),
             driverName: b.driverName,
             trucker: b.trucker,
-            helper: b.helpers.map((h) => h.helperName).join(", ") || "No Helper",
+            helper: b.helpers.map((h: any) => h.helperName).join(", ") || "No Helper",
             fleetType: b.fleetType,
             plateNo: b.plateNumber,
             ruta: b.ruta,
             pickLocation: b.pickupLocation,
             dropOffLocation: b.drops.length > 1
-              ? b.drops.map((d) => `• ${d.locationName}`).join("\n")
-              : b.drops.map((d) => d.locationName).join("\n") || "—",
+              ? b.drops.map((d: any) => `• ${d.locationName}`).join("\n")
+              : b.drops.map((d: any) => d.locationName).join("\n") || "—",
             bookedBy: b.bookedBy,
             status:
               (b.deliveryStatus as "Pending" | "In Transit" | "Completed") ||
@@ -447,11 +468,11 @@ export default function DispatchRecordsPage() {
             tripRemarks: b.tripRemarks || undefined,
             truckerRate: b.truckerRate ?? "",
             rawPickupTime: b.pickupTime,
-            rawHelpers: b.helpers.map((h) => ({
+            rawHelpers: b.helpers.map((h: any) => ({
               id: h.id,
               helperName: h.helperName,
             })),
-            rawDrops: b.drops.map((d) => ({ locationName: d.locationName })),
+            rawDrops: b.drops.map((d: any) => ({ locationName: d.locationName })),
             arrivalPickup: formatTimeHHMM(b.pickupArrivalTime),
             loadingStart: formatTimeHHMM(b.loadingStartTime),
             loadingEnd: formatTimeHHMM(b.loadingEndTime),
@@ -460,7 +481,7 @@ export default function DispatchRecordsPage() {
             podFile: b.PODLink ? (b.PODLink.split("/").pop() ?? "") : "",
             podFileUrl: b.PODLink ?? "",
             podFileType: "",
-            isSubcon: isSub,
+            isSubcon: false,
             lastRecordedOdoEnd: lastOdoEndForBooking[b.id] || 0,
           };
         });
@@ -469,12 +490,12 @@ export default function DispatchRecordsPage() {
         const initialOdoData: Record<string | number, NewTripDetailsFormData> =
           {};
 
-        res.data.forEach((b) => {
+        res.data.forEach((b: any) => {
           const prevTruckOdoEnd = lastOdoEndForBooking[b.id] || 0;
           const hasOdoDetails = b.odoDetails && b.odoDetails.length > 0;
 
           let tripsData = hasOdoDetails
-            ? b.odoDetails.map((odo) => ({
+            ? b.odoDetails.map((odo: any) => ({
                 tripNumber: odo.tripIndex,
                 odoStart: Number(odo.odoStart) || 0,
                 odoEnd: Number(odo.odoEnd) || 0,
@@ -507,7 +528,7 @@ export default function DispatchRecordsPage() {
             autoCA: b.autoCash || false,
             driverRate: Number(b.driverRate || 0),
             helperRate: Number(b.helperRate || 0),
-            expenses: b.expenses.map((exp, idx) => {
+            expenses: b.expenses.map((exp: any, idx: number) => {
               let category = exp.expenseType;
               let assignedTo = "";
               if (exp.expenseType.startsWith("Cash Advance, ")) {

@@ -20,6 +20,7 @@ import {
   Progress,
   Image,
 } from "@mantine/core";
+import { notifications } from "@mantine/notifications";
 import { DispatchRecord } from "@/app/(app)/constant";
 import {
   useState,
@@ -610,6 +611,20 @@ export function TripDetailsModal({
   };
 
   const handleSave = async () => {
+    const isSubcon =
+      (record.trucker || "").toLowerCase().includes("subcon") ||
+      (record.fleetType || "").toLowerCase().includes("subcon");
+    const effectiveDrNo = (form.bookingDRNo || record.bookingDRNo || record.bookingDr || "").trim();
+
+    if (!effectiveDrNo && isSubcon) {
+      notifications.show({
+        title: "Booking / DR# Required",
+        message: "Booking / DR# is required for Subcon trucks before proceeding.",
+        color: "red",
+      });
+      return;
+    }
+
     setIsUploading(true);
     setUploadError(null);
     setUploadProgress(10);

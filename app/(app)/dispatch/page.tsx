@@ -12,7 +12,7 @@ import {
   Divider,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useForm } from "@mantine/form";
 import { IconCheck, IconEye, IconX } from "@tabler/icons-react";
 import "@mantine/dates/styles.css";
@@ -33,8 +33,10 @@ import { useUser } from "@clerk/nextjs";
 import { toTitleCase } from "@/lib/utils/stringFormat";
 import {
   createBookingAction,
+  getAllBookingAction,
   updateBookingAction,
 } from "@/lib/actions/booking";
+import { computeAvailability } from "@/lib/utils/availability";
 import {
   CreateBookingInput,
   UpdateBookingInput,
@@ -68,11 +70,13 @@ export default function DispatchPage() {
   const [helpers, setHelpers] = useState<Helper[]>([]);
   const [clients, setClients] = useState<ClientWithRoutes[]>([]);
   const [trucks, setTrucks] = useState<Truck[]>([]);
+  const [allBookings, setAllBookings] = useState<any[]>([]);
   const { editingRecord, setEditingRecord } = useDispatch();
   const isEditMode = !!editingRecord;
 
   const [reviewOpened, setReviewOpened] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isGeneratingDr, setIsGeneratingDr] = useState(false);
 
   const form = useForm<DispatchFormValues>({
     initialValues: {
@@ -128,6 +132,36 @@ export default function DispatchPage() {
     },
   });
 
+  // Compute availability window (busy within 2 hours of pickup time)
+  const availability = useMemo(() => {
+    return computeAvailability(
+      allBookings,
+      form.values.pickupDate,
+      form.values.pickupTime,
+      editingRecord?.id ? String(editingRecord.id) : undefined
+    );
+  }, [allBookings, form.values.pickupDate, form.values.pickupTime, editingRecord?.id]);
+
+  const availableDrivers = useMemo(() => {
+    return drivers.filter(
+      (d) => !availability.busyDriverNames.has(d.driverName.trim().toUpperCase())
+    );
+  }, [drivers, availability]);
+
+  const availableHelpers = useMemo(() => {
+    return helpers.filter(
+      (h) =>
+        !availability.busyHelperIds.has(String(h.id)) &&
+        !availability.busyHelperNames.has(h.helperName.trim().toUpperCase())
+    );
+  }, [helpers, availability]);
+
+  const availableTrucks = useMemo(() => {
+    return trucks.filter(
+      (t) => !availability.busyPlateNumbers.has(t.plateNumber.trim().toUpperCase())
+    );
+  }, [trucks, availability]);
+
   const selectedClient =
     clients.find((c) => c.clientName === form.values.clientName) ?? null;
   const selectedTruck =
@@ -136,12 +170,13 @@ export default function DispatchPage() {
   // On Load
   useEffect(() => {
     async function fetchDispatchersData() {
-      const [trucksRes, clientsRes, driversRes, helpersRes] = await Promise.all(
+      const [trucksRes, clientsRes, driversRes, helpersRes, bookingsRes] = await Promise.all(
         [
           getTruckAction(),
           getClientAction(),
           getDriverAction(),
           getHelperAction(),
+          getAllBookingAction({}),
         ],
       );
 
@@ -149,6 +184,7 @@ export default function DispatchPage() {
       if (clientsRes.data) setClients(clientsRes.data);
       if (driversRes.data) setDrivers(driversRes.data);
       if (helpersRes.data) setHelpers(helpersRes.data);
+      if (bookingsRes?.data) setAllBookings(bookingsRes.data);
       setIsLoading(false);
     }
 
@@ -167,6 +203,38 @@ export default function DispatchPage() {
     if (validation.hasErrors) {
       console.log(validation.errors);
       return;
+    }
+
+    if (form.values.driverName && availability.busyDriverNames.has(form.values.driverName.trim().toUpperCase())) {
+      notifications.show({
+        title: "Driver Unavailable",
+        message: `Driver "${form.values.driverName}" is currently assigned to another trip within this 2-hour pickup window.`,
+        color: "red",
+      });
+      return;
+    }
+
+    if (form.values.plateNo && availability.busyPlateNumbers.has(form.values.plateNo.trim().toUpperCase())) {
+      notifications.show({
+        title: "Truck Unavailable",
+        message: `Truck "${form.values.plateNo}" is currently assigned to another trip within this 2-hour pickup window.`,
+        color: "red",
+      });
+      return;
+    }
+
+    for (const h of form.values.helpers) {
+      if (
+        availability.busyHelperIds.has(String(h.id)) ||
+        availability.busyHelperNames.has(h.helperName.trim().toUpperCase())
+      ) {
+        notifications.show({
+          title: "Helper Unavailable",
+          message: `Helper "${h.helperName}" is currently assigned to another trip within this 2-hour pickup window.`,
+          color: "red",
+        });
+        return;
+      }
     }
 
     setReviewOpened(true);
@@ -419,18 +487,19 @@ export default function DispatchPage() {
 
               <ClientSection form={form} clients={clients} />
 
-              <LocationSection form={form} />
+              <LocationSection form={form} isGeneratingDr={isGeneratingDr} />
 
               <TruckSection
                 form={form}
-                trucks={trucks.filter((t) => t.isActive || t.plateNumber === form.values.plateNo)}
+                trucks={availableTrucks.filter((t: Truck) => t.isActive || t.plateNumber === form.values.plateNo)}
                 selectedTruck={selectedTruck}
+                setIsGeneratingDr={setIsGeneratingDr}
               />
 
               <PersonnelSection
                 form={form}
-                drivers={drivers.filter((d) => d.isActive || d.driverName === form.values.driverName)}
-                helpers={helpers.filter((h) => h.isActive || form.values.helpers.some((sh) => sh.id === h.id))}
+                drivers={availableDrivers.filter((d: Driver) => d.isActive || d.driverName === form.values.driverName)}
+                helpers={availableHelpers.filter((h: Helper) => h.isActive || form.values.helpers.some((sh) => sh.id === h.id))}
               />
 
               <Divider my="md" />

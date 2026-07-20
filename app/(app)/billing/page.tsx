@@ -43,6 +43,8 @@ import {
   IconFileSpreadsheet,
   IconChevronDown,
   IconEdit,
+  IconTrash,
+  IconError404,
 } from "@tabler/icons-react";
 import * as XLSX from "xlsx-js-style";
 
@@ -51,11 +53,13 @@ import { usePodDownload, type PodRecord } from "@/app/hooks/usePodDownload";
 import { SummaryCard } from "@/components/billing/SummaryCard";
 import { StatementOfAccountModal } from "@/components/billing/StatementOfAccountModal";
 import { getBillingRecordsAction, updateBillingStatusAction } from "@/lib/actions/billing";
+import { deleteBookingAction } from "@/lib/actions/booking";
 import { getAllClientsAction } from "@/lib/actions/clients";
 import { getTruckAction } from "@/lib/actions/trucks";
+import { DeleteConfirmModal } from "@/components/booking/DeleteConfirmModal";
 import { BILLING_TABLE_HEADERS } from "@/components/ui/ModuleSkeletons";
 import { TableSkeleton } from "@/components/ui/TableSkeleton";
-import { formatTime12Hour } from "@/lib/utils/stringFormat";
+import { formatTime12Hour, generateSoaNumber } from "@/lib/utils/stringFormat";
 
 export type BillingRecord = DispatchRecord & {
   tripRate?: string | number;
@@ -97,6 +101,20 @@ const STATUS_COLOR: Record<string, string> = {
   Completed: "green",
   "In Transit": "blue",
   Pending: "orange",
+};
+
+const BILL_STATUS_COLOR: Record<string, string> = {
+  paid: "green",
+  unpaid: "gray",
+  partially_paid: "orange",
+  overdue: "red",
+};
+
+const BILL_STATUS_LABEL: Record<string, string> = {
+  paid: "Paid",
+  unpaid: "Unpaid",
+  partially_paid: "Partially Paid",
+  overdue: "Overdue",
 };
 
 const cell: React.CSSProperties = {
@@ -188,6 +206,43 @@ export default function BillingModule() {
   // ── DB records — fetched on Generate, not on mount ──
   const [records, setRecords] = useState<BillingRecord[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+
+  const [deleteRecord, setDeleteRecord] = useState<BillingRecord | null>(null);
+  const [deleteOpened, setDeleteOpened] = useState(false);
+
+  const handleDeleteClick = (record: BillingRecord) => {
+    setDeleteRecord(record);
+    setDeleteOpened(true);
+  };
+
+  const handleDeleteConfirm = async (password: string) => {
+    if (!deleteRecord) return;
+
+    const result = await deleteBookingAction({
+      id: String(deleteRecord.id),
+      password,
+    });
+
+    if (result?.serverError) {
+      notifications.show({
+        title: "Error",
+        message: result.serverError,
+        color: "red",
+        icon: <IconError404 size={16} />,
+      });
+      return { serverError: result.serverError };
+    }
+
+    setRecords((prev) => prev.filter((r) => r.id !== deleteRecord.id));
+    setDeleteOpened(false);
+    setDeleteRecord(null);
+    notifications.show({
+      title: "Record deleted",
+      message: `Billing record #${deleteRecord.bookingDr || deleteRecord.id} has been removed.`,
+      color: "red",
+      icon: <IconTrash size={16} />,
+    });
+  };
 
   const [filterModalOpen, setFilterModalOpen] = useState(true);
   const [pendingFilters, setPendingFilters] = useState<BillingFilters>({
@@ -1279,15 +1334,33 @@ export default function BillingModule() {
                             }}
                             onClick={(e) => e.stopPropagation()}
                           >
-                            <ActionIcon
-                              variant="light"
-                              color="blue"
-                              size="sm"
-                              onClick={() => openBillingModal(record)}
-                              title="Update Payment / Billing"
-                            >
-                              <IconEdit size={12} />
-                            </ActionIcon>
+                            <Group gap={4} wrap="nowrap">
+                              <Tooltip label="Update Payment / Billing" withArrow position="top" fz={10}>
+                                <ActionIcon
+                                  variant="light"
+                                  color="blue"
+                                  size="sm"
+                                  radius="sm"
+                                  onClick={() => openBillingModal(record)}
+                                >
+                                  <IconEdit size={12} />
+                                </ActionIcon>
+                              </Tooltip>
+                              <Tooltip label="Delete Record" withArrow position="top" fz={10}>
+                                <ActionIcon
+                                  variant="light"
+                                  color="red"
+                                  size="sm"
+                                  radius="sm"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDeleteClick(record);
+                                  }}
+                                >
+                                  <IconTrash size={13} />
+                                </ActionIcon>
+                              </Tooltip>
+                            </Group>
                           </Table.Td>
                           <Table.Td style={cell}>{record.date}</Table.Td>
                           <Table.Td style={cell}>{record.client}</Table.Td>
@@ -1672,6 +1745,16 @@ export default function BillingModule() {
         onSuccess={() => {
           handleGenerate();
         }}
+      />
+
+      <DeleteConfirmModal
+        opened={deleteOpened}
+        onClose={() => {
+          setDeleteOpened(false);
+          setDeleteRecord(null);
+        }}
+        onConfirm={handleDeleteConfirm}
+        itemLabel={deleteRecord ? `Booking #${deleteRecord.bookingDr || deleteRecord.displayBookingNo || deleteRecord.id}` : ""}
       />
     </Box>
   );
