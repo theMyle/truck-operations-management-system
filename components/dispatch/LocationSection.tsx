@@ -14,6 +14,7 @@ import {
   ActionIcon,
   Divider,
   Text,
+  Loader,
 } from "@mantine/core";
 import { DatePicker, type DateValue } from "@mantine/dates";
 import { UseFormReturnType } from "@mantine/form";
@@ -25,12 +26,14 @@ import { inputStyles } from "@/app/(app)/dispatch/page";
 
 export function LocationSection({
   form,
+  isGeneratingDr = false,
 }: {
   form: UseFormReturnType<DispatchFormValues>;
+  isGeneratingDr?: boolean;
 }) {
   const [popoverOpened, setPopoverOpened] = useState(false);
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  const minDate = new Date();
+  minDate.setDate(minDate.getDate() - 3);
 
   const addDropOff = () => {
     form.insertListItem("dropOffs", {
@@ -82,6 +85,9 @@ export function LocationSection({
                   placeholder="Enter booking or DR number"
                   styles={inputStyles}
                   tt="capitalize"
+                  rightSection={
+                    isGeneratingDr ? <Loader size={14} color="blue" /> : null
+                  }
                   {...form.getInputProps("bookingDr")}
                 />
               </Grid.Col>
@@ -133,7 +139,7 @@ export function LocationSection({
                     <Stack gap="xs" align="stretch">
                       <DatePicker
                         value={form.values.pickupDate}
-                        minDate={today}
+                        minDate={minDate}
                         onChange={(date) => {
                           if (!date) return;
                           form.setFieldValue("pickupDate", new Date(date));
