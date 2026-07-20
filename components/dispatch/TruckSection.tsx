@@ -6,14 +6,18 @@ import { Truck } from "@/lib/db/schema";
 import { DispatchFormValues } from "@/types/dispatch";
 import { inputStyles } from "@/app/(app)/dispatch/page";
 
+import { getNextKtsRentalBookingNoAction } from "@/lib/actions/booking";
+
 export function TruckSection({
   form,
   trucks,
   selectedTruck,
+  setIsGeneratingDr,
 }: {
   form: UseFormReturnType<DispatchFormValues>;
   trucks: Truck[];
   selectedTruck: Truck | null;
+  setIsGeneratingDr?: (val: boolean) => void;
 }) {
   return (
     <>
@@ -26,10 +30,38 @@ export function TruckSection({
           styles={inputStyles}
           data={trucks.map((truck) => truck.plateNumber)}
           {...form.getInputProps("plateNo")}
-          onChange={(val) => {
+          onChange={async (val) => {
             form.setFieldValue("plateNo", val);
             const truck = trucks.find((t) => t.plateNumber === val) ?? null;
             form.setFieldValue("truckerRate", truck?.rate ?? "");
+
+            if (truck) {
+              const isSubcon =
+                truck.isSubcon ||
+                (truck.unitType || "").toLowerCase().includes("subcon") ||
+                (truck.fleetType || "").toLowerCase().includes("subcon");
+
+              if (!isSubcon) {
+                if (
+                  !form.values.bookingDr ||
+                  form.values.bookingDr.startsWith("KTS")
+                ) {
+                  setIsGeneratingDr?.(true);
+                  try {
+                    const res = await getNextKtsRentalBookingNoAction();
+                    if (res?.data) {
+                      form.setFieldValue("bookingDr", res.data);
+                    }
+                  } finally {
+                    setIsGeneratingDr?.(false);
+                  }
+                }
+              } else if (form.values.bookingDr?.startsWith("KTS")) {
+                form.setFieldValue("bookingDr", "");
+              }
+            } else if (form.values.bookingDr?.startsWith("KTS")) {
+              form.setFieldValue("bookingDr", "");
+            }
           }}
           clearable
           searchable

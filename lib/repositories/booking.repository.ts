@@ -391,4 +391,39 @@ export async function updateTripDetails(data: UpdateTripMonitoringInput) {
     .where(eq(booking.id, data.id));
 }
 
+/**
+ * Auto-generates KTS RENTAL Booking # format: KTS{seq:02d}-{YY}
+ * e.g., KTS01-26 for the 1st rental booking of 2026.
+ * Scoped to KTS RENTAL bookings, resets to 01 each year.
+ */
+export async function generateKtsRentalBookingNo(
+  database = db,
+  targetYear?: number
+): Promise<string> {
+  const year = targetYear || new Date().getFullYear();
+  const yy = String(year).slice(-2);
+  const pattern = `KTS%-${yy}`;
+
+  const rows = await database
+    .select({ bookingDRNo: booking.bookingDRNo })
+    .from(booking)
+    .where(ilike(booking.bookingDRNo, pattern));
+
+  let maxSeq = 0;
+  rows.forEach((r) => {
+    if (r.bookingDRNo) {
+      const match = r.bookingDRNo.toUpperCase().match(/^KTS(\d+)-\d{2}$/);
+      if (match) {
+        const seq = parseInt(match[1], 10);
+        if (!isNaN(seq) && seq > maxSeq) {
+          maxSeq = seq;
+        }
+      }
+    }
+  });
+
+  const nextSeq = String(maxSeq + 1).padStart(2, "0");
+  return `KTS${nextSeq}-${yy}`;
+}
+
 export const bookingRepository = makeBookingRepository();
