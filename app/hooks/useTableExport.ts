@@ -2,7 +2,7 @@
 
 import { useCallback } from "react";
 import { DispatchRecord } from "@/app/(app)/constant";
-import { formatTime12Hour } from "@/lib/utils/stringFormat";
+import { formatTime12Hour, toTitleCase } from "@/lib/utils/stringFormat";
 
 export interface ExportColumn {
   key: string;
@@ -19,6 +19,12 @@ const TIME_KEYS = [
 
 function getFormattedValue(record: DispatchRecord, colKey: string): string {
   let val = record[colKey as keyof DispatchRecord];
+  if (colKey === "bookedBy") {
+    return toTitleCase(typeof val === "string" ? val : String(val ?? ""));
+  }
+  if (["driver", "driverName", "helper"].includes(colKey) && typeof val === "string") {
+    return val.toUpperCase();
+  }
   if (TIME_KEYS.includes(colKey) && typeof val === "string" && val.trim().length > 0) {
     return formatTime12Hour(val);
   }

@@ -21,6 +21,7 @@ import {
 } from "@tabler/icons-react";
 import { DispatchRecord } from "@/app/(app)/constant";
 import { STATUS_META } from "./TripDetailsModal";
+import { toTitleCase } from "@/lib/utils/stringFormat";
 
 const headerCellStyle: React.CSSProperties = {
   fontSize: "9px",
@@ -216,14 +217,15 @@ export function BookingTable({
                     {record.bookingDRNo || record.bookingDRNo || "—"}
                   </Table.Td>
                   <Table.Td style={cellStyle}>
+                    {record.pickUpDate || record.date || "—"}
+                  </Table.Td>
+                  <Table.Td style={cellStyle}>
                     {record.clientName || record.client || "—"}
                   </Table.Td>
                   <Table.Td style={cellStyle}>
-                    {record.driverName || record.driver || "—"}
+                    {(record.driverName || record.driver || "—").toUpperCase()}
                   </Table.Td>
-                  <Table.Td style={cellStyle}>
-                    {record.pickUpDate || record.date || "—"}
-                  </Table.Td>
+
                   <Table.Td style={cellStyle}>
                     {record.pickUpTime || "—"}
                   </Table.Td>
@@ -241,7 +243,7 @@ export function BookingTable({
                     </Badge>
                   </Table.Td>
                   <Table.Td style={cellStyle}>{record.trucker || "—"}</Table.Td>
-                  <Table.Td style={cellStyle}>{record.helper || "—"}</Table.Td>
+                  <Table.Td style={cellStyle}>{(record.helper || "—").toUpperCase()}</Table.Td>
                   <Table.Td style={cellStyle}>
                     {record.fleetType || record.unit || "—"}
                   </Table.Td>
@@ -272,7 +274,7 @@ export function BookingTable({
                     {record.dropOffLocation || "—"}
                   </Table.Td>
                   <Table.Td style={cellStyle}>
-                    {record.bookedBy || "—"}
+                    {toTitleCase(record.bookedBy)}
                   </Table.Td>
                 </Table.Tr>
               ))

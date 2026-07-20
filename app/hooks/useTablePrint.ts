@@ -3,6 +3,7 @@
 import { useCallback } from "react";
 import { DispatchRecord } from "@/app/(app)/constant";
 import { ExportColumn } from "./useTableExport";
+import { toTitleCase } from "@/lib/utils/stringFormat";
 
 export function useTablePrint(
   records: DispatchRecord[],
@@ -15,10 +16,11 @@ export function useTablePrint(
         (r) => `
           <tr>
             ${columns
-              .map(
-                (col) =>
-                  `<td>${String(r[col.key as keyof DispatchRecord] ?? "—")}</td>`,
-              )
+              .map((col) => {
+                const val = r[col.key as keyof DispatchRecord];
+                const text = col.key === "bookedBy" ? toTitleCase(String(val ?? "")) : String(val ?? "—");
+                return `<td>${text}</td>`;
+              })
               .join("")}
           </tr>`,
       )

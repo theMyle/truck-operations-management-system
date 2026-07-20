@@ -41,18 +41,18 @@ export function ReviewModal({
   };
 
   const displayData: Record<string, string> = {
-    client: values.clientName ?? "",
-    ruta: values.ruta,
-    bookingDr: values.bookingDr ?? "",
-    pickupLocation: values.pickupLocation,
-    dropOffs: getDropOffsString(),
+    client: (values.clientName ?? "").toUpperCase(),
+    ruta: (values.ruta ?? "").toUpperCase(),
+    bookingDr: (values.bookingDr ?? "").toUpperCase(),
+    pickupLocation: (values.pickupLocation ?? "").toUpperCase(),
+    dropOffs: getDropOffsString().toUpperCase(),
     noOfDrops: values.noOfDrops?.toString() || "",
-    unit: selectedTruck?.fleetType || "",
-    plateNo: values.plateNo ?? "",
-    driver: values.driverName ?? "",
-    helper: values.helpers.map((h: Helper) => h.helperName).join(", "),
-    pickupDate: formatDate(values.pickupDate as Date),
-    pickupTime: formatTime12Hour(values.pickupTime),
+    unit: (selectedTruck?.fleetType || "").toUpperCase(),
+    plateNo: (values.plateNo ?? "").toUpperCase(),
+    driver: (values.driverName ?? "").toUpperCase(),
+    helper: values.helpers.map((h: Helper) => h.helperName.toUpperCase()).join(", "),
+    pickupDate: formatDate(values.pickupDate as Date).toUpperCase(),
+    pickupTime: formatTime12Hour(values.pickupTime).toUpperCase(),
   };
 
   const sections = [
@@ -109,14 +109,14 @@ export function ReviewModal({
                 style={{ fontSize: "9px" }}
                 tt="uppercase"
                 lts={1}
-                c="blue.6"
+                c="dimmed"
                 mb={6}
               >
                 {section.title}
               </Text>
               <Paper
                 withBorder
-                radius="sm"
+                radius="xs"
                 p={0}
                 style={{ overflow: "hidden" }}
               >
@@ -145,6 +145,7 @@ export function ReviewModal({
                           style={{
                             fontWeight: 700,
                             whiteSpace: "pre-wrap",
+                            textTransform: "uppercase",
                             color:
                               displayData[row.key]
                                 ? "var(--mantine-color-gray-9)"
