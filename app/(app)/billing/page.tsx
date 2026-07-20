@@ -487,6 +487,14 @@ export default function BillingModule() {
     return EXPENSE_LABELS[expenseType] || `Expense: ${expenseType}`;
   };
 
+  function toTitleCaseStr(str: string | null | undefined): string {
+    if (!str) return "";
+    return str
+      .replace(/_/g, " ")
+      .trim()
+      .replace(/\b\w/g, (char) => char.toUpperCase());
+  }
+
   function buildExportRow(r: BillingRecord): ExportRow {
     const totalKm = (r.odoDetails ?? []).reduce(
       (sum, o) => sum + Math.max(0, (o.odoEnd || 0) - (o.odoStart || 0)),
@@ -497,8 +505,12 @@ export default function BillingModule() {
       0,
     );
 
+    const firstOdo = r.odoDetails?.[0]?.odoStart;
+    const lastOdo = r.odoDetails?.[r.odoDetails.length - 1]?.odoEnd;
+
     const row: ExportRow = {
       Date: r.date,
+      "Pick Up Time (Booking)": r.pickUpTime || "",
       Client: r.client,
       "Fleet Type": r.unit,
       "Plate No": r.plateNo,
@@ -520,14 +532,16 @@ export default function BillingModule() {
       "Finish Delivery Time": r.finishDelivery ? formatTime12Hour(r.finishDelivery) : "",
       Driver: r.driver,
       Helper: r.helper,
+      "Start ODO": numOrBlank(firstOdo),
+      "End ODO": numOrBlank(lastOdo),
       "Total KM": totalKm || "",
       Budget: numOrBlank(r.budget),
-      "Budget From": r.budgetFrom ?? "",
+      "Budget From": toTitleCaseStr(r.budgetFrom),
       "RFID Load": numOrBlank(r.rfidLoad),
       Fuel: numOrBlank(r.fuel),
       "Customer Collection": numOrBlank(r.customerCollection),
       "Cash on Hand Returned": numOrBlank(r.cashOnHandReturned),
-      "Returned To": r.cashOnHandReturnedTo ?? "",
+      "Returned To": toTitleCaseStr(r.cashOnHandReturnedTo),
       "Auto Cash Advance": r.autoCash ? "Yes" : "No",
       "Driver Rate": numOrBlank(r.driverRate),
       "Helper Rate": numOrBlank(r.helperRate),
@@ -737,6 +751,9 @@ export default function BillingModule() {
 
     // ── Style the column header row (row index = metaData.length - 1) ──
     const headerRowIdx = metaData.length - 1;
+    const startOdoIdx = headers.indexOf("Start ODO");
+    const truckerRateIdx = headers.indexOf("Trucker Rate");
+
     headers.forEach((h, colIdx) => {
       const ref = XLSX.utils.encode_cell({ r: headerRowIdx, c: colIdx });
       if (!ws[ref]) return;
@@ -750,7 +767,30 @@ export default function BillingModule() {
         "Finish Delivery Time",
       ].includes(h);
 
-      let bgColor = "1a56db"; // blue for others
+      const isOdoDetailCol =
+        (startOdoIdx !== -1 &&
+          truckerRateIdx !== -1 &&
+          colIdx >= startOdoIdx &&
+          colIdx <= truckerRateIdx) ||
+        [
+          "Start ODO",
+          "End ODO",
+          "Total KM",
+          "Budget",
+          "Budget From",
+          "RFID Load",
+          "Fuel",
+          "Customer Collection",
+          "Cash on Hand Returned",
+          "Returned To",
+          "Auto Cash Advance",
+          "Driver Rate",
+          "Helper Rate",
+          "Trucker",
+          "Trucker Rate",
+        ].includes(h);
+
+      let bgColor = "1a56db"; // blue for standard booking info
       let textColor = "FFFFFF"; // white
 
       if (isExpenseCol) {
@@ -758,6 +798,9 @@ export default function BillingModule() {
       } else if (isTimeCol) {
         bgColor = "bae6fd"; // light blue for times
         textColor = "0f172a"; // dark gray text
+      } else if (isOdoDetailCol) {
+        bgColor = "ea580c"; // vibrant orange for trip odo & financial details
+        textColor = "FFFFFF"; // white text
       }
 
       ws[ref].s = {
