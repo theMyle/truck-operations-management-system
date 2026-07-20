@@ -19,6 +19,8 @@ import {
   Tooltip,
   ActionIcon,
   Menu,
+  Checkbox,
+  SegmentedControl,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import React, {
@@ -40,6 +42,7 @@ import {
   IconX,
   IconFileSpreadsheet,
   IconChevronDown,
+  IconEdit,
   IconTrash,
   IconError404,
 } from "@tabler/icons-react";
@@ -48,14 +51,15 @@ import * as XLSX from "xlsx-js-style";
 import { DispatchRecord } from "../constant";
 import { usePodDownload, type PodRecord } from "@/app/hooks/usePodDownload";
 import { SummaryCard } from "@/components/billing/SummaryCard";
-import { getBillingRecordsAction } from "@/lib/actions/billing";
+import { StatementOfAccountModal } from "@/components/billing/StatementOfAccountModal";
+import { getBillingRecordsAction, updateBillingStatusAction } from "@/lib/actions/billing";
 import { deleteBookingAction } from "@/lib/actions/booking";
 import { getAllClientsAction } from "@/lib/actions/clients";
 import { getTruckAction } from "@/lib/actions/trucks";
 import { DeleteConfirmModal } from "@/components/booking/DeleteConfirmModal";
 import { BILLING_TABLE_HEADERS } from "@/components/ui/ModuleSkeletons";
 import { TableSkeleton } from "@/components/ui/TableSkeleton";
-import { formatTime12Hour } from "@/lib/utils/stringFormat";
+import { formatTime12Hour, generateSoaNumber } from "@/lib/utils/stringFormat";
 
 export type BillingRecord = DispatchRecord & {
   tripRate?: string | number;
@@ -75,6 +79,12 @@ export type BillingRecord = DispatchRecord & {
   driverRate?: string | number | null;
   helperRate?: string | number | null;
   expenses?: { expenseType: string; amount: string | number }[];
+
+  billingStatus?: string;
+  soaNumber?: string;
+  invoiceDate?: string;
+  dueDate?: string;
+  amountPaid?: string;
 };
 
 type ExportRow = Record<string, string | number>;
@@ -91,6 +101,20 @@ const STATUS_COLOR: Record<string, string> = {
   Completed: "green",
   "In Transit": "blue",
   Pending: "orange",
+};
+
+const BILL_STATUS_COLOR: Record<string, string> = {
+  paid: "green",
+  unpaid: "gray",
+  partially_paid: "orange",
+  overdue: "red",
+};
+
+const BILL_STATUS_LABEL: Record<string, string> = {
+  paid: "Paid",
+  unpaid: "Unpaid",
+  partially_paid: "Partially Paid",
+  overdue: "Overdue",
 };
 
 const cell: React.CSSProperties = {
@@ -235,6 +259,103 @@ export default function BillingModule() {
   const [page, setPage] = useState(1);
   const [podPreview, setPodPreview] = useState<BillingRecord | null>(null);
 
+  // ── Billing Status and SoA Modals States ──
+  const [billStatusFilter, setBillStatusFilter] = useState<string | null>(null);
+  const [billingModalOpen, setBillingModalOpen] = useState(false);
+  const [selectedBillingRecord, setSelectedBillingRecord] = useState<BillingRecord | null>(null);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [soaModalOpen, setSoaModalOpen] = useState(false);
+
+  const [soaNumberInput, setSoaNumberInput] = useState("");
+  const [invoiceDateInput, setInvoiceDateInput] = useState("");
+  const [dueDateInput, setDueDateInput] = useState("");
+  const [amountPaidInput, setAmountPaidInput] = useState("");
+  const [isSavingBilling, setIsSavingBilling] = useState(false);
+  const [soaPrintOpen, setSoaPrintOpen] = useState(false);
+
+  const openBillingModal = (record: BillingRecord) => {
+    setSelectedBillingRecord(record);
+    const existingSoas = records
+      .map((r) => r.soaNumber)
+      .filter((s): s is string => typeof s === "string" && s.trim().length > 0);
+    const autoSoa = record.soaNumber || generateSoaNumber(record.clientName || record.client || "", existingSoas);
+
+    setSoaNumberInput(autoSoa);
+    setInvoiceDateInput(record.invoiceDate ?? new Date().toISOString().split("T")[0]);
+    setDueDateInput(
+      record.dueDate ??
+      (() => {
+        const d = new Date();
+        d.setDate(d.getDate() + 15);
+        return d.toISOString().split("T")[0];
+      })()
+    );
+    setAmountPaidInput(record.amountPaid ?? "0.00");
+    setBillingModalOpen(true);
+  };
+
+  const handleSaveBilling = async () => {
+    if (!selectedBillingRecord) return;
+    setIsSavingBilling(true);
+
+    const result = await updateBillingStatusAction({
+      bookingIds: [selectedBillingRecord.id.toString()],
+      soaNumber: soaNumberInput,
+      invoiceDate: invoiceDateInput || null,
+      dueDate: dueDateInput || null,
+      amountPaid: amountPaidInput,
+    });
+
+    if (result?.serverError) {
+      notifications.show({
+        title: "Failed to update billing details",
+        message: result.serverError,
+        color: "red",
+      });
+    } else {
+      notifications.show({
+        title: "Billing details updated",
+        message: "Successfully updated payment status.",
+        color: "green",
+      });
+      // Refresh the table locally
+      setRecords((prev) =>
+        prev.map((r) => {
+          if (r.id === selectedBillingRecord.id) {
+            const clientRateVal = Number(r.tripRate) || 0;
+            const amountPaidVal = Number(amountPaidInput) || 0;
+            let billingStatus = "unpaid";
+            if (amountPaidVal >= clientRateVal && clientRateVal > 0) {
+              billingStatus = "paid";
+            } else if (amountPaidVal > 0 && amountPaidVal < clientRateVal) {
+              billingStatus = "partially_paid";
+            } else if (dueDateInput) {
+              const due = new Date(dueDateInput);
+              const today = new Date();
+              due.setHours(0, 0, 0, 0);
+              today.setHours(0, 0, 0, 0);
+              if (today > due && amountPaidVal < clientRateVal) {
+                billingStatus = "overdue";
+              }
+            }
+
+            return {
+              ...r,
+              soaNumber: soaNumberInput,
+              invoiceDate: invoiceDateInput,
+              dueDate: dueDateInput,
+              amountPaid: amountPaidInput,
+              billingStatus,
+            };
+          }
+          return r;
+        })
+      );
+      setBillingModalOpen(false);
+    }
+    setIsSavingBilling(false);
+  };
+
   const [dbClients, setDbClients] = useState<
     { id: string; clientName: string }[]
   >([]);
@@ -288,7 +409,7 @@ export default function BillingModule() {
 
   useEffect(() => {
     startTransition(() => setPage(1));
-  }, [search, statusFilter, fleetFilter, activeFilters]);
+  }, [search, statusFilter, fleetFilter, billStatusFilter, activeFilters]);
 
   // Client options derived from database clients
   const clientOptions = useMemo(() => {
@@ -312,7 +433,7 @@ export default function BillingModule() {
     return combined.map((f) => ({ value: f, label: f }));
   }, [dbFleetTypes, records]);
 
-  // Client-side search + status + fleet filter on top of DB results
+  // Client-side search + status + fleet + bill status filter on top of DB results
   const filtered = useMemo(() => {
     const q = search.toLowerCase().trim();
     return records.filter((r) => {
@@ -320,9 +441,10 @@ export default function BillingModule() {
         !q || Object.values(r).some((v) => String(v).toLowerCase().includes(q));
       const matchStatus = !statusFilter || r.status === statusFilter;
       const matchFleet = !fleetFilter || r.unit === fleetFilter;
-      return matchSearch && matchStatus && matchFleet;
+      const matchBillStatus = !billStatusFilter || r.billingStatus === billStatusFilter;
+      return matchSearch && matchStatus && matchFleet && matchBillStatus;
     });
-  }, [records, search, statusFilter, fleetFilter]);
+  }, [records, search, statusFilter, fleetFilter, billStatusFilter]);
 
   const paginated = useMemo(
     () => filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
@@ -385,6 +507,11 @@ export default function BillingModule() {
       "Pickup Location": r.pickLocation || "",
       "Drop-off Location": r.dropOffLocation || "",
       "Rate (PHP)": numOrBlank(r.tripRate),
+      "Amount Paid (PHP)": numOrBlank(r.amountPaid),
+      "SoA #": r.soaNumber || "",
+      "Payment Status": BILL_STATUS_LABEL[r.billingStatus || "unpaid"],
+      "Invoice Date": r.invoiceDate || "",
+      "Due Date": r.dueDate || "",
       Status: r.status,
       "Pick Up Arrival Time": r.arrivalPickup ? formatTime12Hour(r.arrivalPickup) : "",
       "Loading Start Time": r.loadingStart ? formatTime12Hour(r.loadingStart) : "",
@@ -425,15 +552,49 @@ export default function BillingModule() {
     return row;
   }
 
-  const stats = useMemo(
-    () => ({
-      totalRate: filtered.reduce((s, r) => s + (Number(r.tripRate) || 0), 0),
-      totalDrops: filtered.reduce((s, r) => s + (r.noOfDrops || 0), 0),
-      completed: filtered.filter((r) => r.status === "Completed").length,
-      withPod: filtered.filter((r) => Boolean(r.podFileUrl)).length,
-    }),
-    [filtered],
-  );
+  const stats = useMemo(() => {
+    let totalRate = 0;
+    let totalDrops = 0;
+    let completed = 0;
+    let withPod = 0;
+    let totalPaid = 0;
+    let unpaidBalance = 0;
+    let overdueAmount = 0;
+
+    filtered.forEach((r) => {
+      const rate = Number(r.tripRate) || 0;
+      const hasPod = Boolean(r.podFileUrl || r.podFile);
+      const isTransportify =
+        Boolean(r.clientName && String(r.clientName).toLowerCase().includes("transportify")) ||
+        Boolean(r.client && String(r.client).toLowerCase().includes("transportify"));
+      const isPaid = r.billingStatus === "paid" || isTransportify;
+
+      const rawPaid = Number(r.amountPaid) || 0;
+      const paid = isPaid ? (rawPaid > 0 ? rawPaid : rate) : rawPaid;
+
+      totalRate += rate;
+      totalDrops += r.noOfDrops || 0;
+      if (r.status === "Completed") completed++;
+      if (hasPod) withPod++;
+      totalPaid += paid;
+
+      const balance = isPaid ? 0 : Math.max(0, rate - paid);
+      unpaidBalance += balance;
+      if (r.billingStatus === "overdue") {
+        overdueAmount += balance;
+      }
+    });
+
+    return {
+      totalRate,
+      totalDrops,
+      completed,
+      withPod,
+      totalPaid,
+      unpaidBalance,
+      overdueAmount,
+    };
+  }, [filtered]);
 
   const billingLabel = activeFilters
     ? [
@@ -821,6 +982,30 @@ export default function BillingModule() {
             </Group>
             <Group gap={6}>
               <Button
+                variant="filled"
+                color="blue"
+                size="xs"
+                leftSection={<IconFileInvoice size={13} />}
+                styles={{ label: { fontSize: "10px", fontWeight: 700 } }}
+                onClick={() => setSoaModalOpen(true)}
+                disabled={!filtered.length}
+              >
+                Generate SOA {selectedIds.length > 0 ? `(${selectedIds.length})` : ""}
+              </Button>
+              {activeFilters?.client && (
+                <Button
+                  variant="light"
+                  color="blue"
+                  size="xs"
+                  leftSection={<IconReceipt size={13} />}
+                  styles={{ label: { fontSize: "10px", fontWeight: 700 } }}
+                  onClick={() => setSoaPrintOpen(true)}
+                  disabled={!filtered.length}
+                >
+                  Print SoA
+                </Button>
+              )}
+              <Button
                 variant="default"
                 size="xs"
                 leftSection={<IconAdjustmentsHorizontal size={13} />}
@@ -895,7 +1080,7 @@ export default function BillingModule() {
 
           {/* Summary Cards */}
           {activeFilters && (
-            <SimpleGrid cols={3} spacing="sm">
+            <SimpleGrid cols={{ base: 1, sm: 3, lg: 5 }} spacing="sm">
               <SummaryCard
                 label="Total Trips"
                 value={filtered.length}
@@ -908,25 +1093,59 @@ export default function BillingModule() {
               <SummaryCard
                 label="Total Amount"
                 value={`₱${stats.totalRate.toLocaleString()}`}
-                sub={
-                  filtered.length !== records.length
-                    ? "filtered billable rate"
-                    : "billable rate"
-                }
+                sub="billable rate"
               />
               <SummaryCard
-                label="PODs on File"
-                value={
-                  <Text size="xl" fw={500} component="span">
-                    {stats.withPod}
-                    <Text size="sm" c="dimmed" fw={400} component="span">
-                      /{filtered.length}
-                    </Text>
-                  </Text>
-                }
-                sub={`${stats.completed} completed`}
+                label="Total Paid"
+                value={`₱${stats.totalPaid.toLocaleString()}`}
+                sub="recorded collections"
+              />
+              <SummaryCard
+                label="Unpaid Balance"
+                value={`₱${stats.unpaidBalance.toLocaleString()}`}
+                sub="outstanding rate"
+              />
+              <SummaryCard
+                label="Overdue Amount"
+                value={`₱${stats.overdueAmount.toLocaleString()}`}
+                sub="passed due date"
               />
             </SimpleGrid>
+          )}
+
+          {/* Quick Status Tabs */}
+          {activeFilters && (
+            <SegmentedControl
+              value={billStatusFilter || "all"}
+              onChange={(val) => setBillStatusFilter(val === "all" ? null : val)}
+              data={[
+                { label: `All (${records.length})`, value: "all" },
+                {
+                  label: `For Billing (${records.filter((r) => r.billingStatus === "unbilled" || !r.billingStatus).length})`,
+                  value: "unbilled",
+                },
+                {
+                  label: `Pending (${records.filter((r) => r.billingStatus === "pending").length})`,
+                  value: "pending",
+                },
+                {
+                  label: `Partially Paid (${records.filter((r) => r.billingStatus === "partially_paid").length})`,
+                  value: "partially_paid",
+                },
+                {
+                  label: `Paid (${records.filter((r) => r.billingStatus === "paid").length})`,
+                  value: "paid",
+                },
+                {
+                  label: `Overdue (${records.filter((r) => r.billingStatus === "overdue").length})`,
+                  value: "overdue",
+                },
+              ]}
+              size="xs"
+              radius="md"
+              styles={{ label: { fontSize: "11px", fontWeight: 700 } }}
+              fullWidth
+            />
           )}
 
           {/* Filters Row */}
@@ -963,6 +1182,21 @@ export default function BillingModule() {
               radius="md"
               style={{ width: 160 }}
             />
+            <Select
+              placeholder="All Bill Statuses"
+              data={[
+                { value: "paid", label: "Paid" },
+                { value: "unpaid", label: "Unpaid" },
+                { value: "partially_paid", label: "Partially Paid" },
+                { value: "overdue", label: "Overdue" },
+              ]}
+              value={billStatusFilter}
+              onChange={setBillStatusFilter}
+              clearable
+              styles={{ input: { fontSize: "11px", fontWeight: 500 } }}
+              radius="md"
+              style={{ width: 160 }}
+            />
           </Group>
 
           {/* Table */}
@@ -984,17 +1218,30 @@ export default function BillingModule() {
                   striped
                   highlightOnHover
                   withColumnBorders
-                  style={{ minWidth: 1400 }}
+                  style={{ minWidth: 1650 }}
                 >
                   <Table.Thead>
                     <Table.Tr>
+                      <Table.Th
+                        style={{
+                          ...headerCell,
+                          minWidth: 80,
+                          position: "sticky",
+                          left: 0,
+                          zIndex: 2,
+                          backgroundColor: "var(--mantine-color-gray-1)",
+                          boxShadow: "2px 0 4px rgba(0,0,0,0.06)",
+                        }}
+                      >
+                        Actions
+                      </Table.Th>
                       {[
-                        "Actions",
                         "Date",
                         "Client",
                         "Fleet Type",
                         "Plate No.",
                         "Booking / DR #",
+                        "SoA #",
                         "No. of Drops",
                         "Pickup Location",
                         "Drop-off Location",
@@ -1004,7 +1251,9 @@ export default function BillingModule() {
                         "Departure Pick Up",
                         "Finish Delivery",
                         "Rate (₱)",
+                        "Paid (₱)",
                         "Status",
+                        "Bill Status",
                         "POD / Receipt",
                       ].map((col) => {
                         const isTimeCol = [
@@ -1074,21 +1323,44 @@ export default function BillingModule() {
                     ) : (
                       paginated.map((record) => (
                         <Table.Tr key={record.id}>
-                          <Table.Td style={cell}>
-                            <Tooltip label="Delete Record" withArrow position="top" fz={10}>
-                              <ActionIcon
-                                variant="light"
-                                color="red"
-                                size="sm"
-                                radius="sm"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleDeleteClick(record);
-                                }}
-                              >
-                                <IconTrash size={13} />
-                              </ActionIcon>
-                            </Tooltip>
+                          <Table.Td
+                            style={{
+                              ...cell,
+                              position: "sticky",
+                              left: 0,
+                              zIndex: 1,
+                              backgroundColor: "var(--mantine-color-body)",
+                              boxShadow: "2px 0 4px rgba(0,0,0,0.06)",
+                            }}
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <Group gap={4} wrap="nowrap">
+                              <Tooltip label="Update Payment / Billing" withArrow position="top" fz={10}>
+                                <ActionIcon
+                                  variant="light"
+                                  color="blue"
+                                  size="sm"
+                                  radius="sm"
+                                  onClick={() => openBillingModal(record)}
+                                >
+                                  <IconEdit size={12} />
+                                </ActionIcon>
+                              </Tooltip>
+                              <Tooltip label="Delete Record" withArrow position="top" fz={10}>
+                                <ActionIcon
+                                  variant="light"
+                                  color="red"
+                                  size="sm"
+                                  radius="sm"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDeleteClick(record);
+                                  }}
+                                >
+                                  <IconTrash size={13} />
+                                </ActionIcon>
+                              </Tooltip>
+                            </Group>
                           </Table.Td>
                           <Table.Td style={cell}>{record.date}</Table.Td>
                           <Table.Td style={cell}>{record.client}</Table.Td>
@@ -1123,13 +1395,26 @@ export default function BillingModule() {
                           >
                             {record.bookingDr}
                           </Table.Td>
+                          <Table.Td style={cell}>
+                            {record.soaNumber || "—"}
+                          </Table.Td>
                           <Table.Td style={{ ...cell, textAlign: "center" }}>
                             {record.noOfDrops ?? "—"}
                           </Table.Td>
                           <Table.Td style={cell}>
                             {record.pickLocation || "—"}
                           </Table.Td>
-                          <Table.Td style={cell}>
+                          <Table.Td
+                            style={{
+                              ...cell,
+                              maxWidth: 150,
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                              whiteSpace: "nowrap",
+                              fontSize: "10px",
+                            }}
+                            title={(record.dropOffLocation || "—").replace(/\n/g, ", ")}
+                          >
                             {record.dropOffLocation || "—"}
                           </Table.Td>
                           <Table.Td style={{ ...cell, color: "var(--mantine-color-blue-7)" }}>
@@ -1158,6 +1443,15 @@ export default function BillingModule() {
                               ? `₱${Number(record.tripRate).toLocaleString()}`
                               : "—"}
                           </Table.Td>
+                          <Table.Td
+                            style={{
+                              ...cell,
+                              color: "var(--mantine-color-teal-7)",
+                              fontWeight: 700,
+                            }}
+                          >
+                            ₱{Number(record.amountPaid || 0).toLocaleString()}
+                          </Table.Td>
                           <Table.Td style={cell}>
                             <Badge
                               variant="light"
@@ -1169,6 +1463,19 @@ export default function BillingModule() {
                               }}
                             >
                               {record.status}
+                            </Badge>
+                          </Table.Td>
+                          <Table.Td style={cell}>
+                            <Badge
+                              variant="light"
+                              color={BILL_STATUS_COLOR[record.billingStatus || "unpaid"]}
+                              radius="md"
+                              styles={{
+                                root: { height: 18 },
+                                label: { fontSize: "9px", fontWeight: 700 },
+                              }}
+                            >
+                              {BILL_STATUS_LABEL[record.billingStatus || "unpaid"]}
                             </Badge>
                           </Table.Td>
                           <Table.Td style={cell}>
@@ -1216,6 +1523,230 @@ export default function BillingModule() {
           )}
         </Stack>
       </ScrollArea>
+
+      {/* Update Billing Modal */}
+      <Modal
+        opened={billingModalOpen}
+        onClose={() => setBillingModalOpen(false)}
+        title={<Text fw={700}>Update Payment & Billing Metadata</Text>}
+        radius="md"
+        size="md"
+        centered
+      >
+        <Stack gap="sm">
+          {selectedBillingRecord && (
+            <Paper withBorder p="xs" bg="gray.0" radius="sm">
+              <Stack gap={4}>
+                <Text size="xs"><strong>Client:</strong> {selectedBillingRecord.client}</Text>
+                <Text size="xs"><strong>Booking / DR #:</strong> {selectedBillingRecord.bookingDr}</Text>
+                <Text size="xs"><strong>Trip Rate:</strong> ₱{Number(selectedBillingRecord.tripRate || 0).toLocaleString()}</Text>
+              </Stack>
+            </Paper>
+          )}
+
+          <TextInput
+            label="Statement of Account (SoA) #"
+            placeholder="e.g. SOA-2025-001"
+            value={soaNumberInput}
+            onChange={(e) => setSoaNumberInput(e.currentTarget.value)}
+            radius="md"
+          />
+
+          <TextInput
+            label="Invoice Date"
+            type="date"
+            value={invoiceDateInput}
+            onChange={(e) => setInvoiceDateInput(e.currentTarget.value)}
+            radius="md"
+          />
+
+          <TextInput
+            label="Due Date"
+            type="date"
+            value={dueDateInput}
+            onChange={(e) => setDueDateInput(e.currentTarget.value)}
+            radius="md"
+          />
+
+          <TextInput
+            label="Amount Paid (₱)"
+            type="number"
+            placeholder="0.00"
+            value={amountPaidInput}
+            onChange={(e) => setAmountPaidInput(e.currentTarget.value)}
+            radius="md"
+          />
+
+          <Group justify="flex-end" mt="md">
+            <Button variant="light" color="gray" onClick={() => setBillingModalOpen(false)}>Cancel</Button>
+            <Button color="blue" onClick={handleSaveBilling} loading={isSavingBilling}>Save Billing</Button>
+          </Group>
+        </Stack>
+      </Modal>
+
+      {/* Statement of Account (SoA) Print Preview Modal */}
+      <Modal
+        opened={soaPrintOpen}
+        onClose={() => setSoaPrintOpen(false)}
+        title={<Text fw={700}>Statement of Account Preview</Text>}
+        size="xl"
+        radius="md"
+        centered
+      >
+        <div id="printable-soa" style={{ padding: "16px", fontFamily: "sans-serif", color: "#1e293b" }}>
+          {/* Header */}
+          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "20px" }}>
+            <div>
+              <h2 style={{ margin: "0 0 4px 0", color: "#1e3a8a", fontSize: "20px", fontWeight: "bold" }}>STATEMENT OF ACCOUNT</h2>
+              <span style={{ fontSize: "11px", color: "#64748b" }}>Trucking & Logistics Management System</span>
+            </div>
+            <div style={{ textAlign: "right" }}>
+              <span style={{ fontSize: "11px", fontWeight: "bold", display: "block" }}>Date: {new Date().toLocaleDateString()}</span>
+              {activeFilters?.client && (
+                <span style={{ display: "inline-block", background: "#dbeafe", color: "#1e40af", padding: "2px 8px", borderRadius: "4px", fontSize: "10px", fontWeight: "bold", marginTop: "4px" }}>
+                  CLIENT: {activeFilters.client.toUpperCase()}
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* Date Filter details */}
+          {activeFilters && (
+            <div style={{ border: "1px solid #e2e8f0", padding: "8px", background: "#f8fafc", marginBottom: "15px", borderRadius: "4px", fontSize: "11px" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
+                <span><strong>Billing Period:</strong> {formatDate(activeFilters.from)} to {formatDate(activeFilters.to)}</span>
+                <span><strong>Total Trips:</strong> {filtered.length}</span>
+              </div>
+            </div>
+          )}
+
+          {/* Summary Statistics */}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "10px", marginBottom: "20px" }}>
+            <div style={{ border: "1px solid #e2e8f0", padding: "10px", background: "#eff6ff", borderRadius: "4px" }}>
+              <span style={{ fontSize: "10px", fontWeight: "bold", color: "#2563eb", textTransform: "uppercase", display: "block" }}>Total Billed</span>
+              <span style={{ fontSize: "18px", fontWeight: "bold", color: "#1e3a8a" }}>₱{stats.totalRate.toLocaleString()}</span>
+            </div>
+            <div style={{ border: "1px solid #e2e8f0", padding: "10px", background: "#f0fdf4", borderRadius: "4px" }}>
+              <span style={{ fontSize: "10px", fontWeight: "bold", color: "#16a34a", textTransform: "uppercase", display: "block" }}>Total Paid</span>
+              <span style={{ fontSize: "18px", fontWeight: "bold", color: "#14532d" }}>₱{stats.totalPaid.toLocaleString()}</span>
+            </div>
+            <div style={{ border: "1px solid #e2e8f0", padding: "10px", background: "#fef2f2", borderRadius: "4px" }}>
+              <span style={{ fontSize: "10px", fontWeight: "bold", color: "#dc2626", textTransform: "uppercase", display: "block" }}>Total Outstanding</span>
+              <span style={{ fontSize: "18px", fontWeight: "bold", color: "#7f1d1d" }}>₱{stats.unpaidBalance.toLocaleString()}</span>
+            </div>
+          </div>
+
+          {/* Trips Table */}
+          <table style={{ borderCollapse: "collapse", width: "100%", fontSize: "11px", border: "1px solid #cbd5e1" }}>
+            <thead>
+              <tr style={{ background: "#f1f5f9" }}>
+                <th style={{ border: "1px solid #cbd5e1", padding: "6px", textAlign: "left" }}>Date</th>
+                <th style={{ border: "1px solid #cbd5e1", padding: "6px", textAlign: "left" }}>Plate No.</th>
+                <th style={{ border: "1px solid #cbd5e1", padding: "6px", textAlign: "left" }}>Booking / DR #</th>
+                <th style={{ border: "1px solid #cbd5e1", padding: "6px", textAlign: "left" }}>Route</th>
+                <th style={{ border: "1px solid #cbd5e1", padding: "6px", textAlign: "right" }}>Rate (₱)</th>
+                <th style={{ border: "1px solid #cbd5e1", padding: "6px", textAlign: "right" }}>Paid (₱)</th>
+                <th style={{ border: "1px solid #cbd5e1", padding: "6px", textAlign: "left" }}>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map((r) => (
+                <tr key={r.id}>
+                  <td style={{ border: "1px solid #cbd5e1", padding: "5px" }}>{r.date}</td>
+                  <td style={{ border: "1px solid #cbd5e1", padding: "5px" }}>{r.plateNo}</td>
+                  <td style={{ border: "1px solid #cbd5e1", padding: "5px" }}>{r.bookingDr}</td>
+                  <td style={{ border: "1px solid #cbd5e1", padding: "5px" }}>{r.ruta}</td>
+                  <td style={{ border: "1px solid #cbd5e1", padding: "5px", textAlign: "right", fontWeight: "bold" }}>
+                    ₱{(Number(r.tripRate) || 0).toLocaleString()}
+                  </td>
+                  <td style={{ border: "1px solid #cbd5e1", padding: "5px", textAlign: "right", fontWeight: "bold", color: "#16a34a" }}>
+                    ₱{(Number(r.amountPaid) || 0).toLocaleString()}
+                  </td>
+                  <td style={{ border: "1px solid #cbd5e1", padding: "5px" }}>
+                    <span className={`badge badge-${r.billingStatus || 'unpaid'}`}>
+                      {BILL_STATUS_LABEL[r.billingStatus || "unpaid"]}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+
+          {/* Footer Signatures */}
+          <div style={{ display: "flex", justifyContent: "space-between", marginTop: "40px", paddingTop: "20px", borderTop: "1px dashed #cbd5e1" }}>
+            <div>
+              <div style={{ width: "150px", borderBottom: "1px solid #333", height: "20px" }}></div>
+              <span style={{ fontSize: "10px", color: "#64748b", display: "block", marginTop: "4px" }}>Prepared By</span>
+            </div>
+            <div style={{ textAlign: "right" }}>
+              <div style={{ width: "150px", borderBottom: "1px solid #333", height: "20px", marginLeft: "auto" }}></div>
+              <span style={{ fontSize: "10px", color: "#64748b", display: "block", marginTop: "4px" }}>Approved By Client</span>
+            </div>
+          </div>
+        </div>
+
+        <Group justify="flex-end" mt="md">
+          <Button variant="light" color="gray" size="xs" onClick={() => setSoaPrintOpen(false)}>Close</Button>
+          <Button color="blue" size="xs" onClick={() => {
+            const printContent = document.getElementById("printable-soa")?.innerHTML;
+            const win = window.open("", "_blank");
+            if (win && printContent) {
+              win.document.write(`
+                <html>
+                  <head>
+                    <title>Statement of Account - ${activeFilters?.client || "Client"}</title>
+                    <style>
+                      body { font-family: sans-serif; padding: 20px; color: #333; }
+                      table { border-collapse: collapse; width: 100%; font-size: 11px; margin-top: 15px; border: 1px solid #cbd5e1; }
+                      th, td { border: 1px solid #cbd5e1; padding: 6px; text-align: left; }
+                      th { background-color: #f1f5f9; font-weight: bold; }
+                      .badge { display: inline-block; padding: 2px 6px; border-radius: 4px; font-size: 9px; font-weight: bold; text-transform: uppercase; }
+                      .badge-paid { background-color: #dcfce7; color: #15803d; }
+                      .badge-unpaid { background-color: #f1f5f9; color: #475569; }
+                      .badge-partially_paid { background-color: #ffedd5; color: #c2410c; }
+                      .badge-overdue { background-color: #fee2e2; color: #b91c1c; }
+                      .text-right { text-align: right; }
+                      .summary-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 20px; }
+                      .summary-card { border: 1px solid #cbd5e1; padding: 10px; border-radius: 4px; }
+                      .flex-between { display: flex; justify-content: space-between; }
+                      .flex-col { display: flex; flex-direction: column; }
+                      .mt-xl { margin-top: 40px; }
+                      .pt-xl { padding-top: 20px; }
+                      .border-dashed { border-top: 1px dashed #cbd5e1; }
+                      .w-150 { width: 150px; border-bottom: 1px solid #333; }
+                    </style>
+                  </head>
+                  <body>
+                    \${printContent}
+                    <script>
+                      window.onload = function() {
+                        window.print();
+                        window.close();
+                      };
+                    </script>
+                  </body>
+                </html>
+              `);
+              win.document.close();
+            }
+          }}>Print Statement</Button>
+        </Group>
+      </Modal>
+
+      {/* ══ STATEMENT OF ACCOUNT MODAL ══ */}
+      <StatementOfAccountModal
+        opened={soaModalOpen}
+        onClose={() => setSoaModalOpen(false)}
+        selectedRecords={
+          selectedIds.length > 0
+            ? filtered.filter((r) => selectedIds.includes(String(r.id)))
+            : filtered
+        }
+        onSuccess={() => {
+          handleGenerate();
+        }}
+      />
+
       <DeleteConfirmModal
         opened={deleteOpened}
         onClose={() => {

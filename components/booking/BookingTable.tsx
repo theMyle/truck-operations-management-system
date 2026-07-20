@@ -266,10 +266,13 @@ export function BookingTable({
                   <Table.Td
                     style={{
                       ...cellStyle,
-                      maxWidth: 240,
+                      maxWidth: 150,
                       overflow: "hidden",
                       textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                      fontSize: "10px",
                     }}
+                    title={(record.dropOffLocation || "—").replace(/\n/g, ", ")}
                   >
                     {record.dropOffLocation || "—"}
                   </Table.Td>

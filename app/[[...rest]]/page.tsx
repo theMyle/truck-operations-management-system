@@ -1,11 +1,20 @@
 "use client";
 
 import { SignIn, useUser } from "@clerk/nextjs";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 import Image from "next/image";
 import logoImg from "../assets/logo.png";
 
 export default function Home() {
   const { isSignedIn, isLoaded } = useUser();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (isLoaded && isSignedIn) {
+      router.replace("/default");
+    }
+  }, [isLoaded, isSignedIn, router]);
 
   return (
     <div className="flex h-screen w-full overflow-hidden bg-slate-50 relative">

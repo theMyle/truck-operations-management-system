@@ -100,6 +100,13 @@ export const booking = pgTable("booking", {
   // tripExpenses[]
   driverRate: decimal("driverRate", { precision: 10, scale: 2 }),
   helperRate: decimal("helperRate", { precision: 10, scale: 2 }),
+
+  // ** BILLING STATUS & SOA **
+  billingStatus: text("billingStatus").default("unpaid").notNull(),
+  soaNumber: text("soaNumber"),
+  invoiceDate: date("invoiceDate", { mode: "string" }),
+  dueDate: date("dueDate", { mode: "string" }),
+  amountPaid: decimal("amountPaid", { precision: 10, scale: 2 }).default("0.00").notNull(),
 });
 
 export const updateTripMonitoringSchema = z.object({
