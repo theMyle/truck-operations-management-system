@@ -122,7 +122,10 @@ export const getBillingRecordsAction = actionClient
       autoCash: b.autoCash ?? null,
       driverRate: b.driverRate ?? null,
       helperRate: b.helperRate ?? null,
-      billingStatus: b.billingStatus,
+      billingStatus:
+        b.clientName && b.clientName.toLowerCase().includes("transportify")
+          ? "paid"
+          : b.billingStatus ?? "unbilled",
       soaNumber: b.soaNumber ?? "",
       invoiceDate: b.invoiceDate ?? "",
       dueDate: b.dueDate ?? "",
@@ -188,9 +191,12 @@ export const updateBillingStatusAction = actionClient
       const clientRateVal = Number(current.clientRate) || 0;
       const amountPaidVal = amountPaid !== undefined ? Number(amountPaid) : (Number(current.amountPaid) || 0);
 
-      // Determine status
-      let billingStatus = "unpaid";
-      if (amountPaidVal >= clientRateVal && clientRateVal > 0) {
+      // Determine status: Transportify is Cash-Basis (automatically Paid). All other clients have 15-45 day terms.
+      const isTransportify = Boolean(current.clientName && current.clientName.toLowerCase().includes("transportify"));
+      let billingStatus = "unbilled";
+      const effectiveSoa = (soaNumber !== undefined ? soaNumber : current.soaNumber) || "";
+
+      if (isTransportify || (amountPaidVal >= clientRateVal && clientRateVal > 0)) {
         billingStatus = "paid";
       } else if (amountPaidVal > 0 && amountPaidVal < clientRateVal) {
         billingStatus = "partially_paid";
@@ -203,7 +209,11 @@ export const updateBillingStatusAction = actionClient
           today.setHours(0, 0, 0, 0);
           if (today > due && amountPaidVal < clientRateVal) {
             billingStatus = "overdue";
+          } else {
+            billingStatus = effectiveSoa.trim().length > 0 ? "pending" : "unbilled";
           }
+        } else {
+          billingStatus = effectiveSoa.trim().length > 0 ? "pending" : "unbilled";
         }
       }
 

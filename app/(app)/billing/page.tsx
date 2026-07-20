@@ -19,6 +19,8 @@ import {
   Tooltip,
   ActionIcon,
   Menu,
+  Checkbox,
+  SegmentedControl,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import React, {
@@ -47,21 +49,27 @@ import * as XLSX from "xlsx-js-style";
 import { DispatchRecord } from "../constant";
 import { usePodDownload, type PodRecord } from "@/app/hooks/usePodDownload";
 import { SummaryCard } from "@/components/billing/SummaryCard";
+import { StatementOfAccountModal } from "@/components/billing/StatementOfAccountModal";
 import { getBillingRecordsAction, updateBillingStatusAction } from "@/lib/actions/billing";
 import { getAllClientsAction } from "@/lib/actions/clients";
 import { getTruckAction } from "@/lib/actions/trucks";
 import { BILLING_TABLE_HEADERS } from "@/components/ui/ModuleSkeletons";
 import { TableSkeleton } from "@/components/ui/TableSkeleton";
+import { generateSoaNumber } from "@/lib/utils/stringFormat";
 
 const BILL_STATUS_COLOR: Record<string, string> = {
   paid: "green",
-  unpaid: "gray",
+  unbilled: "yellow",
+  pending: "yellow",
+  unpaid: "yellow",
   partially_paid: "orange",
   overdue: "red",
 };
 
 const BILL_STATUS_LABEL: Record<string, string> = {
   paid: "Paid",
+  unbilled: "For Billing",
+  pending: "Pending Payment",
   unpaid: "Unpaid",
   partially_paid: "Partially Paid",
   overdue: "Overdue",
@@ -218,7 +226,9 @@ export default function BillingModule() {
   const [billStatusFilter, setBillStatusFilter] = useState<string | null>(null);
   const [billingModalOpen, setBillingModalOpen] = useState(false);
   const [selectedBillingRecord, setSelectedBillingRecord] = useState<BillingRecord | null>(null);
-  
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [soaModalOpen, setSoaModalOpen] = useState(false);
+
   const [soaNumberInput, setSoaNumberInput] = useState("");
   const [invoiceDateInput, setInvoiceDateInput] = useState("");
   const [dueDateInput, setDueDateInput] = useState("");
@@ -228,9 +238,21 @@ export default function BillingModule() {
 
   const openBillingModal = (record: BillingRecord) => {
     setSelectedBillingRecord(record);
-    setSoaNumberInput(record.soaNumber ?? "");
-    setInvoiceDateInput(record.invoiceDate ?? "");
-    setDueDateInput(record.dueDate ?? "");
+    const existingSoas = records
+      .map((r) => r.soaNumber)
+      .filter((s): s is string => typeof s === "string" && s.trim().length > 0);
+    const autoSoa = record.soaNumber || generateSoaNumber(record.clientName || record.client || "", existingSoas);
+
+    setSoaNumberInput(autoSoa);
+    setInvoiceDateInput(record.invoiceDate ?? new Date().toISOString().split("T")[0]);
+    setDueDateInput(
+      record.dueDate ??
+      (() => {
+        const d = new Date();
+        d.setDate(d.getDate() + 15);
+        return d.toISOString().split("T")[0];
+      })()
+    );
     setAmountPaidInput(record.amountPaid ?? "0.00");
     setBillingModalOpen(true);
   };
@@ -499,14 +521,22 @@ export default function BillingModule() {
 
     filtered.forEach((r) => {
       const rate = Number(r.tripRate) || 0;
-      const paid = Number(r.amountPaid) || 0;
+      const hasPod = Boolean(r.podFileUrl || r.podFile);
+      const isTransportify =
+        Boolean(r.clientName && String(r.clientName).toLowerCase().includes("transportify")) ||
+        Boolean(r.client && String(r.client).toLowerCase().includes("transportify"));
+      const isPaid = r.billingStatus === "paid" || isTransportify;
+
+      const rawPaid = Number(r.amountPaid) || 0;
+      const paid = isPaid ? (rawPaid > 0 ? rawPaid : rate) : rawPaid;
+
       totalRate += rate;
       totalDrops += r.noOfDrops || 0;
       if (r.status === "Completed") completed++;
-      if (r.podFileUrl) withPod++;
+      if (hasPod) withPod++;
       totalPaid += paid;
-      
-      const balance = Math.max(0, rate - paid);
+
+      const balance = isPaid ? 0 : Math.max(0, rate - paid);
       unpaidBalance += balance;
       if (r.billingStatus === "overdue") {
         overdueAmount += balance;
@@ -892,6 +922,17 @@ export default function BillingModule() {
               )}
             </Group>
             <Group gap={6}>
+              <Button
+                variant="filled"
+                color="blue"
+                size="xs"
+                leftSection={<IconFileInvoice size={13} />}
+                styles={{ label: { fontSize: "10px", fontWeight: 700 } }}
+                onClick={() => setSoaModalOpen(true)}
+                disabled={!filtered.length}
+              >
+                Generate SOA {selectedIds.length > 0 ? `(${selectedIds.length})` : ""}
+              </Button>
               {activeFilters?.client && (
                 <Button
                   variant="light"
@@ -1011,6 +1052,41 @@ export default function BillingModule() {
                 sub="passed due date"
               />
             </SimpleGrid>
+          )}
+
+          {/* Quick Status Tabs */}
+          {activeFilters && (
+            <SegmentedControl
+              value={billStatusFilter || "all"}
+              onChange={(val) => setBillStatusFilter(val === "all" ? null : val)}
+              data={[
+                { label: `All (${records.length})`, value: "all" },
+                {
+                  label: `For Billing (${records.filter((r) => r.billingStatus === "unbilled" || !r.billingStatus).length})`,
+                  value: "unbilled",
+                },
+                {
+                  label: `Pending (${records.filter((r) => r.billingStatus === "pending").length})`,
+                  value: "pending",
+                },
+                {
+                  label: `Partially Paid (${records.filter((r) => r.billingStatus === "partially_paid").length})`,
+                  value: "partially_paid",
+                },
+                {
+                  label: `Paid (${records.filter((r) => r.billingStatus === "paid").length})`,
+                  value: "paid",
+                },
+                {
+                  label: `Overdue (${records.filter((r) => r.billingStatus === "overdue").length})`,
+                  value: "overdue",
+                },
+              ]}
+              size="xs"
+              radius="md"
+              styles={{ label: { fontSize: "11px", fontWeight: 700 } }}
+              fullWidth
+            />
           )}
 
           {/* Filters Row */}
@@ -1226,7 +1302,17 @@ export default function BillingModule() {
                           <Table.Td style={cell}>
                             {record.pickLocation || "—"}
                           </Table.Td>
-                          <Table.Td style={cell}>
+                          <Table.Td
+                            style={{
+                              ...cell,
+                              maxWidth: 150,
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                              whiteSpace: "nowrap",
+                              fontSize: "10px",
+                            }}
+                            title={(record.dropOffLocation || "—").replace(/\n/g, ", ")}
+                          >
                             {record.dropOffLocation || "—"}
                           </Table.Td>
                           <Table.Td
@@ -1328,6 +1414,7 @@ export default function BillingModule() {
         title={<Text fw={700}>Update Payment & Billing Metadata</Text>}
         radius="md"
         size="md"
+        centered
       >
         <Stack gap="sm">
           {selectedBillingRecord && (
@@ -1387,6 +1474,7 @@ export default function BillingModule() {
         title={<Text fw={700}>Statement of Account Preview</Text>}
         size="xl"
         radius="md"
+        centered
       >
         <div id="printable-soa" style={{ padding: "16px", fontFamily: "sans-serif", color: "#1e293b" }}>
           {/* Header */}
@@ -1527,6 +1615,20 @@ export default function BillingModule() {
           }}>Print Statement</Button>
         </Group>
       </Modal>
+
+      {/* ══ STATEMENT OF ACCOUNT MODAL ══ */}
+      <StatementOfAccountModal
+        opened={soaModalOpen}
+        onClose={() => setSoaModalOpen(false)}
+        selectedRecords={
+          selectedIds.length > 0
+            ? filtered.filter((r) => selectedIds.includes(String(r.id)))
+            : filtered
+        }
+        onSuccess={() => {
+          handleGenerate();
+        }}
+      />
     </Box>
   );
 }
