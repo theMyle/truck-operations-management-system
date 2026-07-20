@@ -1,12 +1,15 @@
 
-export function toTitleCase(str: string | null | undefined): string {
-    if (!str) return "—";
+export function capitalizeWords(str: string | null | undefined): string {
+    if (!str) return "";
     return str
         .replace(/_/g, " ")
         .trim()
-        .split(/\s+/)
-        .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-        .join(" ");
+        .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+export function toTitleCase(str: string | null | undefined): string {
+    if (!str) return "—";
+    return capitalizeWords(str) || "—";
 }
 
 export function formatTime12Hour(timeStr: string | null | undefined): string {

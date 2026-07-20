@@ -11,6 +11,7 @@ import { NewExpensesTab } from "./ExpensesTab";
 import { TripSummaryModal } from "./TripSummaryModal";
 import { BookingWithRelations } from "@/lib/db/schema/booking";
 import { generateLiquidationPDF } from "@/lib/utils/pdf";
+import { capitalizeWords } from "@/lib/utils/stringFormat";
 
 export interface TripData {
     tripNumber: number;
@@ -252,14 +253,14 @@ export function TripDetailsModal({
             })),
 
             budget: String(form.values.budget),
-            budgetFrom: form.values.budgetFrom,
+            budgetFrom: capitalizeWords(form.values.budgetFrom),
             rfidLoad: String(form.values.rfidLoad),
             rfidPaymentType: form.values.rfidPaymentType,
             fuel: String(form.values.fuelAmount),
             fuelPaymentType: form.values.fuelPaymentType === "shell card" ? "card" : form.values.fuelPaymentType,
             customerCollection: String(form.values.collectionFromCustomer),
             cashOnHandReturned: String(form.values.cashOnHandReturned),
-            cashOnHandReturnedTo: form.values.cashOnHandReturnedToWhom,
+            cashOnHandReturnedTo: capitalizeWords(form.values.cashOnHandReturnedToWhom),
             autoCash: form.values.autoCA,
 
             driverRate: String(form.values.driverRate),

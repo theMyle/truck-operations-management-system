@@ -30,7 +30,7 @@ import { EXPENSE_CATEGORIES } from "./ExpensesTab";
 import { generateLiquidationPDF } from "@/lib/utils/pdf";
 import { DispatchRecord } from "@/app/(app)/constant";
 
-import { getTripRefNumber } from "@/lib/utils/stringFormat";
+import { getTripRefNumber, toTitleCase } from "@/lib/utils/stringFormat";
 
 /* ── Review Section Row helper ── */
 function ReviewRow({
@@ -420,7 +420,7 @@ export function TripSummaryModal({
                   : "—"
               }
             />
-            <ReviewRow label="From" value={booking.budgetFrom || "—"} />
+            <ReviewRow label="From" value={toTitleCase(booking.budgetFrom)} />
             {rfidAmount > 0 && (
               <ReviewRow
                 label={`RFID Load (${booking.rfidPaymentType === "card" ? "Card" : booking.rfidPaymentType === "cash" ? "Cash" : "—"})`}
@@ -442,7 +442,7 @@ export function TripSummaryModal({
             {cashReturned > 0 && (
               <ReviewRow
                 label="Naibalik na Sukli"
-                value={`₱${cashReturned.toLocaleString("en-PH", { minimumFractionDigits: 2 })} → ${booking.cashOnHandReturnedTo || "—"}`}
+                value={`₱${cashReturned.toLocaleString("en-PH", { minimumFractionDigits: 2 })} → ${toTitleCase(booking.cashOnHandReturnedTo)}`}
               />
             )}
             <ReviewRow
