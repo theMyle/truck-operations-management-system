@@ -61,8 +61,41 @@ export const getBillingRecordsAction = actionClient
         })
       : [];
 
+    // Enforce Module Workflow Gates:
+    // - Subcon Trucks: Proceed directly to Billing once Completed (and POD met)
+    // - KTS Trucks: MUST complete Trip Logs requirements first (Odometer logged!)
+    const allTrucks = await db.query.trucks.findMany();
+    const subconPlateSet = new Set(
+      allTrucks
+        .filter(
+          (t) =>
+            t.isSubcon ||
+            (t.unitType || "").toLowerCase().includes("subcon") ||
+            (t.fleetType || "").toLowerCase().includes("subcon"),
+        )
+        .map((t) => t.plateNumber.trim().toUpperCase()),
+    );
+
+    const eligibleForBilling = bookingsWithRelations.filter((b) => {
+      const isSub =
+        subconPlateSet.has((b.plateNumber || "").trim().toUpperCase()) ||
+        (b.trucker && b.trucker.toLowerCase().includes("subcon")) ||
+        (b.fleetType && b.fleetType.toLowerCase().includes("subcon")) ||
+        false;
+
+      if (isSub) return true;
+
+      // KTS trucks require odoDetails logged (start & end odo > 0)
+      const hasOdoLogged =
+        b.odoDetails &&
+        b.odoDetails.length > 0 &&
+        b.odoDetails.some((o) => Number(o.odoEnd) > 0);
+
+      return hasOdoLogged;
+    });
+
     // Same mapping shape as BookingRecordsPage so BillingRecord stays compatible
-    return bookingsWithRelations.map((b) => ({
+    return eligibleForBilling.map((b) => ({
       id: b.id,
       bookingDate: b.bookingDate,
       bookingDRNo: b.bookingDRNo,
