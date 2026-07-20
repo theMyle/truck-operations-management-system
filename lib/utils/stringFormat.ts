@@ -1,10 +1,11 @@
 
-export function toTitleCase(str: string): string {
+export function toTitleCase(str: string | null | undefined): string {
+    if (!str) return "—";
     return str
-        .split(" ")
-        .map((word) => {
-            return word.charAt(0).toUpperCase() + word.slice(1);
-        })
+        .replace(/_/g, " ")
+        .trim()
+        .split(/\s+/)
+        .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
         .join(" ");
 }
 

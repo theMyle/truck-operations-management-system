@@ -13,6 +13,7 @@ import {
   SimpleGrid,
   Select,
   TextInput,
+  Box,
 } from "@mantine/core";
 import {
   IconTrash,
@@ -22,7 +23,7 @@ import {
   IconTrendingDown,
 } from "@tabler/icons-react";
 import { UseFormReturnType } from "@mantine/form";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { NewTripDetailsFormData } from "./TripDetailsModal";
 
 interface NewExpensesTabProps {
@@ -62,6 +63,34 @@ export function NewExpensesTab({
   driverName,
   helperName,
 }: NewExpensesTabProps) {
+  const helpersList = useMemo(() => {
+    if (!helperName || helperName === "No Helper") return [];
+    return helperName.split(",").map((h) => h.trim()).filter(Boolean);
+  }, [helperName]);
+
+  const [individualHelperRates, setIndividualHelperRates] = useState<Record<string, number>>(() => {
+    if (form.values.helperRates && Object.keys(form.values.helperRates).length > 0) {
+      return form.values.helperRates;
+    }
+    if (helpersList.length > 0 && form.values.helperRate) {
+      const perHelper = Math.round((form.values.helperRate / helpersList.length) * 100) / 100;
+      const initial: Record<string, number> = {};
+      helpersList.forEach((h) => {
+        initial[h] = perHelper;
+      });
+      return initial;
+    }
+    return {};
+  });
+
+  const handleIndividualHelperRateChange = (name: string, val: number) => {
+    const next = { ...individualHelperRates, [name]: val };
+    setIndividualHelperRates(next);
+    form.setFieldValue("helperRates", next);
+    const total = helpersList.reduce((acc, hName) => acc + (next[hName] || 0), 0);
+    form.setFieldValue("helperRate", total);
+  };
+
   const balance = useMemo(() => {
     const budgetAmount = form.values.budget || 0;
     const collectionAmount = form.values.collectionFromCustomer || 0;
@@ -138,31 +167,79 @@ export function NewExpensesTab({
 
           <Divider style={{ gridColumn: "span 2" }} size="xs" variant="dashed" my="xs" />
 
-          <TextInput
-            label="Helper"
-            value={helperName}
-            readOnly
-            variant="unstyled"
-            size="xs"
-            styles={{
-              label: { fontWeight: 700, fontSize: "12px", marginBottom: 4 },
-              input: { fontWeight: 500, color: "var(--mantine-color-dimmed)" }
-            }}
-          />
-          <TextInput
-            label="Helper Rate (₱)"
-            placeholder="0.00"
-            type="number"
-            size="xs"
-            value={form.values.helperRate || ""}
-            onChange={(e) =>
-              form.setFieldValue("helperRate", Number(e.currentTarget.value))
-            }
-            error={form.errors.helperRate}
-            styles={{
-              label: { fontWeight: 700, fontSize: "12px", marginBottom: 4 }
-            }}
-          />
+          {helpersList.length > 1 ? (
+            <Box style={{ gridColumn: "span 2" }}>
+              <Text style={{ fontSize: "11px" }} fw={700} c="dimmed" mb="xs">
+                Helper Rates Breakdown ({helpersList.length} Helpers)
+              </Text>
+              <Stack gap="xs">
+                {helpersList.map((hName, idx) => (
+                  <SimpleGrid key={hName} cols={2} spacing="md">
+                    <TextInput
+                      label={`Helper ${idx + 1}`}
+                      value={hName}
+                      readOnly
+                      variant="unstyled"
+                      size="xs"
+                      styles={{
+                        label: { fontWeight: 700, fontSize: "12px", marginBottom: 4 },
+                        input: { fontWeight: 500, color: "var(--mantine-color-dimmed)" }
+                      }}
+                    />
+                    <TextInput
+                      label="Helper Rate (₱)"
+                      placeholder="0.00"
+                      type="number"
+                      size="xs"
+                      value={individualHelperRates[hName] ?? ""}
+                      onChange={(e) =>
+                        handleIndividualHelperRateChange(hName, Number(e.currentTarget.value))
+                      }
+                      styles={{
+                        label: { fontWeight: 700, fontSize: "12px", marginBottom: 4 }
+                      }}
+                    />
+                  </SimpleGrid>
+                ))}
+              </Stack>
+              <Group justify="space-between" mt="sm" p="xs" style={{ background: "var(--mantine-color-blue-0)", borderRadius: "var(--mantine-radius-xs)" }}>
+                <Text style={{ fontSize: "11px" }} fw={700} c="blue.9">
+                  Total Combined Helper Rate:
+                </Text>
+                <Text style={{ fontSize: "12px" }} fw={900} c="blue.9">
+                  ₱{(form.values.helperRate || 0).toLocaleString("en-PH", { minimumFractionDigits: 2 })}
+                </Text>
+              </Group>
+            </Box>
+          ) : (
+            <>
+              <TextInput
+                label="Helper"
+                value={helperName}
+                readOnly
+                variant="unstyled"
+                size="xs"
+                styles={{
+                  label: { fontWeight: 700, fontSize: "12px", marginBottom: 4 },
+                  input: { fontWeight: 500, color: "var(--mantine-color-dimmed)" }
+                }}
+              />
+              <TextInput
+                label="Helper Rate (₱)"
+                placeholder="0.00"
+                type="number"
+                size="xs"
+                value={form.values.helperRate || ""}
+                onChange={(e) =>
+                  form.setFieldValue("helperRate", Number(e.currentTarget.value))
+                }
+                error={form.errors.helperRate}
+                styles={{
+                  label: { fontWeight: 700, fontSize: "12px", marginBottom: 4 }
+                }}
+              />
+            </>
+          )}
         </SimpleGrid>
       </Paper>
 

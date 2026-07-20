@@ -87,7 +87,7 @@ export function LocationSearch({
         leftSection={leftSection}
         rightSection={loading ? <Loader size={12} /> : null}
         styles={{
-          input: { fontSize: "11px", fontWeight: 600 },
+          input: { fontSize: "11px", fontWeight: 600, textTransform: "uppercase" },
         }}
       />
       {/* suggestions dropdown unchanged */}

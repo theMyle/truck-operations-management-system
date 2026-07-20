@@ -375,73 +375,125 @@ export default function DispatchRecordsPage() {
     async function loadBookings() {
       const res = await getAllBookingAction({ deliveryStatus: "Completed" });
       if (res?.data) {
-        const mapped = res.data.map((b) => ({
-          id: b.id,
-          displayBookingNo: b.displayBookingNo,
-          bookingDate: b.bookingDate,
-          bookingDRNo: b.bookingDRNo,
-          clientName: b.clientName,
-          pickUpDate: b.pickupDate,
-          pickUpTime: formatTime12Hour(b.pickupTime),
-          driverName: b.driverName,
-          trucker: b.trucker,
-          helper: b.helpers.map((h) => h.helperName).join(", ") || "No Helper",
-          fleetType: b.fleetType,
-          plateNo: b.plateNumber,
-          ruta: b.ruta,
-          pickLocation: b.pickupLocation,
-          dropOffLocation: b.drops.length > 1
-            ? b.drops.map((d) => `• ${d.locationName}`).join("\n")
-            : b.drops.map((d) => d.locationName).join("\n") || "—",
-          bookedBy: b.bookedBy,
-          status:
-            (b.deliveryStatus as "Pending" | "In Transit" | "Completed") ||
-            "Pending",
-          date: b.pickupDate,
-          client: b.clientName,
-          driver: b.driverName,
-          unit: b.fleetType,
-          bookingDr: b.bookingDRNo,
-          noOfDrops: b.numberOfDrops,
-          tripRate: b.clientRate,
-          deliveryStatus: b.deliveryStatus || "Pending",
-          tripRemarks: b.tripRemarks || undefined,
-          truckerRate: b.truckerRate ?? "",
-          rawPickupTime: b.pickupTime,
-          rawHelpers: b.helpers.map((h) => ({
-            id: h.id,
-            helperName: h.helperName,
-          })),
-          rawDrops: b.drops.map((d) => ({ locationName: d.locationName })),
-          arrivalPickup: formatTimeHHMM(b.pickupArrivalTime),
-          loadingStart: formatTimeHHMM(b.loadingStartTime),
-          loadingEnd: formatTimeHHMM(b.loadingEndTime),
-          departurePickup: formatTimeHHMM(b.pickupDepartureTime),
-          finishDelivery: formatTimeHHMM(b.finishedDeliveryTime),
-          podFile: b.PODLink ? (b.PODLink.split("/").pop() ?? "") : "",
-          podFileUrl: b.PODLink ?? "",
-          podFileType: "",
-        }));
+        // Build map of previous odoEnds per truck plate number across bookings
+        const lastOdoEndForBooking: Record<string | number, number> = {};
+        const plateOdoTracker: Record<string, number> = {};
+
+        // Sort bookings chronologically by pickupDate / bookingDate / id
+        const sortedForOdo = [...res.data].sort((a, b) => {
+          const dateA = new Date(a.pickupDate || a.bookingDate || "").getTime();
+          const dateB = new Date(b.pickupDate || b.bookingDate || "").getTime();
+          if (dateA !== dateB) return dateA - dateB;
+          return Number(a.id) - Number(b.id);
+        });
+
+        sortedForOdo.forEach((b) => {
+          const isSub =
+            (b.trucker && b.trucker.toLowerCase().includes("subcon")) ||
+            (b.fleetType && b.fleetType.toLowerCase().includes("subcon")) ||
+            false;
+          const plate = b.plateNumber?.trim().toUpperCase();
+
+          if (!isSub && plate && plateOdoTracker[plate] !== undefined) {
+            lastOdoEndForBooking[b.id] = plateOdoTracker[plate];
+          }
+
+          if (!isSub && plate && b.odoDetails && b.odoDetails.length > 0) {
+            const validEnds = b.odoDetails
+              .map((o) => Number(o.odoEnd) || 0)
+              .filter((v) => v > 0);
+            if (validEnds.length > 0) {
+              plateOdoTracker[plate] = Math.max(...validEnds);
+            }
+          }
+        });
+
+        const mapped = res.data.map((b) => {
+          const isSub =
+            (b.trucker && b.trucker.toLowerCase().includes("subcon")) ||
+            (b.fleetType && b.fleetType.toLowerCase().includes("subcon")) ||
+            false;
+
+          return {
+            id: b.id,
+            displayBookingNo: b.displayBookingNo,
+            bookingDate: b.bookingDate,
+            bookingDRNo: b.bookingDRNo,
+            clientName: b.clientName,
+            pickUpDate: b.pickupDate,
+            pickUpTime: formatTime12Hour(b.pickupTime),
+            driverName: b.driverName,
+            trucker: b.trucker,
+            helper: b.helpers.map((h) => h.helperName).join(", ") || "No Helper",
+            fleetType: b.fleetType,
+            plateNo: b.plateNumber,
+            ruta: b.ruta,
+            pickLocation: b.pickupLocation,
+            dropOffLocation: b.drops.length > 1
+              ? b.drops.map((d) => `• ${d.locationName}`).join("\n")
+              : b.drops.map((d) => d.locationName).join("\n") || "—",
+            bookedBy: b.bookedBy,
+            status:
+              (b.deliveryStatus as "Pending" | "In Transit" | "Completed") ||
+              "Pending",
+            date: b.pickupDate,
+            client: b.clientName,
+            driver: b.driverName,
+            unit: b.fleetType,
+            bookingDr: b.bookingDRNo,
+            noOfDrops: b.numberOfDrops,
+            tripRate: b.clientRate,
+            deliveryStatus: b.deliveryStatus || "Pending",
+            tripRemarks: b.tripRemarks || undefined,
+            truckerRate: b.truckerRate ?? "",
+            rawPickupTime: b.pickupTime,
+            rawHelpers: b.helpers.map((h) => ({
+              id: h.id,
+              helperName: h.helperName,
+            })),
+            rawDrops: b.drops.map((d) => ({ locationName: d.locationName })),
+            arrivalPickup: formatTimeHHMM(b.pickupArrivalTime),
+            loadingStart: formatTimeHHMM(b.loadingStartTime),
+            loadingEnd: formatTimeHHMM(b.loadingEndTime),
+            departurePickup: formatTimeHHMM(b.pickupDepartureTime),
+            finishDelivery: formatTimeHHMM(b.finishedDeliveryTime),
+            podFile: b.PODLink ? (b.PODLink.split("/").pop() ?? "") : "",
+            podFileUrl: b.PODLink ?? "",
+            podFileType: "",
+            isSubcon: isSub,
+            lastRecordedOdoEnd: lastOdoEndForBooking[b.id] || 0,
+          };
+        });
 
         // Populate Odometer & Budget & Expenses initial data from database
         const initialOdoData: Record<string | number, NewTripDetailsFormData> =
           {};
+
         res.data.forEach((b) => {
+          const prevTruckOdoEnd = lastOdoEndForBooking[b.id] || 0;
+          const hasOdoDetails = b.odoDetails && b.odoDetails.length > 0;
+
+          let tripsData = hasOdoDetails
+            ? b.odoDetails.map((odo) => ({
+                tripNumber: odo.tripIndex,
+                odoStart: Number(odo.odoStart) || 0,
+                odoEnd: Number(odo.odoEnd) || 0,
+              }))
+            : [{ tripNumber: 1, odoStart: prevTruckOdoEnd, odoEnd: 0 }];
+
+          // If trip 1 has odoStart === 0 and there is a previous truck odoEnd, auto-link it
+          if (tripsData.length > 0 && tripsData[0].odoStart === 0 && prevTruckOdoEnd > 0) {
+            tripsData[0].odoStart = prevTruckOdoEnd;
+          }
+
+          const firstStart = tripsData[0]?.odoStart || 0;
+          const lastEnd = tripsData[tripsData.length - 1]?.odoEnd || 0;
+          const totalKm = Math.max(0, lastEnd - firstStart);
+
           initialOdoData[b.id] = {
-            tripType: b.odoDetails.length > 1 ? "multiple" : "single",
-            trips:
-              b.odoDetails.length > 0
-                ? b.odoDetails.map((odo) => ({
-                  tripNumber: odo.tripIndex,
-                  odoStart: odo.odoStart,
-                  odoEnd: odo.odoEnd,
-                }))
-                : [{ tripNumber: 1, odoStart: 0, odoEnd: 0 }],
-            totalKm:
-              b.odoDetails.length > 0
-                ? b.odoDetails[b.odoDetails.length - 1].odoEnd -
-                b.odoDetails[0].odoStart
-                : 0,
+            tripType: tripsData.length > 1 ? "multiple" : "single",
+            trips: tripsData,
+            totalKm: totalKm,
             budget: Number(b.budget || 0),
             budgetFrom: b.budgetFrom || "",
             rfidLoad: Number(b.rfidLoad || 0),

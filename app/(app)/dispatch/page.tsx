@@ -54,6 +54,7 @@ export const inputStyles = {
   input: {
     fontSize: "11px",
     fontWeight: 600,
+    textTransform: "uppercase" as const,
   },
 };
 
@@ -193,21 +194,21 @@ export default function DispatchPage() {
       .map((drop, index) => {
         return {
           sequenceNumber: index + 1,
-          locationName: drop.location,
+          locationName: drop.location.trim().toUpperCase(),
         };
       });
 
     const payload: CreateBookingInput = {
       bookingDate: new Date().toISOString().split("T")[0],
       bookedBy: userRole,
-      bookingDRNo: form.values.bookingDr ?? "",
+      bookingDRNo: (form.values.bookingDr ?? "").trim().toUpperCase(),
       clientId: selectedClient.id,
       clientName: selectedClient.clientName,
       clientRate: form.values.clientRate,
-      ruta: form.values.ruta,
+      ruta: (form.values.ruta ?? "").trim().toUpperCase(),
       pickupDate: form.values.pickupDate ? form.values.pickupDate.toISOString() : "",
       pickupTime: form.values.pickupTime,
-      pickupLocation: form.values.pickupLocation,
+      pickupLocation: (form.values.pickupLocation ?? "").trim().toUpperCase(),
       driverId: selectedDriver.id,
       driverName: selectedDriver.driverName,
       plateNumber: selectedTruck.plateNumber,
