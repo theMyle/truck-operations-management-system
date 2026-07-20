@@ -1,4 +1,4 @@
-import { eq, inArray, and, ne, sql } from "drizzle-orm";
+import { eq, inArray, and, ne, sql, ilike } from "drizzle-orm";
 import { db } from "../db";
 import { syncTruckStatusForPlate } from "../services/syncFleetStatus";
 import {
@@ -43,19 +43,23 @@ export const makeBookingRepository = (database = db) => {
       bookingDRNo: string,
       excludeId?: string,
     ): Promise<boolean> {
-      const normalized = bookingDRNo.trim().toLowerCase();
+      const normalized = bookingDRNo.trim();
       if (!normalized) return false;
 
-      const b = await database.query.booking.findFirst({
-        where: excludeId
-          ? and(
-              eq(sql`LOWER(${booking.bookingDRNo})`, normalized),
+      const rows = await database
+        .select({ id: booking.id })
+        .from(booking)
+        .where(
+          excludeId
+            ? and(
+              ilike(booking.bookingDRNo, normalized),
               ne(booking.id, excludeId),
             )
-          : eq(sql`LOWER(${booking.bookingDRNo})`, normalized),
-        columns: { id: true },
-      });
-      return !!b;
+            : ilike(booking.bookingDRNo, normalized)
+        )
+        .limit(1);
+
+      return rows.length > 0;
     },
 
     add: async function (
@@ -208,7 +212,7 @@ export const makeBookingRepository = (database = db) => {
 
       const toTs = (time?: string): Date | null => {
         if (!time || !data.pickupDate) return null;
-        const d = new Date(`${data.pickupDate}T${time}:00`);
+        const d = new Date(`${data.pickupDate}T${time}:00Z`);
         return isNaN(d.getTime()) ? null : d;
       };
 

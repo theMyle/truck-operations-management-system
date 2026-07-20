@@ -21,6 +21,7 @@ import {
 } from "@tabler/icons-react";
 import { DispatchRecord } from "@/app/(app)/constant";
 import { STATUS_META } from "./TripDetailsModal";
+import { toTitleCase } from "@/lib/utils/stringFormat";
 
 const headerCellStyle: React.CSSProperties = {
   fontSize: "9px",
@@ -45,9 +46,9 @@ const COLUMNS = [
   { key: "id", label: "Booking ID" },
   { key: "bookingDate", label: "Date Booked" },
   { key: "bookingDRNo", label: "Booking / DR#" },
+  { key: "pickUpDate", label: "Pickup Date" },
   { key: "clientName", label: "Client" },
   { key: "driverName", label: "Driver" },
-  { key: "pickUpDate", label: "Pickup Date" },
   { key: "pickUpTime", label: "Pickup Time" },
   { key: "status", label: "Status" },
   { key: "trucker", label: "Trucker" },
@@ -216,14 +217,15 @@ export function BookingTable({
                     {record.bookingDRNo || record.bookingDRNo || "—"}
                   </Table.Td>
                   <Table.Td style={cellStyle}>
+                    {record.pickUpDate || record.date || "—"}
+                  </Table.Td>
+                  <Table.Td style={cellStyle}>
                     {record.clientName || record.client || "—"}
                   </Table.Td>
                   <Table.Td style={cellStyle}>
-                    {record.driverName || record.driver || "—"}
+                    {(record.driverName || record.driver || "—").toUpperCase()}
                   </Table.Td>
-                  <Table.Td style={cellStyle}>
-                    {record.pickUpDate || record.date || "—"}
-                  </Table.Td>
+
                   <Table.Td style={cellStyle}>
                     {record.pickUpTime || "—"}
                   </Table.Td>
@@ -241,7 +243,7 @@ export function BookingTable({
                     </Badge>
                   </Table.Td>
                   <Table.Td style={cellStyle}>{record.trucker || "—"}</Table.Td>
-                  <Table.Td style={cellStyle}>{record.helper || "—"}</Table.Td>
+                  <Table.Td style={cellStyle}>{(record.helper || "—").toUpperCase()}</Table.Td>
                   <Table.Td style={cellStyle}>
                     {record.fleetType || record.unit || "—"}
                   </Table.Td>
@@ -275,7 +277,7 @@ export function BookingTable({
                     {record.dropOffLocation || "—"}
                   </Table.Td>
                   <Table.Td style={cellStyle}>
-                    {record.bookedBy || "—"}
+                    {toTitleCase(record.bookedBy)}
                   </Table.Td>
                 </Table.Tr>
               ))

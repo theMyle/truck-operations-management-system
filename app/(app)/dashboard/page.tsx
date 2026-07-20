@@ -6,6 +6,8 @@ import {
   getDailyOperations,
   getWeeklyOperations,
   getMonthlyOperations,
+  getOnTimeDeliveryStats,
+  getOperationsStartDate,
 } from "@/lib/repositories/queries/dashboard";
 import DashboardClient from "@/components/dashboard/DashboardClient";
 import { db } from "@/lib/db";
@@ -50,13 +52,16 @@ export default async function DashboardPage() {
     dailyOperations,
     weeklyData,
     monthlyData,
+    onTimeDeliveryStats,
     todayBookings,
+    operationsStartDate,
   ] = await Promise.all([
     getFleetStatusCounts(),
     getTruckList(),
     getDailyOperations(todayStr),
     getWeeklyOperations(weekDatesStr[0], weekDatesStr[6]),
     getMonthlyOperations(currentYear),
+    getOnTimeDeliveryStats(),
     db
       .select({ plateNumber: booking.plateNumber })
       .from(booking)
@@ -69,6 +74,7 @@ export default async function DashboardPage() {
           )
         )
       ),
+    getOperationsStartDate(),
   ]);
 
   const activePlatesToday = new Set(
@@ -111,8 +117,13 @@ export default async function DashboardPage() {
     const weekday = d.toLocaleDateString("en-US", { weekday: "short" });
     return {
       day: `${weekday} | ${month} ${dayStr}`,
+      date: dateStr,
       kts: weeklyData[dateStr]?.kts || 0,
       subcon: weeklyData[dateStr]?.subcon || 0,
+      ktsTrucks: weeklyData[dateStr]?.ktsTrucks || 0,
+      subconTrucks: weeklyData[dateStr]?.subconTrucks || 0,
+      completedDeliveries: weeklyData[dateStr]?.completedDeliveries || 0,
+      onTimeDeliveries: weeklyData[dateStr]?.onTimeDeliveries || 0,
     };
   });
 
@@ -128,6 +139,11 @@ export default async function DashboardPage() {
       day: monthName,
       kts: monthlyData[monthNum]?.kts || 0,
       subcon: monthlyData[monthNum]?.subcon || 0,
+      ktsTrucks: monthlyData[monthNum]?.ktsTrucks || 0,
+      subconTrucks: monthlyData[monthNum]?.subconTrucks || 0,
+      activeDays: monthlyData[monthNum]?.activeDays || 0,
+      completedDeliveries: monthlyData[monthNum]?.completedDeliveries || 0,
+      onTimeDeliveries: monthlyData[monthNum]?.onTimeDeliveries || 0,
     };
   });
 
@@ -138,6 +154,8 @@ export default async function DashboardPage() {
       dailyOperations={dailyOperations}
       weeklyOperations={weeklyOperations}
       monthlyOperations={monthlyOperations}
+      operationsStartDate={operationsStartDate || undefined}
+      todayStr={todayStr}
     />
   );
 }

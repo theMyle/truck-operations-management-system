@@ -103,7 +103,9 @@ export default function BookingRecordsPage() {
           plateNo: b.plateNumber,
           ruta: b.ruta,
           pickLocation: b.pickupLocation,
-          dropOffLocation: b.drops.map((d) => d.locationName).join(", ") || "—",
+          dropOffLocation: b.drops.length > 1
+            ? b.drops.map((d) => `• ${d.locationName}`).join("\n")
+            : b.drops.map((d) => d.locationName).join("\n") || "—",
           bookedBy: b.bookedBy,
           status:
             (b.deliveryStatus as "Pending" | "In Transit" | "Completed") ||

@@ -21,6 +21,7 @@ import {
   IconClipboardList,
 } from "@tabler/icons-react";
 import { DispatchRecord } from "@/app/(app)/constant";
+import { toTitleCase } from "@/lib/utils/stringFormat";
 
 const STATUS_COLOR: Record<string, string> = {
   Completed: "green",
@@ -226,8 +227,8 @@ export function TripLogsTable({
                     </Badge>
                   </Table.Td>
                   <Table.Td style={cellStyle}>{record.client || "—"}</Table.Td>
-                  <Table.Td style={cellStyle}>{record.driver || "—"}</Table.Td>
-                  <Table.Td style={cellStyle}>{record.helper || "—"}</Table.Td>
+                  <Table.Td style={cellStyle}>{(record.driver || "—").toUpperCase()}</Table.Td>
+                  <Table.Td style={cellStyle}>{(record.helper || "—").toUpperCase()}</Table.Td>
                   <Table.Td style={cellStyle}>{record.unit || "—"}</Table.Td>
                   <Table.Td style={{ ...cellStyle, fontFamily: "monospace" }}>
                     {record.plateNo || "—"}
@@ -246,7 +247,7 @@ export function TripLogsTable({
                     {record.bookingDr || "—"}
                   </Table.Td>
                   <Table.Td style={cellStyle}>
-                    {record.bookedBy || "—"}
+                    {toTitleCase(record.bookedBy)}
                   </Table.Td>
                 </Table.Tr>
               ))

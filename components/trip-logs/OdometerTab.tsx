@@ -11,26 +11,42 @@ import {
   TextInput,
   ActionIcon,
   Button,
+  ThemeIcon,
 } from "@mantine/core";
-import { IconTrash, IconPlus, IconRefresh } from "@tabler/icons-react";
+import { IconTrash, IconPlus, IconRefresh, IconAlertTriangle } from "@tabler/icons-react";
 import { UseFormReturnType } from "@mantine/form";
 import { NewTripDetailsFormData } from "./TripDetailsModal";
+import { DispatchRecord } from "@/app/(app)/constant";
 
 interface NewOdometerTabProps {
   form: UseFormReturnType<NewTripDetailsFormData>;
   setActiveTab: (tab: string) => void;
   handleReset: () => void;
+  record?: DispatchRecord | null;
 }
 
 export function NewOdometerTab({
   form,
   setActiveTab,
   handleReset,
+  record,
 }: NewOdometerTabProps) {
   /* ── Dynamic Calculations ── */
   const start = form.values.trips[0]?.odoStart || 0;
   const end = form.values.trips[form.values.trips.length - 1]?.odoEnd || 0;
   const totalKm = Math.max(0, end - start);
+
+  const isKtsTruck = record ? !record.isSubcon : true;
+  const lastRecordedEnd = record?.lastRecordedOdoEnd || 0;
+  const plateNumber = record?.plateNo || "this truck";
+  const enteredStart = form.values.trips[0]?.odoStart || 0;
+
+  const hasMismatch =
+    isKtsTruck &&
+    lastRecordedEnd > 0 &&
+    enteredStart !== lastRecordedEnd;
+
+  const difference = Math.abs(enteredStart - lastRecordedEnd);
 
   return (
     <Stack gap="sm">
@@ -49,6 +65,32 @@ export function NewOdometerTab({
             <Text style={{ fontSize: "13px" }} fw={900} c="blue.7">
               {totalKm} km
             </Text>
+          </Group>
+        </Paper>
+      )}
+
+      {hasMismatch && (
+        <Paper
+          withBorder
+          radius="sm"
+          p="xs"
+          style={{
+            background: "linear-gradient(135deg, var(--mantine-color-orange-0), var(--mantine-color-amber-0))",
+            borderColor: "var(--mantine-color-orange-3)",
+          }}
+        >
+          <Group gap={8} wrap="nowrap" align="flex-start">
+            <ThemeIcon color="orange" variant="light" size="sm" radius="xl" mt={2}>
+              <IconAlertTriangle size={14} />
+            </ThemeIcon>
+            <Stack gap={2} style={{ flex: 1 }}>
+              <Text style={{ fontSize: "11px" }} fw={700} c="orange.9">
+                Mismatch: Last recorded End ODO for {plateNumber} was {lastRecordedEnd.toLocaleString()} km. You entered {enteredStart.toLocaleString()} km (gap: {difference.toLocaleString()} km).
+              </Text>
+              <Text style={{ fontSize: "9px" }} c="orange.8">
+                Note: This is a heads-up warning and will not block saving.
+              </Text>
+            </Stack>
           </Group>
         </Paper>
       )}

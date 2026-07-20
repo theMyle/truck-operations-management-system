@@ -46,6 +46,7 @@ export interface NewTripDetailsFormData {
     // expenses
     driverRate: number;
     helperRate: number;
+    helperRates?: Record<string, number>;
     expenses: Expenses[];
 }
 
@@ -169,19 +170,37 @@ export function TripDetailsModal({
 
     const manpowerOptions = useMemo(() => {
         if (!record) return [];
-        const items = (
-            [
-                record.driver
-                    ? { value: record.driver, label: `${record.driver} (Driver)` }
-                    : null,
-                record.helper
-                    ? { value: record.helper, label: `${record.helper} (Helper)` }
-                    : null,
-                record.trucker
-                    ? { value: record.trucker, label: `${record.trucker} (Trucker)` }
-                    : null,
-            ] as ({ value: string; label: string } | null)[]
-        ).filter((o): o is { value: string; label: string } => o !== null);
+
+        const helperList: string[] = [];
+        if (record.rawHelpers && record.rawHelpers.length > 0) {
+            record.rawHelpers.forEach((h) => {
+                if (h.helperName && !helperList.includes(h.helperName)) {
+                    helperList.push(h.helperName);
+                }
+            });
+        } else if (record.helper) {
+            record.helper.split(",").forEach((hName) => {
+                const trimmed = hName.trim();
+                if (trimmed && trimmed !== "No Helper" && !helperList.includes(trimmed)) {
+                    helperList.push(trimmed);
+                }
+            });
+        }
+
+        const helperOptions = helperList.map((name) => ({
+            value: name,
+            label: `${name} (Helper)`,
+        }));
+
+        const items = [
+            record.driver
+                ? { value: record.driver, label: `${record.driver} (Driver)` }
+                : null,
+            ...helperOptions,
+            record.trucker
+                ? { value: record.trucker, label: `${record.trucker} (Trucker)` }
+                : null,
+        ].filter((o): o is { value: string; label: string } => o !== null);
 
         const seen = new Set<string>();
         return items.filter((item) => {
@@ -326,6 +345,7 @@ export function TripDetailsModal({
                             form={form}
                             setActiveTab={setActiveTab}
                             handleReset={handleReset}
+                            record={record}
                         />
                     </Tabs.Panel>
 

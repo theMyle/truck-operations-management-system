@@ -1,5 +1,5 @@
 {
-  "id": "9ff957a4-ddd7-4427-a651-b4e3c14b6446",
+  "id": "7cc64cdc-12fa-481b-812f-b63a3bf53a6d",
   "prevId": "f396edfb-5467-4a16-9963-70a65eb2aa82",
   "version": "7",
   "dialect": "postgresql",
@@ -788,38 +788,6 @@
           "type": "numeric(10, 2)",
           "primaryKey": false,
           "notNull": false
-        },
-        "billingStatus": {
-          "name": "billingStatus",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'unpaid'"
-        },
-        "soaNumber": {
-          "name": "soaNumber",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "invoiceDate": {
-          "name": "invoiceDate",
-          "type": "date",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "dueDate": {
-          "name": "dueDate",
-          "type": "date",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "amountPaid": {
-          "name": "amountPaid",
-          "type": "numeric(10, 2)",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'0.00'"
         }
       },
       "indexes": {},
@@ -871,6 +839,13 @@
           "nullsNotDistinct": false,
           "columns": [
             "displayBookingNo"
+          ]
+        },
+        "booking_bookingDRNo_unique": {
+          "name": "booking_bookingDRNo_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "bookingDRNo"
           ]
         }
       },
