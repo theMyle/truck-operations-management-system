@@ -40,6 +40,8 @@ import {
   IconX,
   IconFileSpreadsheet,
   IconChevronDown,
+  IconTrash,
+  IconError404,
 } from "@tabler/icons-react";
 import * as XLSX from "xlsx-js-style";
 
@@ -47,8 +49,10 @@ import { DispatchRecord } from "../constant";
 import { usePodDownload, type PodRecord } from "@/app/hooks/usePodDownload";
 import { SummaryCard } from "@/components/billing/SummaryCard";
 import { getBillingRecordsAction } from "@/lib/actions/billing";
+import { deleteBookingAction } from "@/lib/actions/booking";
 import { getAllClientsAction } from "@/lib/actions/clients";
 import { getTruckAction } from "@/lib/actions/trucks";
+import { DeleteConfirmModal } from "@/components/booking/DeleteConfirmModal";
 import { BILLING_TABLE_HEADERS } from "@/components/ui/ModuleSkeletons";
 import { TableSkeleton } from "@/components/ui/TableSkeleton";
 import { formatTime12Hour } from "@/lib/utils/stringFormat";
@@ -178,6 +182,43 @@ export default function BillingModule() {
   // ── DB records — fetched on Generate, not on mount ──
   const [records, setRecords] = useState<BillingRecord[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+
+  const [deleteRecord, setDeleteRecord] = useState<BillingRecord | null>(null);
+  const [deleteOpened, setDeleteOpened] = useState(false);
+
+  const handleDeleteClick = (record: BillingRecord) => {
+    setDeleteRecord(record);
+    setDeleteOpened(true);
+  };
+
+  const handleDeleteConfirm = async (password: string) => {
+    if (!deleteRecord) return;
+
+    const result = await deleteBookingAction({
+      id: String(deleteRecord.id),
+      password,
+    });
+
+    if (result?.serverError) {
+      notifications.show({
+        title: "Error",
+        message: result.serverError,
+        color: "red",
+        icon: <IconError404 size={16} />,
+      });
+      return { serverError: result.serverError };
+    }
+
+    setRecords((prev) => prev.filter((r) => r.id !== deleteRecord.id));
+    setDeleteOpened(false);
+    setDeleteRecord(null);
+    notifications.show({
+      title: "Record deleted",
+      message: `Billing record #${deleteRecord.bookingDr || deleteRecord.id} has been removed.`,
+      color: "red",
+      icon: <IconTrash size={16} />,
+    });
+  };
 
   const [filterModalOpen, setFilterModalOpen] = useState(true);
   const [pendingFilters, setPendingFilters] = useState<BillingFilters>({
@@ -948,6 +989,7 @@ export default function BillingModule() {
                   <Table.Thead>
                     <Table.Tr>
                       {[
+                        "Actions",
                         "Date",
                         "Client",
                         "Fleet Type",
@@ -1032,6 +1074,22 @@ export default function BillingModule() {
                     ) : (
                       paginated.map((record) => (
                         <Table.Tr key={record.id}>
+                          <Table.Td style={cell}>
+                            <Tooltip label="Delete Record" withArrow position="top" fz={10}>
+                              <ActionIcon
+                                variant="light"
+                                color="red"
+                                size="sm"
+                                radius="sm"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDeleteClick(record);
+                                }}
+                              >
+                                <IconTrash size={13} />
+                              </ActionIcon>
+                            </Tooltip>
+                          </Table.Td>
                           <Table.Td style={cell}>{record.date}</Table.Td>
                           <Table.Td style={cell}>{record.client}</Table.Td>
                           <Table.Td style={cell}>
@@ -1158,6 +1216,15 @@ export default function BillingModule() {
           )}
         </Stack>
       </ScrollArea>
+      <DeleteConfirmModal
+        opened={deleteOpened}
+        onClose={() => {
+          setDeleteOpened(false);
+          setDeleteRecord(null);
+        }}
+        onConfirm={handleDeleteConfirm}
+        itemLabel={deleteRecord ? `Booking #${deleteRecord.bookingDr || deleteRecord.displayBookingNo || deleteRecord.id}` : ""}
+      />
     </Box>
   );
 }
