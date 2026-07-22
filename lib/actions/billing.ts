@@ -155,10 +155,7 @@ export const getBillingRecordsAction = actionClient
       autoCash: b.autoCash ?? null,
       driverRate: b.driverRate ?? null,
       helperRate: b.helperRate ?? null,
-      billingStatus:
-        b.clientName && b.clientName.toLowerCase().includes("transportify")
-          ? "paid"
-          : b.billingStatus ?? "unbilled",
+      billingStatus: b.billingStatus ?? "unbilled",
       soaNumber: b.soaNumber ?? "",
       invoiceDate: b.invoiceDate ?? "",
       dueDate: b.dueDate ?? "",

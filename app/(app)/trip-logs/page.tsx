@@ -431,7 +431,16 @@ export default function DispatchRecordsPage() {
             (b.trucker && b.trucker.toLowerCase().includes("subcon")) ||
             (b.fleetType && b.fleetType.toLowerCase().includes("subcon")) ||
             false;
-          return !isSub;
+
+          if (isSub) return false;
+
+          // Exclude KTS bookings that have completed trip logs (odoEnd > 0), as they have moved to Billing!
+          const isCompletedTripLog =
+            b.odoDetails &&
+            b.odoDetails.length > 0 &&
+            b.odoDetails.some((o: any) => Number(o.odoEnd) > 0);
+
+          return !isCompletedTripLog;
         });
 
         const mapped = ktsBookings.map((b: any) => {
@@ -496,10 +505,10 @@ export default function DispatchRecordsPage() {
 
           let tripsData = hasOdoDetails
             ? b.odoDetails.map((odo: any) => ({
-                tripNumber: odo.tripIndex,
-                odoStart: Number(odo.odoStart) || 0,
-                odoEnd: Number(odo.odoEnd) || 0,
-              }))
+              tripNumber: odo.tripIndex,
+              odoStart: Number(odo.odoStart) || 0,
+              odoEnd: Number(odo.odoEnd) || 0,
+            }))
             : [{ tripNumber: 1, odoStart: prevTruckOdoEnd, odoEnd: 0 }];
 
           // If trip 1 has odoStart === 0 and there is a previous truck odoEnd, auto-link it
@@ -707,17 +716,25 @@ export default function DispatchRecordsPage() {
       return;
     }
 
-    // Update local state and trigger refresh
     setDetailsData((prev) => ({ ...prev, [seletectedTrip.id]: data }));
     setDetailsOpened(false);
-    notifications.show({
-      title: "Saved",
-      message: `Details for #${seletectedTrip.id} saved.`,
-      color: "blue",
-    });
 
-    // Re-load bookings to sync with DB
-    window.location.reload();
+    const isCompleted = data.trips && data.trips.some((t) => Number(t.odoEnd) > 0);
+
+    if (isCompleted) {
+      setRecords((prev) => prev.filter((r) => r.id !== seletectedTrip.id));
+      notifications.show({
+        title: "Trip Log Completed",
+        message: `Trip Log #${seletectedTrip.id} completed & transferred to Billing!`,
+        color: "green",
+      });
+    } else {
+      notifications.show({
+        title: "Saved",
+        message: `Details for #${seletectedTrip.id} saved.`,
+        color: "blue",
+      });
+    }
   };
 
   useEffect(() => {
