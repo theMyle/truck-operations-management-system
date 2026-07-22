@@ -476,7 +476,7 @@ export function TripDetailsModal({
       podFileUrl: record?.podFileUrl ?? "",
       podFileType: record?.podFileType ?? "",
       tripRemarks: record?.tripRemarks ?? "",
-      bookingDRNo: record?.bookingDRNo ?? "",
+      bookingDRNo: record?.bookingDRNo || record?.bookingDr || "",
     }),
     [record],
   );

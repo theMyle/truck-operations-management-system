@@ -227,6 +227,7 @@ export const makeBookingRepository = (database = db) => {
           deliveryStatus: data.deliveryStatus,
           tripRemarks: data.tripRemarks ?? null,
           PODLink: data.PODLink ?? null,
+          bookingDRNo: data.bookingDRNo || undefined,
         })
         .where(eq(booking.id, data.id));
 

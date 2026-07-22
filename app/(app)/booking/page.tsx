@@ -279,6 +279,8 @@ export default function BookingRecordsPage() {
         return {
           ...r,
           ...form,
+          bookingDRNo: form.bookingDRNo || r.bookingDRNo || r.bookingDr || "",
+          bookingDr: form.bookingDRNo || r.bookingDr || r.bookingDRNo || "",
           status: form.deliveryStatus as DispatchRecord["status"],
         };
       });
