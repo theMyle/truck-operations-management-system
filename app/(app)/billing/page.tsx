@@ -21,6 +21,7 @@ import {
   Menu,
   Checkbox,
   SegmentedControl,
+  Alert,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import React, {
@@ -45,6 +46,13 @@ import {
   IconEdit,
   IconTrash,
   IconError404,
+  IconAlertTriangle,
+  IconTruckDelivery,
+  IconReceiptTax,
+  IconCash,
+  IconClockHour4,
+  IconAlertCircle,
+  IconCheck,
 } from "@tabler/icons-react";
 import * as XLSX from "xlsx-js-style";
 
@@ -59,7 +67,7 @@ import { getTruckAction } from "@/lib/actions/trucks";
 import { DeleteConfirmModal } from "@/components/booking/DeleteConfirmModal";
 import { BILLING_TABLE_HEADERS } from "@/components/ui/ModuleSkeletons";
 import { TableSkeleton } from "@/components/ui/TableSkeleton";
-import { formatTime12Hour, generateSoaNumber } from "@/lib/utils/stringFormat";
+import { formatTime12Hour } from "@/lib/utils/stringFormat";
 
 export type BillingRecord = DispatchRecord & {
   tripRate?: string | number;
@@ -104,18 +112,39 @@ const STATUS_COLOR: Record<string, string> = {
 };
 
 const BILL_STATUS_COLOR: Record<string, string> = {
-  paid: "green",
+  unbilled: "gray",
   unpaid: "gray",
+  pending: "blue",
   partially_paid: "orange",
+  paid: "green",
   overdue: "red",
 };
 
 const BILL_STATUS_LABEL: Record<string, string> = {
-  paid: "Paid",
-  unpaid: "Unpaid",
+  unbilled: "For Billing",
+  unpaid: "For Billing",
+  pending: "Pending",
   partially_paid: "Partially Paid",
+  paid: "Paid",
   overdue: "Overdue",
 };
+
+export function getRecordBillStatusKey(r: BillingRecord): string {
+  const amountPaidVal = Number(r.amountPaid) || 0;
+  const clientRateVal = Number(r.tripRate) || 0;
+
+  if (amountPaidVal >= clientRateVal && clientRateVal > 0) return "paid";
+  if (amountPaidVal > 0 && amountPaidVal < clientRateVal) return "partially_paid";
+  if (r.dueDate) {
+    const due = new Date(r.dueDate);
+    const today = new Date();
+    due.setHours(0, 0, 0, 0);
+    today.setHours(0, 0, 0, 0);
+    if (today > due && amountPaidVal < clientRateVal) return "overdue";
+  }
+  if (r.soaNumber && r.soaNumber.trim().length > 0) return "pending";
+  return r.billingStatus || "unbilled";
+}
 
 const cell: React.CSSProperties = {
   fontSize: "12px",
@@ -260,11 +289,13 @@ export default function BillingModule() {
   const [podPreview, setPodPreview] = useState<BillingRecord | null>(null);
 
   // ── Billing Status and SoA Modals States ──
-  const [billStatusFilter, setBillStatusFilter] = useState<string | null>(null);
+  const [billStatusFilter, setBillStatusFilter] = useState<string | null>("unbilled");
   const [billingModalOpen, setBillingModalOpen] = useState(false);
   const [selectedBillingRecord, setSelectedBillingRecord] = useState<BillingRecord | null>(null);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [soaModalOpen, setSoaModalOpen] = useState(false);
+  const [soaWarningOpened, setSoaWarningOpened] = useState(false);
+  const [soaWarningRecords, setSoaWarningRecords] = useState<BillingRecord[]>([]);
 
   const [soaNumberInput, setSoaNumberInput] = useState("");
   const [invoiceDateInput, setInvoiceDateInput] = useState("");
@@ -273,14 +304,28 @@ export default function BillingModule() {
   const [isSavingBilling, setIsSavingBilling] = useState(false);
   const [soaPrintOpen, setSoaPrintOpen] = useState(false);
 
+  const handleGenerateSoaClick = () => {
+    const targetRecords =
+      selectedIds.length > 0
+        ? filtered.filter((r) => selectedIds.includes(String(r.id)))
+        : filtered;
+
+    const alreadyBilled = targetRecords.filter(
+      (r) => r.soaNumber && r.soaNumber.trim().length > 0
+    );
+
+    if (alreadyBilled.length > 0) {
+      setSoaWarningRecords(alreadyBilled);
+      setSoaWarningOpened(true);
+    } else {
+      setSoaModalOpen(true);
+    }
+  };
+
   const openBillingModal = (record: BillingRecord) => {
     setSelectedBillingRecord(record);
-    const existingSoas = records
-      .map((r) => r.soaNumber)
-      .filter((s): s is string => typeof s === "string" && s.trim().length > 0);
-    const autoSoa = record.soaNumber || generateSoaNumber(record.clientName || record.client || "", existingSoas);
-
-    setSoaNumberInput(autoSoa);
+    // Keep soaNumberInput as record.soaNumber || "" so unbilled records don't get auto-assigned an SOA
+    setSoaNumberInput(record.soaNumber || "");
     setInvoiceDateInput(record.invoiceDate ?? new Date().toISOString().split("T")[0]);
     setDueDateInput(
       record.dueDate ??
@@ -441,7 +486,11 @@ export default function BillingModule() {
         !q || Object.values(r).some((v) => String(v).toLowerCase().includes(q));
       const matchStatus = !statusFilter || r.status === statusFilter;
       const matchFleet = !fleetFilter || r.unit === fleetFilter;
-      const matchBillStatus = !billStatusFilter || r.billingStatus === billStatusFilter;
+      const matchBillStatus =
+        !billStatusFilter ||
+        (billStatusFilter === "unbilled"
+          ? r.billingStatus === "unbilled" || !r.billingStatus || !r.soaNumber || r.soaNumber.trim().length === 0
+          : r.billingStatus === billStatusFilter);
       return matchSearch && matchStatus && matchFleet && matchBillStatus;
     });
   }, [records, search, statusFilter, fleetFilter, billStatusFilter]);
@@ -521,7 +570,7 @@ export default function BillingModule() {
       "Rate (PHP)": numOrBlank(r.tripRate),
       "Amount Paid (PHP)": numOrBlank(r.amountPaid),
       "SoA #": r.soaNumber || "",
-      "Payment Status": BILL_STATUS_LABEL[r.billingStatus || "unpaid"],
+      "Payment Status": BILL_STATUS_LABEL[getRecordBillStatusKey(r)] || "For Billing",
       "Invoice Date": r.invoiceDate || "",
       "Due Date": r.dueDate || "",
       Status: r.status,
@@ -1030,7 +1079,7 @@ export default function BillingModule() {
                 size="xs"
                 leftSection={<IconFileInvoice size={13} />}
                 styles={{ label: { fontSize: "10px", fontWeight: 700 } }}
-                onClick={() => setSoaModalOpen(true)}
+                onClick={handleGenerateSoaClick}
                 disabled={!filtered.length}
               >
                 Generate SOA {selectedIds.length > 0 ? `(${selectedIds.length})` : ""}
@@ -1132,26 +1181,36 @@ export default function BillingModule() {
                     ? `of ${records.length} in period`
                     : "in period"
                 }
+                color="blue"
+                icon={<IconTruckDelivery size={18} />}
               />
               <SummaryCard
                 label="Total Amount"
                 value={`₱${stats.totalRate.toLocaleString()}`}
                 sub="billable rate"
+                color="indigo"
+                icon={<IconReceiptTax size={18} />}
               />
               <SummaryCard
                 label="Total Paid"
                 value={`₱${stats.totalPaid.toLocaleString()}`}
                 sub="recorded collections"
+                color="green"
+                icon={<IconCheck size={18} />}
               />
               <SummaryCard
                 label="Unpaid Balance"
                 value={`₱${stats.unpaidBalance.toLocaleString()}`}
                 sub="outstanding rate"
+                color="orange"
+                icon={<IconClockHour4 size={18} />}
               />
               <SummaryCard
                 label="Overdue Amount"
                 value={`₱${stats.overdueAmount.toLocaleString()}`}
                 sub="passed due date"
+                color="red"
+                icon={<IconAlertCircle size={18} />}
               />
             </SimpleGrid>
           )}
@@ -1161,32 +1220,113 @@ export default function BillingModule() {
             <SegmentedControl
               value={billStatusFilter || "all"}
               onChange={(val) => setBillStatusFilter(val === "all" ? null : val)}
+              color={billStatusFilter ? BILL_STATUS_COLOR[billStatusFilter] || "blue" : "dark"}
               data={[
-                { label: `All (${records.length})`, value: "all" },
                 {
-                  label: `For Billing (${records.filter((r) => r.billingStatus === "unbilled" || !r.billingStatus).length})`,
+                  label: (
+                    <Group gap={6} justify="center" wrap="nowrap">
+                      <Badge
+                        size="xs"
+                        color="gray"
+                        variant={billStatusFilter === "unbilled" ? "filled" : "light"}
+                        radius="xl"
+                        styles={{ root: { padding: "0 6px", height: 16, minWidth: 18 } }}
+                      >
+                        {records.filter((r) => r.billingStatus === "unbilled" || !r.billingStatus || !r.soaNumber || r.soaNumber.trim().length === 0).length}
+                      </Badge>
+                      <Text style={{ fontSize: "11px", fontWeight: 700 }}>For Billing</Text>
+                    </Group>
+                  ),
                   value: "unbilled",
                 },
                 {
-                  label: `Pending (${records.filter((r) => r.billingStatus === "pending").length})`,
+                  label: (
+                    <Group gap={6} justify="center" wrap="nowrap">
+                      <Badge
+                        size="xs"
+                        color="blue"
+                        variant={billStatusFilter === "pending" ? "filled" : "light"}
+                        radius="xl"
+                        styles={{ root: { padding: "0 6px", height: 16, minWidth: 18 } }}
+                      >
+                        {records.filter((r) => r.billingStatus === "pending" || (r.soaNumber && r.soaNumber.trim().length > 0 && r.billingStatus !== "paid" && r.billingStatus !== "partially_paid")).length}
+                      </Badge>
+                      <Text style={{ fontSize: "11px", fontWeight: 700 }}>Pending</Text>
+                    </Group>
+                  ),
                   value: "pending",
                 },
                 {
-                  label: `Partially Paid (${records.filter((r) => r.billingStatus === "partially_paid").length})`,
+                  label: (
+                    <Group gap={6} justify="center" wrap="nowrap">
+                      <Badge
+                        size="xs"
+                        color="orange"
+                        variant={billStatusFilter === "partially_paid" ? "filled" : "light"}
+                        radius="xl"
+                        styles={{ root: { padding: "0 6px", height: 16, minWidth: 18 } }}
+                      >
+                        {records.filter((r) => r.billingStatus === "partially_paid").length}
+                      </Badge>
+                      <Text style={{ fontSize: "11px", fontWeight: 700 }}>Partially Paid</Text>
+                    </Group>
+                  ),
                   value: "partially_paid",
                 },
                 {
-                  label: `Paid (${records.filter((r) => r.billingStatus === "paid").length})`,
+                  label: (
+                    <Group gap={6} justify="center" wrap="nowrap">
+                      <Badge
+                        size="xs"
+                        color="green"
+                        variant={billStatusFilter === "paid" ? "filled" : "light"}
+                        radius="xl"
+                        styles={{ root: { padding: "0 6px", height: 16, minWidth: 18 } }}
+                      >
+                        {records.filter((r) => r.billingStatus === "paid").length}
+                      </Badge>
+                      <Text style={{ fontSize: "11px", fontWeight: 700 }}>Paid</Text>
+                    </Group>
+                  ),
                   value: "paid",
                 },
                 {
-                  label: `Overdue (${records.filter((r) => r.billingStatus === "overdue").length})`,
+                  label: (
+                    <Group gap={6} justify="center" wrap="nowrap">
+                      <Badge
+                        size="xs"
+                        color="red"
+                        variant={billStatusFilter === "overdue" ? "filled" : "light"}
+                        radius="xl"
+                        styles={{ root: { padding: "0 6px", height: 16, minWidth: 18 } }}
+                      >
+                        {records.filter((r) => r.billingStatus === "overdue").length}
+                      </Badge>
+                      <Text style={{ fontSize: "11px", fontWeight: 700 }}>Overdue</Text>
+                    </Group>
+                  ),
                   value: "overdue",
+                },
+                {
+                  label: (
+                    <Group gap={6} justify="center" wrap="nowrap">
+                      <Badge
+                        size="xs"
+                        color="dark"
+                        variant={billStatusFilter === null ? "filled" : "light"}
+                        radius="xl"
+                        styles={{ root: { padding: "0 6px", height: 16, minWidth: 18 } }}
+                      >
+                        {records.length}
+                      </Badge>
+                      <Text style={{ fontSize: "11px", fontWeight: 700 }}>All</Text>
+                    </Group>
+                  ),
+                  value: "all",
                 },
               ]}
               size="xs"
               radius="md"
-              styles={{ label: { fontSize: "11px", fontWeight: 700 } }}
               fullWidth
             />
           )}
@@ -1511,14 +1651,14 @@ export default function BillingModule() {
                           <Table.Td style={cell}>
                             <Badge
                               variant="light"
-                              color={BILL_STATUS_COLOR[record.billingStatus || "unpaid"]}
+                              color={BILL_STATUS_COLOR[getRecordBillStatusKey(record)] ?? "gray"}
                               radius="md"
                               styles={{
                                 root: { height: 18 },
                                 label: { fontSize: "9px", fontWeight: 700 },
                               }}
                             >
-                              {BILL_STATUS_LABEL[record.billingStatus || "unpaid"]}
+                              {BILL_STATUS_LABEL[getRecordBillStatusKey(record)] ?? "For Billing"}
                             </Badge>
                           </Table.Td>
                           <Table.Td style={cell}>
@@ -1577,6 +1717,25 @@ export default function BillingModule() {
         centered
       >
         <Stack gap="sm">
+          {selectedBillingRecord && getRecordBillStatusKey(selectedBillingRecord) === "paid" ? (
+            <Alert
+              color="red"
+              icon={<IconAlertTriangle size={15} />}
+              radius="sm"
+              styles={{ title: { fontSize: "11px", fontWeight: 700 }, message: { fontSize: "11px" } }}
+            >
+              🔒 Locked Paid Record: This trip is fully Paid. The Statement of Account (SOA #) is permanently locked and cannot be edited.
+            </Alert>
+          ) : selectedBillingRecord?.soaNumber ? (
+            <Alert
+              color="orange"
+              icon={<IconAlertTriangle size={15} />}
+              radius="sm"
+              styles={{ title: { fontSize: "11px", fontWeight: 700 }, message: { fontSize: "11px" } }}
+            >
+              Notice: This record already has an assigned SOA (<strong>{selectedBillingRecord.soaNumber}</strong>). Updating will modify existing SOA details.
+            </Alert>
+          ) : null}
           {selectedBillingRecord && (
             <Paper withBorder p="xs" bg="gray.0" radius="sm">
               <Stack gap={4}>
@@ -1591,6 +1750,7 @@ export default function BillingModule() {
             label="Statement of Account (SoA) #"
             placeholder="e.g. SOA-2025-001"
             value={soaNumberInput}
+            disabled={Boolean(selectedBillingRecord && getRecordBillStatusKey(selectedBillingRecord) === "paid")}
             onChange={(e) => setSoaNumberInput(e.currentTarget.value)}
             radius="md"
           />
@@ -1789,6 +1949,71 @@ export default function BillingModule() {
           handleGenerate();
         }}
       />
+
+      {/* ══ EXISTING SOA WARNING MODAL ══ */}
+      <Modal
+        opened={soaWarningOpened}
+        onClose={() => setSoaWarningOpened(false)}
+        title={
+          <Group gap={8}>
+            <IconAlertTriangle size={18} color="var(--mantine-color-orange-6)" />
+            <Text fw={700} size="sm">
+              SOA Already Generated
+            </Text>
+          </Group>
+        }
+        centered
+        radius="md"
+        size="lg"
+      >
+        <Stack gap="sm">
+          <Alert
+            color="orange"
+            icon={<IconAlertTriangle size={16} />}
+            title="Existing Statement of Account Detected"
+            styles={{ title: { fontSize: "12px", fontWeight: 700 }, message: { fontSize: "11px" } }}
+          >
+            The following record(s) already have a generated Statement of Account (SOA). Generating a new SOA is restricted for records that have already been billed.
+          </Alert>
+
+          <Paper withBorder p="xs" bg="gray.0" radius="sm">
+            <Stack gap={6}>
+              {soaWarningRecords.map((r) => {
+                const isPaid = getRecordBillStatusKey(r) === "paid";
+                return (
+                  <Text key={r.id} style={{ fontSize: "11px" }}>
+                    • <strong>DR #: {r.bookingDr || r.bookingDRNo || r.displayBookingNo || "N/A"}</strong> — SOA #: <strong style={{ color: "var(--mantine-color-blue-7)" }}>{r.soaNumber}</strong> ({r.client}) {isPaid && <strong style={{ color: "var(--mantine-color-red-6)" }}>[Paid - SOA Locked]</strong>}
+                  </Text>
+                );
+              })}
+            </Stack>
+          </Paper>
+
+          <Text size="xs" c="dimmed">
+            Would you like to edit the existing SOA details instead?
+          </Text>
+
+          <Group justify="flex-end" mt="xs" gap="sm">
+            <Button
+              variant="default"
+              size="xs"
+              onClick={() => setSoaWarningOpened(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              color="orange"
+              size="xs"
+              onClick={() => {
+                setSoaWarningOpened(false);
+                setSoaModalOpen(true);
+              }}
+            >
+              Edit Existing SOA
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
 
       <DeleteConfirmModal
         opened={deleteOpened}

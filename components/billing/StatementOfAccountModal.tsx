@@ -2,6 +2,7 @@
 
 import React, { useState, useMemo } from "react";
 import {
+  Alert,
   Modal,
   Stack,
   Group,
@@ -21,6 +22,7 @@ import {
   IconDownload,
   IconPrinter,
   IconCheck,
+  IconAlertTriangle,
 } from "@tabler/icons-react";
 import { notifications } from "@mantine/notifications";
 import * as XLSX from "xlsx-js-style";
@@ -504,6 +506,31 @@ export function StatementOfAccountModal({
       scrollAreaComponent={ScrollArea.Autosize}
     >
       <Stack gap="md">
+        {selectedRecords.some(
+          (r) =>
+            r.billingStatus === "paid" ||
+            (Number(r.amountPaid || 0) >= Number(r.tripRate || 0) && Number(r.tripRate || 0) > 0)
+        ) ? (
+          <Alert
+            color="red"
+            icon={<IconAlertTriangle size={16} />}
+            radius="md"
+            title="SOA Locked (Paid Record)"
+            styles={{ title: { fontSize: "12px", fontWeight: 700 }, message: { fontSize: "11px" } }}
+          >
+            🔒 One or more selected records are marked as Paid. SOA numbers for Paid trips are permanently locked and cannot be edited.
+          </Alert>
+        ) : selectedRecords.some((r) => r.soaNumber && r.soaNumber.trim().length > 0) ? (
+          <Alert
+            color="orange"
+            icon={<IconAlertTriangle size={16} />}
+            radius="md"
+            title="Existing SOA Detected"
+            styles={{ title: { fontSize: "12px", fontWeight: 700 }, message: { fontSize: "11px" } }}
+          >
+            One or more selected records already have a generated Statement of Account (SOA). Saving will update/revise the existing SOA details instead of issuing a new one.
+          </Alert>
+        ) : null}
         {/* Header Controls */}
         <Paper withBorder p="sm" radius="sm" bg="gray.0">
           <SimpleGrid cols={3} spacing="sm">
@@ -512,6 +539,11 @@ export function StatementOfAccountModal({
               placeholder="e.g. KTS-IPI-2026-010"
               size="xs"
               value={soaNumber}
+              disabled={selectedRecords.some(
+                (r) =>
+                  r.billingStatus === "paid" ||
+                  (Number(r.amountPaid || 0) >= Number(r.tripRate || 0) && Number(r.tripRate || 0) > 0)
+              )}
               onChange={(e) => setSoaNumber(e.currentTarget.value.toUpperCase())}
             />
             <TextInput
