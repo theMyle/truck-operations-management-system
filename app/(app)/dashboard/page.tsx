@@ -154,6 +154,7 @@ export default async function DashboardPage() {
       dailyOperations={dailyOperations}
       weeklyOperations={weeklyOperations}
       monthlyOperations={monthlyOperations}
+      onTimeDeliveryStats={onTimeDeliveryStats}
       operationsStartDate={operationsStartDate || undefined}
       todayStr={todayStr}
     />

@@ -193,3 +193,28 @@ export const updateTripDetailAction = actionClient
   .action(async ({ parsedInput }) => {
     await bookingRepository.updateTripFinanceOdo(parsedInput);
   });
+
+export const getDailyOnTimeDeliveryBreakdownAction = actionClient
+  .schema(z.object({ date: z.string().optional() }))
+  .action(async ({ parsedInput }) => {
+    const { getDailyOnTimeDeliveryBreakdown } = await import(
+      "../repositories/queries/dashboard"
+    );
+    return await getDailyOnTimeDeliveryBreakdown(parsedInput.date);
+  });
+
+export const updateTripRemarksAction = actionClient
+  .schema(
+    z.object({
+      bookingId: z.string(),
+      tripRemarks: z.string(),
+    })
+  )
+  .action(async ({ parsedInput }) => {
+    await db
+      .update(booking)
+      .set({ tripRemarks: parsedInput.tripRemarks })
+      .where(eq(booking.id, parsedInput.bookingId));
+    revalidatePath("/dashboard");
+    return { success: true };
+  });

@@ -2,6 +2,7 @@ import { db } from "@/lib/db";
 import { booking } from "@/lib/db/schema/booking";
 import { trucks } from "@/lib/db/schema/trucks";
 import { eq, and, sql, gte, lte } from "drizzle-orm";
+import { formatTime12Hour } from "@/lib/utils/stringFormat";
 
 export async function getDailyOperations(dateStr: string) {
   const result = await db
@@ -312,5 +313,93 @@ export async function getOperationsStartDate() {
     .select({ minDate: sql<string>`min(${booking.pickupDate})` })
     .from(booking);
   return result[0]?.minDate || null;
+}
+
+export async function getDailyOnTimeDeliveryBreakdown(targetDate?: string) {
+  const dateToUse = targetDate || new Date().toISOString().split("T")[0];
+
+  const result = await db
+    .select({
+      id: booking.id,
+      bookingDRNo: booking.bookingDRNo,
+      clientName: booking.clientName,
+      driverName: booking.driverName,
+      plateNumber: booking.plateNumber,
+      pickupDate: booking.pickupDate,
+      pickupTime: booking.pickupTime,
+      pickupArrivalTime: booking.pickupArrivalTime,
+      deliveryStatus: booking.deliveryStatus,
+      tripRemarks: booking.tripRemarks,
+    })
+    .from(booking)
+    .where(
+      and(
+        eq(booking.pickupDate, dateToUse),
+        sql`${booking.pickupArrivalTime} IS NOT NULL`
+      )
+    );
+
+  let onTimeCount = 0;
+  let lateCount = 0;
+
+  const trips = result.map((row) => {
+    let isOnTime = true;
+    let delayMinutes = 0;
+
+    if (row.pickupDate && row.pickupTime && row.pickupArrivalTime) {
+      try {
+        const scheduled = new Date(`${row.pickupDate} ${row.pickupTime}`);
+        const actual = new Date(row.pickupArrivalTime);
+        if (!isNaN(scheduled.getTime()) && !isNaN(actual.getTime())) {
+          if (actual > scheduled) {
+            isOnTime = false;
+            delayMinutes = Math.round((actual.getTime() - scheduled.getTime()) / (1000 * 60));
+          }
+        }
+      } catch (e) {
+        // Ignore date parse errors
+      }
+    }
+
+    if (isOnTime) {
+      onTimeCount++;
+    } else {
+      lateCount++;
+    }
+
+    return {
+      id: row.id,
+      bookingDRNo: row.bookingDRNo || "—",
+      clientName: row.clientName || "—",
+      driverName: row.driverName || "—",
+      plateNumber: row.plateNumber || "—",
+      pickupDate: row.pickupDate || dateToUse,
+      pickupTime: row.pickupTime ? formatTime12Hour(row.pickupTime) : "—",
+      pickupArrivalTime: row.pickupArrivalTime
+        ? new Date(row.pickupArrivalTime).toLocaleTimeString("en-US", {
+            hour: "2-digit",
+            minute: "2-digit",
+            hour12: true,
+          })
+        : "—",
+      deliveryStatus: row.deliveryStatus || "Pending",
+      tripRemarks: row.tripRemarks || "",
+      isOnTime,
+      delayMinutes,
+    };
+  });
+
+  const totalDeliveries = trips.length;
+  const onTimePercentage =
+    totalDeliveries > 0 ? ((onTimeCount / totalDeliveries) * 100).toFixed(1) : "0.0";
+
+  return {
+    date: dateToUse,
+    totalDeliveries,
+    onTimeCount,
+    lateCount,
+    onTimePercentage,
+    trips,
+  };
 }
 
