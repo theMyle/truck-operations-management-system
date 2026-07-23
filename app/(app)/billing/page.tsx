@@ -307,6 +307,7 @@ export default function BillingModule() {
   const [selectedBillingRecord, setSelectedBillingRecord] = useState<BillingRecord | null>(null);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [soaModalOpen, setSoaModalOpen] = useState(false);
+  const [soaTargetType, setSoaTargetType] = useState<"client" | "subcon">("client");
   const [soaWarningOpened, setSoaWarningOpened] = useState(false);
   const [soaWarningRecords, setSoaWarningRecords] = useState<BillingRecord[]>([]);
 
@@ -317,11 +318,25 @@ export default function BillingModule() {
   const [isSavingBilling, setIsSavingBilling] = useState(false);
   const [soaPrintOpen, setSoaPrintOpen] = useState(false);
 
-  const handleGenerateSoaClick = () => {
-    const targetRecords =
+  const handleGenerateSoaClick = (target: "client" | "subcon" = "client") => {
+    setSoaTargetType(target);
+    let targetRecords =
       selectedIds.length > 0
         ? filtered.filter((r) => selectedIds.includes(String(r.id)))
         : filtered;
+
+    if (target === "subcon") {
+      const subconOnly = targetRecords.filter((r) => isSubconRecord(r, subconPlates));
+      if (subconOnly.length === 0) {
+        notifications.show({
+          title: "No Subcon Trips Selected",
+          message: "Please select at least one Subcon trip to generate a Subcon SOA.",
+          color: "orange",
+        });
+        return;
+      }
+      targetRecords = subconOnly;
+    }
 
     const alreadyBilled = targetRecords.filter(
       (r) => r.soaNumber && r.soaNumber.trim().length > 0
@@ -662,8 +677,7 @@ export default function BillingModule() {
     let overdueAmount = 0;
 
     filtered.forEach((r) => {
-      const isSub = isSubconRecord(r)
-      const rate = isSub ? Number(r.truckerRate || 0) : Number(r.tripRate || 0);
+      const rate = Number(r.tripRate || 0);
       const hasPod = Boolean(r.podFileUrl || r.podFile);
       const isTransportify =
         Boolean(r.clientName && String(r.clientName).toLowerCase().includes("transportify")) ||
@@ -1117,10 +1131,21 @@ export default function BillingModule() {
                 size="xs"
                 leftSection={<IconFileInvoice size={13} />}
                 styles={{ label: { fontSize: "10px", fontWeight: 700 } }}
-                onClick={handleGenerateSoaClick}
+                onClick={() => handleGenerateSoaClick("client")}
                 disabled={!filtered.length}
               >
-                Generate SOA {selectedIds.length > 0 ? `(${selectedIds.length})` : ""}
+                Client SOA {selectedIds.length > 0 ? `(${selectedIds.length})` : ""}
+              </Button>
+              <Button
+                variant="filled"
+                color="teal"
+                size="xs"
+                leftSection={<IconTruckDelivery size={13} />}
+                styles={{ label: { fontSize: "10px", fontWeight: 700 } }}
+                onClick={() => handleGenerateSoaClick("subcon")}
+                disabled={!filtered.length}
+              >
+                Subcon SOA {selectedIds.length > 0 ? `(${selectedIds.length})` : ""}
               </Button>
               {activeFilters?.client && (
                 <Button
@@ -1979,10 +2004,16 @@ export default function BillingModule() {
       <StatementOfAccountModal
         opened={soaModalOpen}
         onClose={() => setSoaModalOpen(false)}
+        targetType={soaTargetType}
         selectedRecords={
-          selectedIds.length > 0
-            ? filtered.filter((r) => selectedIds.includes(String(r.id)))
-            : filtered
+          soaTargetType === "subcon"
+            ? (selectedIds.length > 0
+                ? filtered.filter((r) => selectedIds.includes(String(r.id)))
+                : filtered
+              ).filter((r) => isSubconRecord(r, subconPlates))
+            : (selectedIds.length > 0
+                ? filtered.filter((r) => selectedIds.includes(String(r.id)))
+                : filtered)
         }
         onSuccess={() => {
           handleGenerate();
