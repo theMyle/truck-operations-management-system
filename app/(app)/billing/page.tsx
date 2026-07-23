@@ -93,6 +93,7 @@ export type BillingRecord = DispatchRecord & {
   invoiceDate?: string;
   dueDate?: string;
   amountPaid?: string;
+  isSubcon?: boolean;
 };
 
 type ExportRow = Record<string, string | number>;
@@ -144,6 +145,16 @@ export function getRecordBillStatusKey(r: BillingRecord): string {
   }
   if (r.soaNumber && r.soaNumber.trim().length > 0) return "pending";
   return r.billingStatus || "unbilled";
+}
+
+export function isSubconRecord(r: BillingRecord, subconPlates?: Set<string>): boolean {
+  if (r.isSubcon) return true;
+  const plate = (r.plateNo || "").trim().toUpperCase();
+  if (plate && subconPlates && subconPlates.has(plate)) return true;
+  if (r.trucker && r.trucker.toLowerCase().includes("subcon")) return true;
+  if (r.unit && r.unit.toLowerCase().includes("subcon")) return true;
+  if (r.fleetType && r.fleetType.toLowerCase().includes("subcon")) return true;
+  return false;
 }
 
 const cell: React.CSSProperties = {
@@ -285,6 +296,8 @@ export default function BillingModule() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
   const [fleetFilter, setFleetFilter] = useState<string | null>(null);
+  const [truckCategoryFilter, setTruckCategoryFilter] = useState<string | null>(null);
+  const [subconPlates, setSubconPlates] = useState<Set<string>>(new Set());
   const [page, setPage] = useState(1);
   const [podPreview, setPodPreview] = useState<BillingRecord | null>(null);
 
@@ -433,6 +446,18 @@ export default function BillingModule() {
           setDbClients(clientsRes.data);
         }
         if (trucksRes?.data) {
+          const subconSet = new Set(
+            trucksRes.data
+              .filter(
+                (t) =>
+                  t.isSubcon ||
+                  (t.unitType || "").toLowerCase().includes("subcon") ||
+                  (t.fleetType || "").toLowerCase().includes("subcon"),
+              )
+              .map((t) => t.plateNumber.trim().toUpperCase()),
+          );
+          setSubconPlates(subconSet);
+
           const uniqueFleets = Array.from(
             new Set(
               trucksRes.data
@@ -454,7 +479,7 @@ export default function BillingModule() {
 
   useEffect(() => {
     startTransition(() => setPage(1));
-  }, [search, statusFilter, fleetFilter, billStatusFilter, activeFilters]);
+  }, [search, statusFilter, fleetFilter, billStatusFilter, truckCategoryFilter, activeFilters]);
 
   // Client options derived from database clients
   const clientOptions = useMemo(() => {
@@ -478,7 +503,7 @@ export default function BillingModule() {
     return combined.map((f) => ({ value: f, label: f }));
   }, [dbFleetTypes, records]);
 
-  // Client-side search + status + fleet + bill status filter on top of DB results
+  // Client-side search + status + fleet + bill status + truck category filter on top of DB results
   const filtered = useMemo(() => {
     const q = search.toLowerCase().trim();
     return records.filter((r) => {
@@ -491,9 +516,21 @@ export default function BillingModule() {
         (billStatusFilter === "unbilled"
           ? r.billingStatus === "unbilled" || !r.billingStatus || !r.soaNumber || r.soaNumber.trim().length === 0
           : r.billingStatus === billStatusFilter);
-      return matchSearch && matchStatus && matchFleet && matchBillStatus;
+
+      const isSub = isSubconRecord(r, subconPlates);
+      const matchTruckCategory =
+        !truckCategoryFilter ||
+        (truckCategoryFilter === "subcon" ? isSub : !isSub);
+
+      return (
+        matchSearch &&
+        matchStatus &&
+        matchFleet &&
+        matchBillStatus &&
+        matchTruckCategory
+      );
     });
-  }, [records, search, statusFilter, fleetFilter, billStatusFilter]);
+  }, [records, search, statusFilter, fleetFilter, billStatusFilter, truckCategoryFilter, subconPlates]);
 
   const paginated = useMemo(
     () => filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
@@ -625,7 +662,8 @@ export default function BillingModule() {
     let overdueAmount = 0;
 
     filtered.forEach((r) => {
-      const rate = Number(r.tripRate) || 0;
+      const isSub = isSubconRecord(r)
+      const rate = isSub ? Number(r.truckerRate || 0) : Number(r.tripRate || 0);
       const hasPod = Boolean(r.podFileUrl || r.podFile);
       const isTransportify =
         Boolean(r.clientName && String(r.clientName).toLowerCase().includes("transportify")) ||
@@ -1366,19 +1404,17 @@ export default function BillingModule() {
               style={{ width: 160 }}
             />
             <Select
-              placeholder="All Bill Statuses"
+              placeholder="All Truck Categories"
               data={[
-                { value: "paid", label: "Paid" },
-                { value: "unpaid", label: "Unpaid" },
-                { value: "partially_paid", label: "Partially Paid" },
-                { value: "overdue", label: "Overdue" },
+                { value: "kts", label: "KTS Fleet / Rental" },
+                { value: "subcon", label: "Subcon" },
               ]}
-              value={billStatusFilter}
-              onChange={setBillStatusFilter}
+              value={truckCategoryFilter}
+              onChange={setTruckCategoryFilter}
               clearable
               styles={{ input: { fontSize: "11px", fontWeight: 500 } }}
               radius="md"
-              style={{ width: 160 }}
+              style={{ width: 175 }}
             />
           </Group>
 
@@ -1622,9 +1658,12 @@ export default function BillingModule() {
                               fontWeight: 700,
                             }}
                           >
-                            {record.tripRate
-                              ? `₱${Number(record.tripRate).toLocaleString()}`
-                              : "—"}
+                            {(() => {
+                              const rate = record.isSubcon
+                                ? Number(record.truckerRate || record.tripRate || 0)
+                                : Number(record.tripRate || 0);
+                              return rate ? `₱${rate.toLocaleString()}` : "—";
+                            })()}
                           </Table.Td>
                           <Table.Td
                             style={{
@@ -1860,7 +1899,7 @@ export default function BillingModule() {
                   <td style={{ border: "1px solid #cbd5e1", padding: "5px" }}>{r.bookingDr}</td>
                   <td style={{ border: "1px solid #cbd5e1", padding: "5px" }}>{r.ruta}</td>
                   <td style={{ border: "1px solid #cbd5e1", padding: "5px", textAlign: "right", fontWeight: "bold" }}>
-                    ₱{(Number(r.tripRate) || 0).toLocaleString()}
+                    ₱{(r.isSubcon ? Number(r.truckerRate || r.tripRate || 0) : Number(r.tripRate) || 0).toLocaleString()}
                   </td>
                   <td style={{ border: "1px solid #cbd5e1", padding: "5px", textAlign: "right", fontWeight: "bold", color: "#16a34a" }}>
                     ₱{(Number(r.amountPaid) || 0).toLocaleString()}

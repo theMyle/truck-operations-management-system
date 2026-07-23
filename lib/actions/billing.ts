@@ -95,7 +95,14 @@ export const getBillingRecordsAction = actionClient
     });
 
     // Same mapping shape as BookingRecordsPage so BillingRecord stays compatible
-    return eligibleForBilling.map((b) => ({
+    return eligibleForBilling.map((b) => {
+      const isSub =
+        subconPlateSet.has((b.plateNumber || "").trim().toUpperCase()) ||
+        (b.trucker && b.trucker.toLowerCase().includes("subcon")) ||
+        (b.fleetType && b.fleetType.toLowerCase().includes("subcon")) ||
+        false;
+
+      return {
       id: b.id,
       bookingDate: b.bookingDate,
       bookingDRNo: b.bookingDRNo,
@@ -133,6 +140,7 @@ export const getBillingRecordsAction = actionClient
       deliveryStatus: b.deliveryStatus ?? "Pending",
       tripRemarks: b.tripRemarks ?? undefined,
       truckerRate: b.truckerRate ?? "",
+      isSubcon: isSub,
       rawPickupTime: b.pickupTime,
       rawDrops: b.drops.map((d) => ({ locationName: d.locationName })),
       arrivalPickup: formatTimeHHMM(b.pickupArrivalTime),
@@ -169,7 +177,8 @@ export const getBillingRecordsAction = actionClient
         expenseType: e.expenseType,
         amount: e.amount,
       })),
-    }));
+    };
+    });
   });
 
 const GetIncomeSchema = z.object({
