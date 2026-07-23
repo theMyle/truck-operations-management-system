@@ -35,6 +35,7 @@ interface StatementOfAccountModalProps {
   onClose: () => void;
   selectedRecords: BillingRecord[];
   onSuccess: () => void;
+  targetType?: "client" | "subcon";
 }
 
 export function StatementOfAccountModal({
@@ -42,6 +43,7 @@ export function StatementOfAccountModal({
   onClose,
   selectedRecords,
   onSuccess,
+  targetType = "client",
 }: StatementOfAccountModalProps) {
   const [soaNumber, setSoaNumber] = useState("");
   const [invoiceDate, setInvoiceDate] = useState(
@@ -56,8 +58,11 @@ export function StatementOfAccountModal({
   const [includeEwt, setIncludeEwt] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  // Derive Client Name from first record
-  const clientName = selectedRecords[0]?.clientName || selectedRecords[0]?.client || "CLIENT";
+  // Derive Recipient Name based on SOA Target Type (Client vs Subcon)
+  const recipientTitle = targetType === "subcon" ? "SUBCON TRUCKER" : "CLIENT";
+  const clientName = targetType === "subcon"
+    ? (selectedRecords[0]?.trucker || selectedRecords[0]?.driverName || selectedRecords[0]?.driver || "SUBCON")
+    : (selectedRecords[0]?.clientName || selectedRecords[0]?.client || "CLIENT");
 
   // Auto-generate SOA Number if empty when modal opens
   React.useEffect(() => {
@@ -75,8 +80,10 @@ export function StatementOfAccountModal({
     let excessDropTotal = 0;
 
     selectedRecords.forEach((r) => {
-      const isSub = isSubconRecord(r)
-      const rate = isSub ? Number(r.truckerRate || r.tripRate || 0) : Number(r.tripRate || 0);
+      const isSub = isSubconRecord(r);
+      const rate = targetType === "subcon"
+        ? Number(r.truckerRate || r.tripRate || 0)
+        : Number(r.tripRate || 0);
       baseTotal += rate;
       // Optional excess drop calculation
       const drops = r.noOfDrops || (r.rawDrops ? r.rawDrops.length : 1);
@@ -278,8 +285,9 @@ export function StatementOfAccountModal({
     let totalGross = 0;
 
     selectedRecords.forEach((r, idx) => {
-      const isSub = isSubconRecord(r)
-      const rate = isSub ? Number(r.truckerRate || r.tripRate || 0) : Number(r.tripRate || 0);
+      const rate = targetType === "subcon"
+        ? Number(r.truckerRate || r.tripRate || 0)
+        : Number(r.tripRate || 0);
       const drops = r.noOfDrops || (r.rawDrops ? r.rawDrops.length : 1);
       const excess = drops > 1 ? (drops - 1) * 300 : 0;
       const total = rate + excess;
@@ -377,8 +385,9 @@ export function StatementOfAccountModal({
 
     const rowsHtml = selectedRecords
       .map((r, idx) => {
-        const isSub = isSubconRecord(r)
-        const rate = isSub ? Number(r.truckerRate || r.tripRate || 0) : Number(r.tripRate || 0);
+        const rate = targetType === "subcon"
+          ? Number(r.truckerRate || r.tripRate || 0)
+          : Number(r.tripRate || 0);
         const drops = r.noOfDrops || (r.rawDrops ? r.rawDrops.length : 1);
         const excess = drops > 1 ? (drops - 1) * 300 : 0;
         const total = rate + excess;
@@ -423,12 +432,12 @@ export function StatementOfAccountModal({
           <h2>KRISDOMINGO TRUCKING SERVICES OPC</h2>
           <p>Blk 15 Damayan Sitio Lumang Ilog Floodway B. Damayan San Juan, Taytay Rizal</p>
           <p>TIN: 698-121-203-00000 | Contact: 0964-980-9864 | Email: krisdomingo.ts@gmail.com</p>
-          <h3 style="margin-top: 15px; letter-spacing: 1px;">STATEMENT OF ACCOUNT</h3>
+          <h3 style="margin-top: 15px; letter-spacing: 1px;">STATEMENT OF ACCOUNT (${targetType === "subcon" ? "SUBCON SETTLEMENT" : "CLIENT BILLING"})</h3>
         </div>
 
         <div class="meta">
           <div>
-            <strong>CLIENT:</strong> ${clientName.toUpperCase()}<br/>
+            <strong>${recipientTitle}:</strong> ${clientName.toUpperCase()}<br/>
             <strong>DATE ISSUED:</strong> ${invoiceDate}
           </div>
           <div style="text-align: right;">
@@ -497,10 +506,13 @@ export function StatementOfAccountModal({
       onClose={onClose}
       title={
         <Group gap={8}>
-          <IconFileInvoice size={18} color="var(--mantine-color-blue-6)" />
+          <IconFileInvoice size={18} color={targetType === "subcon" ? "var(--mantine-color-teal-6)" : "var(--mantine-color-blue-6)"} />
           <Text fw={800} style={{ fontSize: "14px" }} tt="uppercase" lts={0.5}>
-            Generate Statement of Account (SOA)
+            Generate Statement of Account — {targetType === "subcon" ? "Subcon Settlement" : "Client Billing"}
           </Text>
+          <Badge color={targetType === "subcon" ? "teal" : "blue"} variant="light" size="xs">
+            {targetType === "subcon" ? "Subcon Rate Applied" : "Client Rate Applied"}
+          </Badge>
         </Group>
       }
       size="70%"
@@ -593,8 +605,9 @@ export function StatementOfAccountModal({
                 </Table.Thead>
                 <Table.Tbody>
                   {selectedRecords.map((r, idx) => {
-                    const isSub = isSubconRecord(r);
-                    const rate = isSub ? Number(r.truckerRate || r.tripRate || 0) : Number(r.tripRate || 0);
+                    const rate = targetType === "subcon"
+                      ? Number(r.truckerRate || r.tripRate || 0)
+                      : Number(r.tripRate || 0);
 
                     return (
                       <Table.Tr key={r.id}>
