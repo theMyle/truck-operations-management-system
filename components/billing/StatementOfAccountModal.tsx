@@ -26,7 +26,7 @@ import {
 } from "@tabler/icons-react";
 import { notifications } from "@mantine/notifications";
 import * as XLSX from "xlsx-js-style";
-import { BillingRecord } from "@/app/(app)/billing/page";
+import { BillingRecord, isSubconRecord } from "@/app/(app)/billing/page";
 import { updateBillingStatusAction } from "@/lib/actions/billing";
 import { generateSoaNumber } from "@/lib/utils/stringFormat";
 
@@ -75,7 +75,8 @@ export function StatementOfAccountModal({
     let excessDropTotal = 0;
 
     selectedRecords.forEach((r) => {
-      const rate = Number(r.tripRate || 0);
+      const isSub = isSubconRecord(r)
+      const rate = isSub ? Number(r.truckerRate || r.tripRate || 0) : Number(r.tripRate || 0);
       baseTotal += rate;
       // Optional excess drop calculation
       const drops = r.noOfDrops || (r.rawDrops ? r.rawDrops.length : 1);
@@ -277,7 +278,8 @@ export function StatementOfAccountModal({
     let totalGross = 0;
 
     selectedRecords.forEach((r, idx) => {
-      const rate = Number(r.tripRate || 0);
+      const isSub = isSubconRecord(r)
+      const rate = isSub ? Number(r.truckerRate || r.tripRate || 0) : Number(r.tripRate || 0);
       const drops = r.noOfDrops || (r.rawDrops ? r.rawDrops.length : 1);
       const excess = drops > 1 ? (drops - 1) * 300 : 0;
       const total = rate + excess;
@@ -375,7 +377,8 @@ export function StatementOfAccountModal({
 
     const rowsHtml = selectedRecords
       .map((r, idx) => {
-        const rate = Number(r.tripRate || 0);
+        const isSub = isSubconRecord(r)
+        const rate = isSub ? Number(r.truckerRate || r.tripRate || 0) : Number(r.tripRate || 0);
         const drops = r.noOfDrops || (r.rawDrops ? r.rawDrops.length : 1);
         const excess = drops > 1 ? (drops - 1) * 300 : 0;
         const total = rate + excess;
@@ -589,19 +592,25 @@ export function StatementOfAccountModal({
                   </Table.Tr>
                 </Table.Thead>
                 <Table.Tbody>
-                  {selectedRecords.map((r, idx) => (
-                    <Table.Tr key={r.id}>
-                      <Table.Td style={{ fontSize: "10px" }}>{idx + 1}</Table.Td>
-                      <Table.Td style={{ fontSize: "10px" }}>{r.pickUpDate || r.date || "—"}</Table.Td>
-                      <Table.Td style={{ fontSize: "10px" }}>{r.bookingDRNo || r.bookingDr || "—"}</Table.Td>
-                      <Table.Td style={{ fontSize: "10px", fontFamily: "monospace" }}>{r.plateNo || "—"}</Table.Td>
-                      <Table.Td style={{ fontSize: "10px" }}>{r.fleetType || r.unit || "—"}</Table.Td>
-                      <Table.Td style={{ fontSize: "10px" }}>{r.pickLocation || "—"}</Table.Td>
-                      <Table.Td style={{ fontSize: "10px", fontWeight: 700 }}>
-                        ₱{Number(r.tripRate || 0).toLocaleString("en-PH", { minimumFractionDigits: 2 })}
-                      </Table.Td>
-                    </Table.Tr>
-                  ))}
+                  {selectedRecords.map((r, idx) => {
+                    const isSub = isSubconRecord(r);
+                    const rate = isSub ? Number(r.truckerRate || r.tripRate || 0) : Number(r.tripRate || 0);
+
+                    return (
+                      <Table.Tr key={r.id}>
+                        <Table.Td style={{ fontSize: "10px" }}>{idx + 1}</Table.Td>
+                        <Table.Td style={{ fontSize: "10px" }}>{r.pickUpDate || r.date || "—"}</Table.Td>
+                        <Table.Td style={{ fontSize: "10px" }}>{r.bookingDRNo || r.bookingDr || "—"}</Table.Td>
+                        <Table.Td style={{ fontSize: "10px", fontFamily: "monospace" }}>{r.plateNo || "—"}</Table.Td>
+                        <Table.Td style={{ fontSize: "10px" }}>{r.fleetType || r.unit || "—"}</Table.Td>
+                        <Table.Td style={{ fontSize: "10px" }}>{r.pickLocation || "—"}</Table.Td>
+                        <Table.Td style={{ fontSize: "10px", fontWeight: 700 }}>
+                          ₱{rate.toLocaleString("en-PH", { minimumFractionDigits: 2 })}
+                        </Table.Td>
+                      </Table.Tr>
+                    );
+                  })}
+
                 </Table.Tbody>
               </Table>
             </ScrollArea>
