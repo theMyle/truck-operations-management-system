@@ -26,6 +26,7 @@ type Props = {
   dailyOperations: { id: number; name: string; kts: number; subcon: number }[];
   weeklyOperations: { day: string; kts: number; subcon: number; ktsTrucks: number; subconTrucks: number; completedDeliveries: number; onTimeDeliveries: number }[];
   monthlyOperations: { day: string; kts: number; subcon: number; ktsTrucks: number; subconTrucks: number; completedDeliveries: number; onTimeDeliveries: number }[];
+  onTimeDeliveryStats: { totalDeliveries: number; onTimeDeliveries: number; percentage: string };
   operationsStartDate?: string;
   todayStr?: string;
 };
@@ -59,6 +60,7 @@ export default function DashboardClient({
   dailyOperations,
   weeklyOperations,
   monthlyOperations,
+  onTimeDeliveryStats,
   operationsStartDate,
   todayStr,
 }: Props) {
@@ -222,9 +224,18 @@ export default function DashboardClient({
           />
         </Flex>
 
-        <Box>
-          <DailyOperationsTable trips={dailyOperations} />
-        </Box>
+        <Flex
+          gap="md"
+          direction={{ base: "column", md: "row" }}
+          align="stretch"
+        >
+          <Box style={{ flex: 1.2 }}>
+            <DailyOperationsTable trips={dailyOperations} />
+          </Box>
+          <Box style={{ flex: 0.8 }}>
+            <OnTimeDeliveryWidget stats={onTimeDeliveryStats} />
+          </Box>
+        </Flex>
 
         <Flex
           gap="md"
