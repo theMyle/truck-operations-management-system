@@ -5,6 +5,8 @@ import {
   boolean,
   pgEnum,
   decimal,
+  date,
+  integer,
 } from "drizzle-orm/pg-core";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -24,6 +26,9 @@ export const trucks = pgTable("trucks", {
   isSubcon: boolean("is_subcon").notNull().default(false),
   status: truckStatusEnum("status").notNull().default("available"),
   isActive: boolean("is_active").notNull().default(true),
+  lastPmsDate: date("last_pms_date"),
+  lastPmsOdo: integer("last_pms_odo").default(0),
+  pmsIntervalKm: integer("pms_interval_km").default(10000),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });

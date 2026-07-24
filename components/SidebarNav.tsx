@@ -8,8 +8,9 @@ import { Icon } from "@tabler/icons-react";
 export interface NavItem {
     label: string;
     icon: Icon;
-    href: string;
+    href?: string;
     allowedRoles: string[];
+    children?: NavItem[];
 }
 
 export interface NavSection {
@@ -32,6 +33,44 @@ export function SidebarNav({ sections, pathname }: SidebarNavProps) {
                     </Text>
                     <Stack gap={2}>
                         {section.items.map((item) => {
+                            if (item.children && item.children.length > 0) {
+                                const isAnyChildActive = item.children.some((child) => pathname === child.href);
+                                return (
+                                    <NavLink
+                                        key={item.label}
+                                        label={
+                                            <Text size="xs" fw={500}>
+                                                {item.label}
+                                            </Text>
+                                        }
+                                        leftSection={<item.icon size={14} stroke={2} />}
+                                        defaultOpened={isAnyChildActive}
+                                        childrenOffset={16}
+                                    >
+                                        {item.children.map((child) => {
+                                            const isChildActive = pathname === child.href;
+                                            return (
+                                                <NavLink
+                                                    key={child.href}
+                                                    component={Link}
+                                                    label={
+                                                        <Text size="xs" fw={500}>
+                                                            {child.label}
+                                                        </Text>
+                                                    }
+                                                    leftSection={<child.icon size={13} stroke={2} />}
+                                                    active={isChildActive}
+                                                    variant={isChildActive ? "filled" : "subtle"}
+                                                    color={isChildActive ? "blue.6" : undefined}
+                                                    c={isChildActive ? undefined : "gray.7"}
+                                                    href={child.href || "#"}
+                                                />
+                                            );
+                                        })}
+                                    </NavLink>
+                                );
+                            }
+
                             const isActive = pathname === item.href;
                             return (
                                 <NavLink
@@ -47,7 +86,7 @@ export function SidebarNav({ sections, pathname }: SidebarNavProps) {
                                     variant={isActive ? "filled" : "subtle"}
                                     color={isActive ? "blue.6" : undefined}
                                     c={isActive ? undefined : "gray.7"}
-                                    href={item.href}
+                                    href={item.href || "#"}
                                 />
                             );
                         })}

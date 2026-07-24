@@ -1,6 +1,5 @@
-"use client";
-
-import { SimpleGrid, Select, TextInput, Divider } from "@mantine/core";
+import { SimpleGrid, Select, TextInput, Divider, Alert, Group, Text } from "@mantine/core";
+import { IconAlertTriangle } from "@tabler/icons-react";
 import { UseFormReturnType } from "@mantine/form";
 import { Truck } from "@/lib/db/schema";
 import { DispatchFormValues } from "@/types/dispatch";
@@ -19,6 +18,11 @@ export function TruckSection({
   selectedTruck: Truck | null;
   setIsGeneratingDr?: (val: boolean) => void;
 }) {
+  // Check PMS warning status
+  const lastPmsOdo = (selectedTruck as any)?.lastPmsOdo || 0;
+  const pmsInterval = (selectedTruck as any)?.pmsIntervalKm || 10000;
+  const lastPmsDate = (selectedTruck as any)?.lastPmsDate;
+
   return (
     <>
       <Divider m="xl" label="TRUCK DETAILS" />
@@ -93,6 +97,25 @@ export function TruckSection({
           {...form.getInputProps("truckerRate")}
         />
       </SimpleGrid>
+
+      {selectedTruck && (lastPmsDate || lastPmsOdo > 0) && (
+        <Alert
+          color="blue"
+          icon={<IconAlertTriangle size={16} />}
+          variant="light"
+          radius="md"
+          mt="xs"
+        >
+          <Group justify="space-between" align="center">
+            <Text size="xs">
+              <b>PMS Tracking:</b> Last maintenance on {lastPmsDate || "N/A"} at {lastPmsOdo.toLocaleString()} km.
+            </Text>
+            <Text size="xs" fw={700} c="dimmed">
+              Interval: Every {pmsInterval.toLocaleString()} km
+            </Text>
+          </Group>
+        </Alert>
+      )}
     </>
   );
 }

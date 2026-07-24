@@ -4,6 +4,7 @@ import { Flex, Stack, Box, Collapse } from "@mantine/core";
 import { IncomeStats } from "@/components/dashboard/IncomeStats";
 import { FleetStatusOverview } from "@/components/dashboard/FleetStatusOverview";
 import { OnTimeDeliveryWidget } from "@/components/dashboard/OnTimeDeliveryWidget";
+import { PmsWidget } from "@/components/dashboard/PmsWidget";
 import { DailyOperationsTable } from "@/components/dashboard/DailyOperationsTable";
 import { WeeklyOperationsTable } from "@/components/dashboard/WeeklyOperationsTable";
 import { MonthlyOperationsTable } from "@/components/dashboard/MonthlyOperationsTable";
@@ -232,8 +233,11 @@ export default function DashboardClient({
           <Box style={{ flex: 1.2 }}>
             <DailyOperationsTable trips={dailyOperations} />
           </Box>
-          <Box style={{ flex: 0.8 }}>
+          <Box style={{ flex: 0.9 }}>
             <OnTimeDeliveryWidget stats={onTimeDeliveryStats} />
+          </Box>
+          <Box style={{ flex: 0.9 }}>
+            <PmsWidget />
           </Box>
         </Flex>
 

@@ -24,6 +24,9 @@ import {
   IconLayoutSidebarLeftExpand,
   IconTruckDelivery,
   IconUserPlus,
+  IconTools,
+  IconAlertOctagon,
+  IconChartBar,
   Icon,
 } from "@tabler/icons-react";
 import Image from "next/image";
@@ -31,16 +34,9 @@ import LOGO from "../assets/logo.png";
 import { useUser } from "@clerk/nextjs";
 import { usePathname } from "next/navigation";
 import { DispatchProvider } from "./context/dispatch-context";
-import { SidebarNav } from "../../components/SidebarNav";
+import { SidebarNav, NavItem } from "../../components/SidebarNav";
 import { UserCard } from "../../components/UserCard";
 import { UserRole } from "@/types/user";
-
-interface NavItem {
-  label: string;
-  icon: Icon;
-  href: string;
-  allowedRoles: UserRole[];
-}
 
 export default function DashboardLayout({
   children,
@@ -90,6 +86,25 @@ export default function DashboardLayout({
       allowedRoles: [UserRole.ADMIN, UserRole.BILLING_CLERK],
     },
     {
+      label: "KPI",
+      icon: IconChartBar,
+      allowedRoles: [UserRole.ADMIN, UserRole.DISPATCH_OFFICER, UserRole.COORDINATOR],
+      children: [
+        {
+          label: "Krisdomingo",
+          icon: IconAlertOctagon,
+          href: "/demerit",
+          allowedRoles: [UserRole.ADMIN, UserRole.DISPATCH_OFFICER, UserRole.COORDINATOR],
+        },
+        {
+          label: "PMS Maintenance",
+          icon: IconTools,
+          href: "/pms",
+          allowedRoles: [UserRole.ADMIN, UserRole.DISPATCH_OFFICER, UserRole.COORDINATOR],
+        },
+      ],
+    },
+    {
       label: "Registration",
       icon: IconUserPlus,
       href: "/registration",
@@ -103,31 +118,41 @@ export default function DashboardLayout({
     },
   ];
 
-  const visibleNavItems = navItems.filter((item) => {
-    return item.allowedRoles?.includes(userRole as UserRole);
-  });
+  const visibleNavItems = navItems
+    .filter((item) => item.allowedRoles?.includes(userRole as UserRole))
+    .map((item) => {
+      if (item.children) {
+        return {
+          ...item,
+          children: item.children.filter((child) =>
+            child.allowedRoles?.includes(userRole as UserRole)
+          ),
+        };
+      }
+      return item;
+    });
 
   const navSections = [
     {
       title: "Overview",
       items: visibleNavItems.filter((item) =>
-        ["/dashboard"].includes(item.href),
+        ["/dashboard"].includes(item.href || ""),
       ),
     },
     {
       title: "Operations",
       items: visibleNavItems.filter((item) =>
-        ["/dispatch", "/booking", "/trip-logs"].includes(item.href),
+        ["/dispatch", "/booking", "/trip-logs"].includes(item.href || ""),
       ),
     },
     {
       title: "Finance",
-      items: visibleNavItems.filter((item) => ["/billing"].includes(item.href)),
+      items: visibleNavItems.filter((item) => ["/billing"].includes(item.href || "")),
     },
     {
       title: "Management",
       items: visibleNavItems.filter((item) =>
-        ["/registration", "/accounts"].includes(item.href),
+        ["KPI", "/registration", "/accounts"].includes(item.href || item.label),
       ),
     },
   ].filter((section) => section.items.length > 0);
