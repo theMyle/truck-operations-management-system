@@ -4,8 +4,8 @@ import { actionClient } from "@/lib/safe-action";
 import { db } from "@/lib/db";
 import { booking, clients } from "@/lib/db/schema";
 import { z } from "zod";
-import { and, eq, gte, lte, isNotNull, or } from "drizzle-orm";
-import { formatTime12Hour, formatTimeHHMM } from "@/lib/utils/stringFormat";
+import { and, eq, gte, lte, isNotNull, or, desc, like } from "drizzle-orm";
+import { formatTime12Hour, formatTimeHHMM, generateClientCode } from "@/lib/utils/stringFormat";
 
 const GetBillingSchema = z.object({
   client: z.string().optional(),
@@ -272,4 +272,35 @@ export const updateBillingStatusAction = actionClient
     }
 
     return { success: true };
+  });
+
+export const getNextSoaNumberAction = actionClient
+  .schema(z.object({ clientName: z.string() }))
+  .action(async ({ parsedInput }) => {
+    try {
+      const code = generateClientCode(parsedInput.clientName);
+      const year = new Date().getFullYear();
+      const prefix = `KTS-${code}-${year}-`;
+      const pattern = `${prefix}%`;
+
+      // Fast single-row indexed DB query
+      const latest = await db
+        .select({ soaNumber: booking.soaNumber })
+        .from(booking)
+        .where(like(booking.soaNumber, pattern))
+        .orderBy(desc(booking.soaNumber))
+        .limit(1);
+
+      let maxSeq = 0;
+      if (latest.length > 0 && latest[0].soaNumber) {
+        const parts = latest[0].soaNumber.split("-");
+        const num = parseInt(parts[parts.length - 1], 10);
+        if (!isNaN(num)) maxSeq = num;
+      }
+
+      const nextSeq = String(maxSeq + 1).padStart(3, "0");
+      return { success: true, soaNumber: `${prefix}${nextSeq}` };
+    } catch (err: any) {
+      return { success: false, error: err?.message || "Failed to fetch next SOA number" };
+    }
   });

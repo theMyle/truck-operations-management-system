@@ -646,8 +646,8 @@ export default function BillingModule() {
       "Auto Cash Advance": r.autoCash ? "Yes" : "No",
       "Driver Rate": numOrBlank(r.driverRate),
       "Helper Rate": numOrBlank(r.helperRate),
-      Trucker: r.trucker || "",
-      "Trucker Rate": numOrBlank(r.truckerRate),
+      Trucker: r.trucker || (isSubconRecord(r, subconPlates) ? "SUBCON" : "KRISDOMINGO"),
+      "Trucker Rate": numOrBlank(r.truckerRate || (isSubconRecord(r, subconPlates) ? r.truckerRate : r.tripRate)),
       "Expenses Total": expensesTotal || "",
     };
 
@@ -2043,7 +2043,7 @@ export default function BillingModule() {
             title="Existing Statement of Account Detected"
             styles={{ title: { fontSize: "12px", fontWeight: 700 }, message: { fontSize: "11px" } }}
           >
-            The following record(s) already have a generated Statement of Account (SOA). Generating a new SOA is restricted for records that have already been billed.
+            Some of the selected record(s) already have a generated Statement of Account (SOA). You can generate a new daily batch SOA or edit the existing SOA.
           </Alert>
 
           <Paper withBorder p="xs" bg="gray.0" radius="sm">
@@ -2060,10 +2060,10 @@ export default function BillingModule() {
           </Paper>
 
           <Text size="xs" c="dimmed">
-            Would you like to edit the existing SOA details instead?
+            Would you like to generate a new daily batch SOA for these records or edit the existing SOA?
           </Text>
 
-          <Group justify="flex-end" mt="xs" gap="sm">
+          <Group justify="flex-end" mt="xs" gap="xs">
             <Button
               variant="default"
               size="xs"
@@ -2072,6 +2072,7 @@ export default function BillingModule() {
               Cancel
             </Button>
             <Button
+              variant="light"
               color="orange"
               size="xs"
               onClick={() => {
@@ -2080,6 +2081,16 @@ export default function BillingModule() {
               }}
             >
               Edit Existing SOA
+            </Button>
+            <Button
+              color="blue"
+              size="xs"
+              onClick={() => {
+                setSoaWarningOpened(false);
+                setSoaModalOpen(true);
+              }}
+            >
+              Generate New Batch SOA
             </Button>
           </Group>
         </Stack>

@@ -27,7 +27,7 @@ import {
 import { notifications } from "@mantine/notifications";
 import * as XLSX from "xlsx-js-style";
 import { BillingRecord, isSubconRecord } from "@/app/(app)/billing/page";
-import { updateBillingStatusAction } from "@/lib/actions/billing";
+import { updateBillingStatusAction, getNextSoaNumberAction } from "@/lib/actions/billing";
 import { generateSoaNumber } from "@/lib/utils/stringFormat";
 
 interface StatementOfAccountModalProps {
@@ -58,19 +58,37 @@ export function StatementOfAccountModal({
   const [includeEwt, setIncludeEwt] = useState(true);
   const [saving, setSaving] = useState(false);
 
+  // Count KTS (Own) vs Subcon trips
+  const ktsCount = useMemo(
+    () => selectedRecords.filter((r) => !isSubconRecord(r)).length,
+    [selectedRecords]
+  );
+  const subconCount = useMemo(
+    () => selectedRecords.filter((r) => isSubconRecord(r)).length,
+    [selectedRecords]
+  );
+
   // Derive Recipient Name based on SOA Target Type (Client vs Subcon)
   const recipientTitle = targetType === "subcon" ? "SUBCON TRUCKER" : "CLIENT";
   const clientName = targetType === "subcon"
     ? (selectedRecords[0]?.trucker || selectedRecords[0]?.driverName || selectedRecords[0]?.driver || "SUBCON")
-    : (selectedRecords[0]?.clientName || selectedRecords[0]?.client || "CLIENT");
+    : (selectedRecords[0]?.client || selectedRecords[0]?.clientName || "CLIENT");
 
-  // Auto-generate SOA Number if empty when modal opens
+  // Auto-generate incremental SOA Number from DB when modal opens
   React.useEffect(() => {
     if (opened && selectedRecords.length > 0 && !soaNumber) {
+      // Immediate local fallback
       const existingSoas = selectedRecords
         .map((r) => r.soaNumber)
         .filter((s): s is string => typeof s === "string" && s.trim().length > 0);
       setSoaNumber(generateSoaNumber(clientName, existingSoas));
+
+      // Fast async DB lookup for true max sequence across all records
+      getNextSoaNumberAction({ clientName }).then((res) => {
+        if (res?.data?.success && res.data.soaNumber) {
+          setSoaNumber(res.data.soaNumber);
+        }
+      });
     }
   }, [opened, selectedRecords, clientName, soaNumber]);
 
@@ -528,7 +546,7 @@ export function StatementOfAccountModal({
         ) ? (
           <Alert
             color="red"
-            icon={<IconAlertTriangle size={16} />}
+            icon={<IconFileInvoice size={16} />}
             radius="md"
             title="SOA Locked (Paid Record)"
             styles={{ title: { fontSize: "12px", fontWeight: 700 }, message: { fontSize: "11px" } }}
