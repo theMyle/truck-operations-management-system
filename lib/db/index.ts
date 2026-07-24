@@ -11,7 +11,8 @@ const globalForDb = globalThis as unknown as {
 };
 
 // Supabase Transaction Pooler (port 6543) avoids the 15-connection session mode limit on port 5432
-const dbUrl = process.env.DATABASE_URL!.replace(':5432/', ':6543/');
+const rawUrl = process.env.DATABASE_URL ?? "";
+const dbUrl = rawUrl ? rawUrl.replace(":5432/", ":6543/").replace(":5432", ":6543") : "postgresql://postgres:postgres@localhost:5432/postgres";
 const conn = globalForDb.conn ?? postgres(dbUrl, { prepare: false });
 if (process.env.NODE_ENV !== 'production') globalForDb.conn = conn;
 
