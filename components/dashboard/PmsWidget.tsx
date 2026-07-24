@@ -95,25 +95,6 @@ export const PmsWidget = () => {
                 </Text>
               </Paper>
             </Group>
-
-            {urgentTrucks.length > 0 ? (
-              <Stack gap="4px" mt="xs">
-                {urgentTrucks.map((t) => (
-                  <Group key={t.plateNumber} justify="space-between" align="center">
-                    <Text size="xs" fw={700}>
-                      {t.plateNumber}
-                    </Text>
-                    <Badge color={t.pmsStatus === "overdue" ? "red" : "orange"} size="xs" variant="light">
-                      {t.kmSinceLastPms.toLocaleString()} km
-                    </Badge>
-                  </Group>
-                ))}
-              </Stack>
-            ) : (
-              <Text size="xs" c="dimmed" ta="center" mt="sm">
-                All trucks within 10,000 km PMS limit.
-              </Text>
-            )}
           </Stack>
         )}
       </Box>

@@ -166,15 +166,15 @@ export const MonthlyOperationsTable = ({
         }
       />
 
-      <ScrollArea style={{ flex: 1 }} mah={200} scrollbarSize={4} offsetScrollbars>
+      <ScrollArea style={{ flex: 1 }} mah={200} scrollbarSize={4} offsetScrollbars type="auto">
         <Table
           verticalSpacing={4}
           horizontalSpacing="xs"
-          style={{ tableLayout: "fixed" }}
+          style={{ tableLayout: "fixed", minWidth: 520 }}
         >
           <Table.Thead>
             <Table.Tr>
-              <Table.Th w="30%">
+              <Table.Th w="26%">
                 <Text style={{ fontSize: "10px" }} c="dimmed" fw={700}>
                   MONTH
                 </Text>
@@ -184,24 +184,24 @@ export const MonthlyOperationsTable = ({
                   KTS TRIPS
                 </Text>
               </Table.Th>
-              <Table.Th w="16%" ta="center">
+              <Table.Th w="18%" ta="center">
                 <Text style={{ fontSize: "10px" }} c="dimmed" fw={700}>
                   KTS Fleet Utilization
                 </Text>
               </Table.Th>
-              <Table.Th w="12%" ta="center">
+              <Table.Th w="14%" ta="center">
                 <Text style={{ fontSize: "10px" }} c="dimmed" fw={700}>
                   SUBCON TRIPS
                 </Text>
               </Table.Th>
-              <Table.Th w="16%" ta="center">
+              <Table.Th w="18%" ta="center">
                 <Text style={{ fontSize: "10px" }} c="dimmed" fw={700}>
                   SUB FLEET UTILIZATION
                 </Text>
               </Table.Th>
               <Table.Th w="14%" ta="center">
                 <Text style={{ fontSize: "10px" }} c="dimmed" fw={700}>
-                  ONTIME DELIVERY %
+                  ONTIME %
                 </Text>
               </Table.Th>
             </Table.Tr>
