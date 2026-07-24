@@ -1,8 +1,9 @@
+export const runtime = "nodejs";
+
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { booking } from "@/lib/db/schema";
 import { inArray } from "drizzle-orm";
-import JSZip from "jszip";
 
 const MAX_RETRIES = 3;
 const FETCH_TIMEOUT_MS = 15_000; // 15 seconds per image
@@ -77,6 +78,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const { default: JSZip } = await import("jszip");
     const zip = new JSZip();
     const folder = zip.folder("PODs")!;
     let successCount = 0;
