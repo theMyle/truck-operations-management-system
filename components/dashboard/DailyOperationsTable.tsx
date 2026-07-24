@@ -18,7 +18,7 @@ export const DailyOperationsTable = ({ trips }: DailyOperationsTableProps) => {
   const totalSubcon = trips.reduce((acc, curr) => acc + curr.subcon, 0);
 
   return (
-    <Paper withBorder radius="md" p="md">
+    <Paper withBorder radius="md" p="md" h="100%" style={{ display: "flex", flexDirection: "column" }}>
       <CardHeader
         title="Daily Operations"
         subtitle={
