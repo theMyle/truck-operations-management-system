@@ -302,7 +302,7 @@ export default function BillingModule() {
   const [podPreview, setPodPreview] = useState<BillingRecord | null>(null);
 
   // ── Billing Status and SoA Modals States ──
-  const [billStatusFilter, setBillStatusFilter] = useState<string | null>("unbilled");
+  const [billStatusFilter, setBillStatusFilter] = useState<string | null>(null);
   const [billingModalOpen, setBillingModalOpen] = useState(false);
   const [selectedBillingRecord, setSelectedBillingRecord] = useState<BillingRecord | null>(null);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -1287,6 +1287,23 @@ export default function BillingModule() {
                     <Group gap={6} justify="center" wrap="nowrap">
                       <Badge
                         size="xs"
+                        color="dark"
+                        variant={billStatusFilter === null ? "filled" : "light"}
+                        radius="xl"
+                        styles={{ root: { padding: "0 6px", height: 16, minWidth: 18 } }}
+                      >
+                        {records.length}
+                      </Badge>
+                      <Text style={{ fontSize: "11px", fontWeight: 700 }}>All</Text>
+                    </Group>
+                  ),
+                  value: "all",
+                },
+                {
+                  label: (
+                    <Group gap={6} justify="center" wrap="nowrap">
+                      <Badge
+                        size="xs"
                         color="gray"
                         variant={billStatusFilter === "unbilled" ? "filled" : "light"}
                         radius="xl"
@@ -1366,23 +1383,6 @@ export default function BillingModule() {
                     </Group>
                   ),
                   value: "overdue",
-                },
-                {
-                  label: (
-                    <Group gap={6} justify="center" wrap="nowrap">
-                      <Badge
-                        size="xs"
-                        color="dark"
-                        variant={billStatusFilter === null ? "filled" : "light"}
-                        radius="xl"
-                        styles={{ root: { padding: "0 6px", height: 16, minWidth: 18 } }}
-                      >
-                        {records.length}
-                      </Badge>
-                      <Text style={{ fontSize: "11px", fontWeight: 700 }}>All</Text>
-                    </Group>
-                  ),
-                  value: "all",
                 },
               ]}
               size="xs"
@@ -2005,12 +2005,12 @@ export default function BillingModule() {
         selectedRecords={
           soaTargetType === "subcon"
             ? (selectedIds.length > 0
-                ? filtered.filter((r) => selectedIds.includes(String(r.id)))
-                : filtered
-              ).filter((r) => isSubconRecord(r, subconPlates))
+              ? filtered.filter((r) => selectedIds.includes(String(r.id)))
+              : filtered
+            ).filter((r) => isSubconRecord(r, subconPlates))
             : (selectedIds.length > 0
-                ? filtered.filter((r) => selectedIds.includes(String(r.id)))
-                : filtered)
+              ? filtered.filter((r) => selectedIds.includes(String(r.id)))
+              : filtered)
         }
         onSuccess={() => {
           handleGenerate();
