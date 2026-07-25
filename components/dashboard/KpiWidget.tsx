@@ -54,10 +54,10 @@ export const KpiWidget = () => {
     data?.rating === "Excellent"
       ? "teal"
       : data?.rating === "Good"
-      ? "blue"
-      : data?.rating === "Needs Improvement"
-      ? "orange"
-      : "red";
+        ? "blue"
+        : data?.rating === "Needs Improvement"
+          ? "orange"
+          : "red";
 
   return (
     <Paper
@@ -68,7 +68,7 @@ export const KpiWidget = () => {
       style={{ display: "flex", flexDirection: "column" }}
     >
       <CardHeader
-        title="Operation Manpower - KPI"
+        title="Operation - Manpower KPI"
         subtitle={
           <Group gap="xs">
             <Badge

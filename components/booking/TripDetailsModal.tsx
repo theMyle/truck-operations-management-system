@@ -588,14 +588,16 @@ export function TripDetailsModal({
   };
 
   const podRequired = record?.podRequired ?? true;
+  const hasDr = !!form.bookingDRNo?.trim();
   const isFormValid =
+    hasDr &&
     !!form.deliveryStatus &&
     (form.deliveryStatus === "Completed"
       ? !!form.arrivalPickup &&
         !!form.loadingStart &&
         !!form.loadingEnd &&
         !!form.departurePickup &&
-        form.finishDelivery &&
+        !!form.finishDelivery &&
         (!podRequired || !!form.podFileUrl)
       : true);
 
@@ -611,15 +613,12 @@ export function TripDetailsModal({
   };
 
   const handleSave = async () => {
-    const isSubcon =
-      (record.trucker || "").toLowerCase().includes("subcon") ||
-      (record.fleetType || "").toLowerCase().includes("subcon");
-    const effectiveDrNo = (form.bookingDRNo || record.bookingDRNo || record.bookingDr || "").trim();
+    const effectiveDrNo = (form.bookingDRNo || "").trim();
 
-    if (!effectiveDrNo && isSubcon) {
+    if (!effectiveDrNo) {
       notifications.show({
         title: "Booking / DR# Required",
-        message: "Booking / DR# is required for Subcon trucks before proceeding.",
+        message: "Booking / DR# is required before saving trip details.",
         color: "red",
       });
       return;
