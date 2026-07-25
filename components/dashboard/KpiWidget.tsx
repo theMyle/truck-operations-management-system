@@ -179,9 +179,10 @@ export const KpiWidget = () => {
               >
                 <Stack gap={4}>
                   <Group justify="space-between" align="center">
-                    <Group gap={6}>
+                    <Group gap={4}>
+                      <IconStarFilled size={12} color="var(--mantine-color-teal-6)" />
                       <Text size="10px" fw={700} c="teal">
-                        🌟 Excellent (90-100 pts)
+                        Excellent (90-100 pts)
                       </Text>
                     </Group>
                     <Badge color="teal" variant="light" size="xs">
@@ -190,9 +191,10 @@ export const KpiWidget = () => {
                   </Group>
 
                   <Group justify="space-between" align="center">
-                    <Group gap={6}>
+                    <Group gap={4}>
+                      <IconCircleCheck size={12} color="var(--mantine-color-blue-6)" />
                       <Text size="10px" fw={700} c="blue">
-                        👍 Good (80-89 pts)
+                        Good (80-89 pts)
                       </Text>
                     </Group>
                     <Badge color="blue" variant="light" size="xs">
@@ -201,9 +203,10 @@ export const KpiWidget = () => {
                   </Group>
 
                   <Group justify="space-between" align="center">
-                    <Group gap={6}>
+                    <Group gap={4}>
+                      <IconAlertTriangle size={12} color="var(--mantine-color-orange-6)" />
                       <Text size="10px" fw={700} c="orange">
-                        ⚠️ Coaching Needed (70-79 pts)
+                        Coaching Needed (70-79 pts)
                       </Text>
                     </Group>
                     <Badge color="orange" variant="light" size="xs">
@@ -212,9 +215,10 @@ export const KpiWidget = () => {
                   </Group>
 
                   <Group justify="space-between" align="center">
-                    <Group gap={6}>
+                    <Group gap={4}>
+                      <IconAlertOctagon size={12} color="var(--mantine-color-red-6)" />
                       <Text size="10px" fw={700} c="red">
-                        🚨 Review Needed (&lt; 70 pts)
+                        Review Needed (&lt; 70 pts)
                       </Text>
                     </Group>
                     <Badge color="red" variant="light" size="xs">

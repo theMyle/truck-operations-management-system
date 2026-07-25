@@ -100,72 +100,85 @@ export const getBillingRecordsAction = actionClient
         (b.fleetType && b.fleetType.toLowerCase().includes("subcon")) ||
         false;
 
+      const isTransportify =
+        (b.clientName || "").toLowerCase().includes("transportify") ||
+        (b.trucker || "").toLowerCase().includes("transportify") ||
+        (b.fleetType || "").toLowerCase().includes("transportify");
+
+      const effectiveBillingStatus = isTransportify
+        ? (b.billingStatus && b.billingStatus !== "unbilled" ? b.billingStatus : "paid")
+        : (b.billingStatus ?? "unbilled");
+
+      const effectiveAmountPaid = isTransportify
+        ? (b.amountPaid && Number(b.amountPaid) > 0 ? b.amountPaid : (b.clientRate || "0.00"))
+        : (b.amountPaid ?? "0.00");
+
       return {
-      id: b.id,
-      bookingDate: b.bookingDate,
-      bookingDRNo: b.bookingDRNo,
-      clientName: b.clientName,
-      pickUpDate: b.pickupDate,
-      pickUpTime: formatTime12Hour(b.pickupTime),
-      driverName: b.driverName,
-      trucker: b.trucker,
-      helper:
-        b.helpers
-          .map((bth) => bth.helper?.helperName ?? "")
-          .filter(Boolean)
-          .join(", ") || "No Helper",
-      rawHelpers: b.helpers.map((bth) => ({
-        id: bth.helperId,
-        helperName: bth.helper?.helperName ?? "",
-      })),
-      fleetType: b.fleetType,
-      plateNo: b.plateNumber,
-      ruta: b.ruta,
-      pickLocation: b.pickupLocation,
-      dropOffLocation: b.drops.map((d) => d.locationName).join(", ") || "—",
-      bookedBy: b.bookedBy,
-      status: (b.deliveryStatus ?? "Pending") as
-        | "Pending"
-        | "In Transit"
-        | "Completed",
-      date: b.pickupDate,
-      client: b.clientName,
-      driver: b.driverName,
-      unit: b.fleetType,
-      bookingDr: b.bookingDRNo,
-      noOfDrops: b.numberOfDrops,
-      tripRate: b.clientRate,
-      deliveryStatus: b.deliveryStatus ?? "Pending",
-      tripRemarks: b.tripRemarks ?? undefined,
-      truckerRate: b.truckerRate ?? "",
-      isSubcon: isSub,
-      rawPickupTime: b.pickupTime,
-      rawDrops: b.drops.map((d) => ({ locationName: d.locationName })),
-      arrivalPickup: formatTimeHHMM(b.pickupArrivalTime),
-      loadingStart: formatTimeHHMM(b.loadingStartTime),
-      loadingEnd: formatTimeHHMM(b.loadingEndTime),
-      departurePickup: formatTimeHHMM(b.pickupDepartureTime),
-      finishDelivery: formatTimeHHMM(b.finishedDeliveryTime),
-      // POD — comes from PODLink column
-      podFile: b.PODLink ? (b.PODLink.split("/").pop() ?? "") : "",
-      podFileUrl: b.PODLink ?? "",
-      podFileType: "",
-      // Trip log fields
-      budget: b.budget ?? null,
-      budgetFrom: b.budgetFrom ?? null,
-      rfidLoad: b.rfidLoad ?? null,
-      fuel: b.fuel ?? null,
-      customerCollection: b.customerCollection ?? null,
-      cashOnHandReturned: b.cashOnHandReturned ?? null,
-      cashOnHandReturnedTo: b.cashOnHandReturnedTo ?? null,
-      autoCash: b.autoCash ?? null,
-      driverRate: b.driverRate ?? null,
-      helperRate: b.helperRate ?? null,
-      billingStatus: b.billingStatus ?? "unbilled",
-      soaNumber: b.soaNumber ?? "",
-      invoiceDate: b.invoiceDate ?? "",
-      dueDate: b.dueDate ?? "",
-      amountPaid: b.amountPaid ?? "0.00",
+        id: b.id,
+        bookingDate: b.bookingDate,
+        bookingDRNo: b.bookingDRNo,
+        clientName: b.clientName,
+        pickUpDate: b.pickupDate,
+        pickUpTime: formatTime12Hour(b.pickupTime),
+        driverName: b.driverName,
+        trucker: b.trucker,
+        helper:
+          b.helpers
+            .map((bth) => bth.helper?.helperName ?? "")
+            .filter(Boolean)
+            .join(", ") || "No Helper",
+        rawHelpers: b.helpers.map((bth) => ({
+          id: bth.helperId,
+          helperName: bth.helper?.helperName ?? "",
+        })),
+        fleetType: b.fleetType,
+        plateNo: b.plateNumber,
+        ruta: b.ruta,
+        pickLocation: b.pickupLocation,
+        dropOffLocation: b.drops.map((d) => d.locationName).join(", ") || "—",
+        bookedBy: b.bookedBy,
+        status: (b.deliveryStatus ?? "Pending") as
+          | "Pending"
+          | "In Transit"
+          | "Completed",
+        date: b.pickupDate,
+        client: b.clientName,
+        driver: b.driverName,
+        unit: b.fleetType,
+        bookingDr: b.bookingDRNo,
+        noOfDrops: b.numberOfDrops,
+        tripRate: b.clientRate,
+        deliveryStatus: b.deliveryStatus ?? "Pending",
+        tripRemarks: b.tripRemarks ?? undefined,
+        truckerRate: b.truckerRate ?? "",
+        isSubcon: isSub,
+        rawPickupTime: b.pickupTime,
+        rawDrops: b.drops.map((d) => ({ locationName: d.locationName })),
+        arrivalPickup: formatTimeHHMM(b.pickupArrivalTime),
+        loadingStart: formatTimeHHMM(b.loadingStartTime),
+        loadingEnd: formatTimeHHMM(b.loadingEndTime),
+        departurePickup: formatTimeHHMM(b.pickupDepartureTime),
+        finishDelivery: formatTimeHHMM(b.finishedDeliveryTime),
+        // POD — comes from PODLink column
+        podFile: b.PODLink ? (b.PODLink.split("/").pop() ?? "") : "",
+        podFileUrl: b.PODLink ?? "",
+        podFileType: "",
+        // Trip log fields
+        budget: b.budget ?? null,
+        budgetFrom: b.budgetFrom ?? null,
+        rfidLoad: b.rfidLoad ?? null,
+        fuel: b.fuel ?? null,
+        customerCollection: b.customerCollection ?? null,
+        cashOnHandReturned: b.cashOnHandReturned ?? null,
+        cashOnHandReturnedTo: b.cashOnHandReturnedTo ?? null,
+        autoCash: b.autoCash ?? null,
+        driverRate: b.driverRate ?? null,
+        helperRate: b.helperRate ?? null,
+        billingStatus: effectiveBillingStatus,
+        soaNumber: b.soaNumber ?? "",
+        invoiceDate: b.invoiceDate ?? "",
+        dueDate: b.dueDate ?? "",
+        amountPaid: effectiveAmountPaid,
       odoDetails: (b.odoDetails ?? []).map((o) => ({
         tripIndex: o.tripIndex,
         odoStart: Number(o.odoStart),
