@@ -226,44 +226,26 @@ export default function DashboardClient({
           />
         </Flex>
 
-        {/* On Desktop (lg): 3-column row (Daily Operations | Fleet PMS Compliance | On-Time Delivery).
-            On Tablets (sm/md): Daily Operations & Fleet PMS Compliance side-by-side! */}
+        {/* 3 Widgets Grouped Side-by-Side: PMS Compliance | On-Time Delivery | Fleet KPI Score */}
         <Flex
           gap="md"
-          direction={{ base: "column", lg: "row" }}
+          direction={{ base: "column", md: "row" }}
           align="stretch"
         >
-          <Flex
-            gap="md"
-            style={{ flex: 2 }}
-            direction={{ base: "column", sm: "row" }}
-            w="100%"
-            align="stretch"
-          >
-            <Box style={{ flex: 1.1 }} w="100%">
-              <DailyOperationsTable trips={dailyOperations} />
-            </Box>
-            <Box style={{ flex: 0.9 }} w="100%">
-              <PmsWidget />
-            </Box>
-          </Flex>
-
-          <Flex
-            gap="md"
-            style={{ flex: 2 }}
-            direction={{ base: "column", sm: "row" }}
-            w="100%"
-            align="stretch"
-          >
-            <Box style={{ flex: 1 }} w="100%">
-              <OnTimeDeliveryWidget stats={onTimeDeliveryStats} />
-            </Box>
-            <Box style={{ flex: 1 }} w="100%">
-              <KpiWidget />
-            </Box>
-          </Flex>
+          <Box style={{ flex: 1 }} w="100%">
+            <PmsWidget />
+          </Box>
+          <Box style={{ flex: 1 }} w="100%">
+            <OnTimeDeliveryWidget stats={onTimeDeliveryStats} />
+          </Box>
+          <Box style={{ flex: 1 }} w="100%">
+            <KpiWidget />
+          </Box>
         </Flex>
-
+        {/* Full-Width Daily Operations Table */}
+        <Box w="100%">
+          <DailyOperationsTable trips={dailyOperations} />
+        </Box>
         <Flex
           gap="md"
           direction={{ base: "column", md: "column", lg: "row" }}
