@@ -428,41 +428,7 @@ export function ScoreboardTab() {
             )}
           </Paper>
 
-          {/* Action Recommendations */}
-          {scoreboard.length > 0 && (
-            <Paper withBorder radius="md" p="md">
-              <Text fw={700} size="sm" mb="sm">
-                Action Recommendations
-              </Text>
-              <Stack gap="xs">
-                {Object.entries(RATING_CONFIG).map(([rating, cfg]) => {
-                  const count = ratingCounts[rating] || 0;
-                  if (count === 0) return null;
-                  return (
-                    <Alert
-                      key={rating}
-                      color={cfg.color}
-                      variant="light"
-                      icon={cfg.icon}
-                      py="xs"
-                    >
-                      <Group gap="xs">
-                        <Badge color={cfg.color} variant="filled" size="sm">
-                          {count}
-                        </Badge>
-                        <Text size="xs" fw={600}>
-                          {rating}:
-                        </Text>
-                        <Text size="xs" c="dimmed">
-                          {cfg.action}
-                        </Text>
-                      </Group>
-                    </Alert>
-                  );
-                })}
-              </Stack>
-            </Paper>
-          )}
+
         </>
       )
       }

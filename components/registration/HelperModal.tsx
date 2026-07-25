@@ -39,6 +39,9 @@ export function HelperModal({ opened, onClose, helper }: Props) {
       emergencyContact: helper?.emergencyContact ?? "",
       address: helper?.address ?? "",
       isActive: helper?.isActive ?? true,
+      resignedAt: helper?.resignedAt
+        ? new Date(helper.resignedAt).toISOString().split("T")[0]
+        : "",
     },
     validate: {
       helperName: (value) => (value.trim().length < 1 ? "Helper name is required" : null),
@@ -160,10 +163,22 @@ export function HelperModal({ opened, onClose, helper }: Props) {
         if (res.url) idBackLink = res.url;
       }
 
-      if (isEditMode && helper) {
-        updateAction.execute({ id: helper.id, ...values, idFrontLink, idBackLink });
+      const payload: any = {
+        ...values,
+        idFrontLink,
+        idBackLink,
+      };
+
+      if (!values.isActive && values.resignedAt) {
+        payload.resignedAt = new Date(values.resignedAt);
       } else {
-        createAction.execute({ ...values, idFrontLink, idBackLink });
+        delete payload.resignedAt;
+      }
+
+      if (isEditMode && helper) {
+        updateAction.execute({ id: helper.id, ...payload });
+      } else {
+        createAction.execute(payload);
       }
     } catch {
       notifications.show({ message: "Failed to upload ID images.", color: "red" });
@@ -213,8 +228,25 @@ export function HelperModal({ opened, onClose, helper }: Props) {
               label="Active Status"
               description="Disable if the helper has resigned or is inactive"
               checked={form.values.isActive}
-              {...form.getInputProps("isActive", { type: "checkbox" })}
+              onChange={(event) => {
+                const checked = event.currentTarget.checked;
+                form.setFieldValue("isActive", checked);
+                if (!checked && !form.values.resignedAt) {
+                  form.setFieldValue(
+                    "resignedAt",
+                    new Date().toISOString().split("T")[0]
+                  );
+                }
+              }}
             />
+            {!form.values.isActive && (
+              <TextInput
+                type="date"
+                label="Resignation Date"
+                description="Date the helper was declared resigned"
+                {...form.getInputProps("resignedAt")}
+              />
+            )}
           </Stack>
 
           <Stack gap="sm">

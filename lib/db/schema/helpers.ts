@@ -11,6 +11,7 @@ export const helpers = pgTable("helpers", {
   idFrontLink: text("id_front"),
   idBackLink: text("id_back"),
   isActive: boolean("is_active").notNull().default(true),
+  resignedAt: timestamp("resigned_at"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });

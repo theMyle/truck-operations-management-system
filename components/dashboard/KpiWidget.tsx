@@ -68,7 +68,7 @@ export const KpiWidget = () => {
       style={{ display: "flex", flexDirection: "column" }}
     >
       <CardHeader
-        title="Fleet KPI Score"
+        title="Operation Manpower - KPI"
         subtitle={
           <Group gap="xs">
             <Badge
