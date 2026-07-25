@@ -97,7 +97,7 @@ export default function DashboardLayout({
           allowedRoles: [UserRole.ADMIN, UserRole.DISPATCH_OFFICER, UserRole.COORDINATOR],
         },
         {
-          label: "PMS Maintenance",
+          label: "PMS",
           icon: IconTools,
           href: "/pms",
           allowedRoles: [UserRole.ADMIN, UserRole.DISPATCH_OFFICER, UserRole.COORDINATOR],
