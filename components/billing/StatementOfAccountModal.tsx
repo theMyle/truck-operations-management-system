@@ -450,7 +450,7 @@ export function StatementOfAccountModal({
           <h2>KRISDOMINGO TRUCKING SERVICES OPC</h2>
           <p>Blk 15 Damayan Sitio Lumang Ilog Floodway B. Damayan San Juan, Taytay Rizal</p>
           <p>TIN: 698-121-203-00000 | Contact: 0964-980-9864 | Email: krisdomingo.ts@gmail.com</p>
-          <h3 style="margin-top: 15px; letter-spacing: 1px;">STATEMENT OF ACCOUNT (${targetType === "subcon" ? "SUBCON SETTLEMENT" : "CLIENT BILLING"})</h3>
+          <h3 style="margin-top: 15px; letter-spacing: 1px;">STATEMENT OF ACCOUNT  - ${clientName.toUpperCase()}</h3>
         </div>
 
         <div class="meta">
