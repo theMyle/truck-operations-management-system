@@ -159,9 +159,16 @@ export function HelpersTable({ data }: Props) {
               accessor: "isActive",
               title: "Status",
               render: (row) => (
-                <Badge size="sm" color={row.isActive ? "green" : "gray"}>
-                  {row.isActive ? "Active" : "Inactive"}
-                </Badge>
+                <div>
+                  <Badge size="sm" color={row.isActive ? "green" : "gray"}>
+                    {row.isActive ? "Active" : "Resigned"}
+                  </Badge>
+                  {!row.isActive && row.resignedAt && (
+                    <Text size="10px" c="dimmed" mt={2}>
+                      Resigned: {new Date(row.resignedAt).toLocaleDateString()}
+                    </Text>
+                  )}
+                </div>
               ),
             },
             {

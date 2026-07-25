@@ -240,7 +240,10 @@ export const makeBookingRepository = (database = db) => {
       data: UpdateTripDetailsInput,
     ): Promise<void> {
       await database.transaction(async (tx) => {
-        // 1. Update budget and rates on booking table
+        // Check if odometer is completed (odoEnd > 0)
+        const isOdoFinished = data.odoDetails?.some((o) => Number(o.odoEnd) > 0);
+
+        // 1. Update budget, rates, and deliveryStatus on booking table
         await tx
           .update(booking)
           .set({
@@ -256,6 +259,7 @@ export const makeBookingRepository = (database = db) => {
             autoCash: data.autoCash ?? false,
             driverRate: data.driverRate ?? null,
             helperRate: data.helperRate ?? null,
+            ...(isOdoFinished ? { deliveryStatus: "Completed" } : {}),
           })
           .where(eq(booking.id, data.id));
 

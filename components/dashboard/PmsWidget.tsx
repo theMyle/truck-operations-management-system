@@ -43,8 +43,8 @@ export const PmsWidget = () => {
               {overdueCount > 0
                 ? `${overdueCount} Overdue`
                 : dueSoonCount > 0
-                ? `${dueSoonCount} Due Soon`
-                : "Healthy"}
+                  ? `${dueSoonCount} Due Soon`
+                  : "Healthy"}
             </Badge>
             <Button
               component={Link}
@@ -96,23 +96,7 @@ export const PmsWidget = () => {
               </Paper>
             </Group>
 
-            {urgentTrucks.length > 0 && (
-              <Group gap="xs" mt="4px" align="center">
-                <Text size="10px" c="dimmed" fw={700}>
-                  Attention Needed:
-                </Text>
-                {urgentTrucks.map((t) => (
-                  <Badge
-                    key={t.plateNumber}
-                    size="xs"
-                    color={t.pmsStatus === "overdue" ? "red" : "orange"}
-                    variant="light"
-                  >
-                    {t.plateNumber} ({t.pmsStatus === "overdue" ? "Overdue" : "Due Soon"})
-                  </Badge>
-                ))}
-              </Group>
-            )}
+
           </Stack>
         )}
       </Box>

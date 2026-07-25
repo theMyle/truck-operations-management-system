@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Modal, Stack, Group, SimpleGrid, Text, Image, Paper, Box, ThemeIcon, Divider } from "@mantine/core";
-import { IconHelmet, IconPhone, IconAlertCircle, IconMapPin, IconId, IconEye } from "@tabler/icons-react";
+import { IconHelmet, IconPhone, IconAlertCircle, IconMapPin, IconId, IconEye, IconCalendar } from "@tabler/icons-react";
 import type { Helper } from "@/lib/db/schema/helpers";
 
 interface Props {
@@ -192,6 +192,22 @@ export function ViewHelperModal({ opened, onClose, helper }: Props) {
                 label="Emergency Contact"
                 value={helper.emergencyContact || "N/A"}
               />
+              {!helper.isActive && (
+                <InfoField
+                  icon={<IconCalendar size={12} />}
+                  iconColor="orange"
+                  label="Resignation Date"
+                  value={
+                    helper.resignedAt
+                      ? new Date(helper.resignedAt).toLocaleDateString("en-US", {
+                          month: "long",
+                          day: "numeric",
+                          year: "numeric",
+                        })
+                      : "N/A"
+                  }
+                />
+              )}
             </SimpleGrid>
           </Stack>
 

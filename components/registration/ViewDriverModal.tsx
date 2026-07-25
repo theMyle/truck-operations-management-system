@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Modal, Stack, Group, SimpleGrid, Text, Image, Paper, Box, ThemeIcon, Divider } from "@mantine/core";
-import { IconUser, IconPhone, IconAlertCircle, IconMapPin, IconId, IconEye } from "@tabler/icons-react";
+import { IconUser, IconPhone, IconAlertCircle, IconMapPin, IconId, IconEye, IconCalendar } from "@tabler/icons-react";
 import type { Driver } from "@/lib/db/schema/drivers";
 
 interface Props {
@@ -192,6 +192,22 @@ export function ViewDriverModal({ opened, onClose, driver }: Props) {
                 label="Emergency Contact"
                 value={driver.emergencyContact || "N/A"}
               />
+              {!driver.isActive && (
+                <InfoField
+                  icon={<IconCalendar size={12} />}
+                  iconColor="orange"
+                  label="Resignation Date"
+                  value={
+                    driver.resignedAt
+                      ? new Date(driver.resignedAt).toLocaleDateString("en-US", {
+                          month: "long",
+                          day: "numeric",
+                          year: "numeric",
+                        })
+                      : "N/A"
+                  }
+                />
+              )}
             </SimpleGrid>
           </Stack>
 

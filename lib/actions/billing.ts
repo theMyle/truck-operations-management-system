@@ -20,27 +20,19 @@ export const getBillingRecordsAction = actionClient
 
     // Build where clauses dynamically
     const conditions = [];
-    conditions.push(eq(booking.deliveryStatus, "Completed"));
     if (client) conditions.push(eq(booking.clientName, client));
     if (from) conditions.push(gte(booking.pickupDate, from));
     if (to) conditions.push(lte(booking.pickupDate, to));
 
-    // POD-based filter:
-    // - Clients with podRequired = false  → always included
-    // - Clients with podRequired = true   → only when PODLink is not null
-    conditions.push(
-      or(
-        eq(clients.podRequired, false),
-        and(eq(clients.podRequired, true), isNotNull(booking.PODLink)),
-      )!,
-    );
-
     const rows = await db
-      .select()
+      .select({
+        booking: booking,
+        client: clients,
+      })
       .from(booking)
-      .innerJoin(clients, eq(booking.clientId, clients.id))
+      .leftJoin(clients, eq(booking.clientId, clients.id))
       .where(conditions.length ? and(...conditions) : undefined)
-      .orderBy(booking.pickupDate);
+      .orderBy(desc(booking.pickupDate));
 
     // Fetch relations (helpers, drops) for each booking
     const bookingIds = rows.map((r) => r.booking.id);
@@ -83,15 +75,16 @@ export const getBillingRecordsAction = actionClient
         (b.fleetType && b.fleetType.toLowerCase().includes("subcon")) ||
         false;
 
+      // KTS trucks are eligible if deliveryStatus is Completed OR odoDetails has odoEnd > 0
+      const isCompletedOrOdo =
+        b.deliveryStatus === "Completed" ||
+        (b.odoDetails &&
+          b.odoDetails.length > 0 &&
+          b.odoDetails.some((o) => Number(o.odoEnd) > 0));
+
       if (isSub) return true;
 
-      // KTS trucks require odoDetails logged (start & end odo > 0)
-      const hasOdoLogged =
-        b.odoDetails &&
-        b.odoDetails.length > 0 &&
-        b.odoDetails.some((o) => Number(o.odoEnd) > 0);
-
-      return hasOdoLogged;
+      return isCompletedOrOdo;
     });
 
     // Same mapping shape as BookingRecordsPage so BillingRecord stays compatible

@@ -39,13 +39,15 @@ export function SidebarNav({ sections, pathname }: SidebarNavProps) {
                                     <NavLink
                                         key={item.label}
                                         label={
-                                            <Text size="xs" fw={500}>
+                                            <Text size="xs" fw={600}>
                                                 {item.label}
                                             </Text>
                                         }
                                         leftSection={<item.icon size={14} stroke={2} />}
                                         defaultOpened={isAnyChildActive}
-                                        childrenOffset={16}
+                                        childrenOffset={12}
+                                        variant="subtle"
+                                        c={isAnyChildActive ? "blue.7" : "gray.7"}
                                     >
                                         {item.children.map((child) => {
                                             const isChildActive = pathname === child.href;
@@ -60,9 +62,9 @@ export function SidebarNav({ sections, pathname }: SidebarNavProps) {
                                                     }
                                                     leftSection={<child.icon size={13} stroke={2} />}
                                                     active={isChildActive}
-                                                    variant={isChildActive ? "filled" : "subtle"}
-                                                    color={isChildActive ? "blue.6" : undefined}
-                                                    c={isChildActive ? undefined : "gray.7"}
+                                                    variant={isChildActive ? "light" : "subtle"}
+                                                    color={isChildActive ? "blue" : undefined}
+                                                    c={isChildActive ? "blue.7" : "gray.7"}
                                                     href={child.href || "#"}
                                                 />
                                             );
@@ -83,9 +85,9 @@ export function SidebarNav({ sections, pathname }: SidebarNavProps) {
                                     }
                                     leftSection={<item.icon size={14} stroke={2} />}
                                     active={isActive}
-                                    variant={isActive ? "filled" : "subtle"}
-                                    color={isActive ? "blue.6" : undefined}
-                                    c={isActive ? undefined : "gray.7"}
+                                    variant={isActive ? "light" : "subtle"}
+                                    color={isActive ? "blue" : undefined}
+                                    c={isActive ? "blue.7" : "gray.7"}
                                     href={item.href || "#"}
                                 />
                             );

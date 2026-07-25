@@ -99,19 +99,23 @@ export function RecordIncidentModal({
       if (dRes?.data) {
         const driverList = Array.isArray(dRes.data) ? dRes.data : [];
         setDrivers(
-          driverList.map((d: any) => ({
-            value: d.id,
-            label: d.driverName || d.driver_name || d.name,
-          }))
+          driverList
+            .filter((d: any) => d.isActive !== false)
+            .map((d: any) => ({
+              value: d.id,
+              label: d.driverName || d.driver_name || d.name,
+            }))
         );
       }
       if (hRes?.data) {
         const helperList = Array.isArray(hRes.data) ? hRes.data : [];
         setHelpers(
-          helperList.map((h: any) => ({
-            value: h.id,
-            label: h.helperName || h.helper_name || h.name,
-          }))
+          helperList
+            .filter((h: any) => h.isActive !== false)
+            .map((h: any) => ({
+              value: h.id,
+              label: h.helperName || h.helper_name || h.name,
+            }))
         );
       }
       setLoading(false);
