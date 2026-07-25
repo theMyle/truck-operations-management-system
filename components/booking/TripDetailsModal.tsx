@@ -588,12 +588,14 @@ export function TripDetailsModal({
   };
 
   const podRequired = record?.podRequired ?? true;
+  const isCompletedStatus = form.deliveryStatus === "Completed";
   const hasDr = !!form.bookingDRNo?.trim();
+
   const isFormValid =
-    hasDr &&
     !!form.deliveryStatus &&
-    (form.deliveryStatus === "Completed"
-      ? !!form.arrivalPickup &&
+    (isCompletedStatus
+      ? hasDr &&
+        !!form.arrivalPickup &&
         !!form.loadingStart &&
         !!form.loadingEnd &&
         !!form.departurePickup &&
@@ -613,12 +615,13 @@ export function TripDetailsModal({
   };
 
   const handleSave = async () => {
+    const isCompletedStatus = form.deliveryStatus === "Completed";
     const effectiveDrNo = (form.bookingDRNo || "").trim();
 
-    if (!effectiveDrNo) {
+    if (isCompletedStatus && !effectiveDrNo) {
       notifications.show({
         title: "Booking / DR# Required",
-        message: "Booking / DR# is required before saving trip details.",
+        message: "Booking / DR# is required when setting status to Completed.",
         color: "red",
       });
       return;
