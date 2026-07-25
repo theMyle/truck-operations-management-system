@@ -679,10 +679,7 @@ export default function BillingModule() {
     filtered.forEach((r) => {
       const rate = Number(r.tripRate || 0);
       const hasPod = Boolean(r.podFileUrl || r.podFile);
-      const isTransportify =
-        Boolean(r.clientName && String(r.clientName).toLowerCase().includes("transportify")) ||
-        Boolean(r.client && String(r.client).toLowerCase().includes("transportify"));
-      const isPaid = r.billingStatus === "paid" || isTransportify;
+      const isPaid = r.billingStatus === "paid";
 
       const rawPaid = Number(r.amountPaid) || 0;
       const paid = isPaid ? (rawPaid > 0 ? rawPaid : rate) : rawPaid;
