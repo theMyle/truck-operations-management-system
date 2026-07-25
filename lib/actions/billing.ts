@@ -75,16 +75,21 @@ export const getBillingRecordsAction = actionClient
         (b.fleetType && b.fleetType.toLowerCase().includes("subcon")) ||
         false;
 
-      // KTS trucks are eligible if deliveryStatus is Completed OR odoDetails has odoEnd > 0
-      const isCompletedOrOdo =
-        b.deliveryStatus === "Completed" ||
-        (b.odoDetails &&
-          b.odoDetails.length > 0 &&
-          b.odoDetails.some((o) => Number(o.odoEnd) > 0));
+      const hasDr = !!b.bookingDRNo?.trim();
+      const isCompleted = b.deliveryStatus === "Completed";
 
-      if (isSub) return true;
+      // Subcon trucks require valid Booking DR# and Completed delivery status
+      if (isSub) {
+        return hasDr && isCompleted;
+      }
 
-      return isCompletedOrOdo;
+      // KTS trucks require valid Booking DR# and odoDetails logged in Trip Logs (end odo > 0)
+      const hasOdoLogged =
+        b.odoDetails &&
+        b.odoDetails.length > 0 &&
+        b.odoDetails.some((o) => Number(o.odoEnd) > 0);
+
+      return hasDr && hasOdoLogged;
     });
 
     // Same mapping shape as BookingRecordsPage so BillingRecord stays compatible

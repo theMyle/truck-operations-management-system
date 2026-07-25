@@ -24,7 +24,7 @@ export default function DemeritPage() {
       <Group justify="space-between" align="center">
         <div>
           <Text fw={800} size="xl" lh={1.2}>
-            Krisdomingo Demerit & KPI
+            OPERATION - MANPOWER KPI
           </Text>
           <Text size="xs" c="dimmed">
             Track driver and helper violations, monthly KPI scores, and performance ratings
