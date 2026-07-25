@@ -15,8 +15,13 @@ interface OnTimeDeliveryWidgetProps {
 export const OnTimeDeliveryWidget = ({ stats }: OnTimeDeliveryWidgetProps) => {
   const [modalOpened, setModalOpened] = useState(false);
   const percentage = parseFloat(stats.percentage) || 0;
-  const isGood = percentage >= 90;
-  const color = isGood ? "teal" : percentage >= 75 ? "blue" : "orange";
+
+  const statusInfo =
+    percentage >= 90
+      ? { label: "Good", color: "teal" }
+      : percentage >= 80
+      ? { label: "Warning", color: "orange" }
+      : { label: "Needs Improvement", color: "red" };
 
   return (
     <>
@@ -27,11 +32,11 @@ export const OnTimeDeliveryWidget = ({ stats }: OnTimeDeliveryWidgetProps) => {
             <Group gap="xs">
               <Badge
                 variant="light"
-                color={color}
+                color={statusInfo.color}
                 radius="sm"
                 styles={{ label: { fontSize: "9px" }, root: { height: 18 } }}
               >
-                {isGood ? "Excellent" : "Needs Improvement"}
+                {statusInfo.label}
               </Badge>
               <Button
                 variant="light"
@@ -53,9 +58,9 @@ export const OnTimeDeliveryWidget = ({ stats }: OnTimeDeliveryWidgetProps) => {
               size={130}
               thickness={14}
               roundCaps
-              sections={[{ value: percentage, color }]}
+              sections={[{ value: percentage, color: statusInfo.color }]}
               label={
-                <Text ta="center" fw={800} size="xl" c={color}>
+                <Text ta="center" fw={800} size="xl" c={statusInfo.color}>
                   {percentage}%
                 </Text>
               }
