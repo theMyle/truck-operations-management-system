@@ -138,17 +138,92 @@ export const KpiWidget = () => {
               </Paper>
             </Group>
 
-            <Group gap="xs" mt="xs">
-              <Text size="xs" c="dimmed" fw={600}>
-                Team Avg:
-              </Text>
-              <Text size="sm" fw={800} c={ratingColor}>
-                {data.average}
-              </Text>
+            <Group justify="space-between" align="center" mt="xs">
+              <Group gap={6}>
+                <Text size="10px" c="dimmed" fw={700}>
+                  TEAM AVG:
+                </Text>
+                <Text size="sm" fw={800} c={ratingColor}>
+                  {data.average} pts
+                </Text>
+              </Group>
               <Badge color={ratingColor} variant="light" size="xs">
                 {data.rating}
               </Badge>
             </Group>
+
+            {/* Performance Tier Breakdown Section */}
+            <Stack gap={6} mt="xs">
+              <Group justify="space-between" align="center">
+                <Text size="10px" fw={800} c="gray.7" tt="uppercase" lts={0.5}>
+                  Rating Tier Breakdown
+                </Text>
+                <Button
+                  component={Link}
+                  href="/demerit"
+                  variant="subtle"
+                  color="blue"
+                  size="xs"
+                  rightSection={<IconChevronRight size={12} />}
+                  styles={{ root: { height: 18, fontSize: "10px", padding: 0 } }}
+                >
+                  View Scoreboard
+                </Button>
+              </Group>
+
+              <Paper
+                withBorder
+                p="6px 10px"
+                radius="sm"
+                style={{ backgroundColor: "var(--mantine-color-gray-0)" }}
+              >
+                <Stack gap={4}>
+                  <Group justify="space-between" align="center">
+                    <Group gap={6}>
+                      <Text size="10px" fw={700} c="teal">
+                        🌟 Excellent (90-100 pts)
+                      </Text>
+                    </Group>
+                    <Badge color="teal" variant="light" size="xs">
+                      {data.counts.excellent} Personnel
+                    </Badge>
+                  </Group>
+
+                  <Group justify="space-between" align="center">
+                    <Group gap={6}>
+                      <Text size="10px" fw={700} c="blue">
+                        👍 Good (80-89 pts)
+                      </Text>
+                    </Group>
+                    <Badge color="blue" variant="light" size="xs">
+                      {data.counts.good} Personnel
+                    </Badge>
+                  </Group>
+
+                  <Group justify="space-between" align="center">
+                    <Group gap={6}>
+                      <Text size="10px" fw={700} c="orange">
+                        ⚠️ Coaching Needed (70-79 pts)
+                      </Text>
+                    </Group>
+                    <Badge color="orange" variant="light" size="xs">
+                      {data.counts.needsImprovement} Personnel
+                    </Badge>
+                  </Group>
+
+                  <Group justify="space-between" align="center">
+                    <Group gap={6}>
+                      <Text size="10px" fw={700} c="red">
+                        🚨 Review Needed (&lt; 70 pts)
+                      </Text>
+                    </Group>
+                    <Badge color="red" variant="light" size="xs">
+                      {data.counts.poor} Personnel
+                    </Badge>
+                  </Group>
+                </Stack>
+              </Paper>
+            </Stack>
           </Stack>
         ) : (
           <Text size="xs" c="dimmed" ta="center">
