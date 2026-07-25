@@ -10,4 +10,6 @@ export * from "./bookingHelpers";
 export * from "./tripOdo";
 export * from "./tripExpense";
 export * from "./pmsLogs";
+export * from "./violationTypes";
+export * from "./demeritRecords";
 

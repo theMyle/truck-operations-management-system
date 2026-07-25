@@ -4,48 +4,63 @@ import React from "react";
 import {
   Title,
   Text,
-  Paper,
   Stack,
   Group,
   Badge,
-  Alert,
-  ThemeIcon,
+  Tabs,
 } from "@mantine/core";
-import { IconAlertOctagon, IconInfoCircle, IconShield } from "@tabler/icons-react";
+import {
+  IconList,
+  IconChartBar,
+  IconHistory,
+} from "@tabler/icons-react";
+import { ViolationCatalogTab } from "@/components/demerit/ViolationCatalogTab";
+import { ScoreboardTab } from "@/components/demerit/ScoreboardTab";
+import { DemeritLogTab } from "@/components/demerit/DemeritLogTab";
 
 export default function DemeritPage() {
   return (
     <Stack gap="md">
       <Group justify="space-between" align="center">
         <div>
-          <Title order={2} style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-            <IconAlertOctagon color="var(--mantine-color-orange-6)" size={28} />
-            Krisdomingo Demerit & KPI Management
-          </Title>
-          <Text c="dimmed" size="sm">
-            Track driver and helper violations, monthly KPI scores, and performance ratings.
+          <Text fw={800} size="xl" lh={1.2}>
+            Krisdomingo Demerit & KPI
+          </Text>
+          <Text size="xs" c="dimmed">
+            Track driver and helper violations, monthly KPI scores, and performance ratings
           </Text>
         </div>
-        <Badge size="lg" color="orange" variant="light">
-          Module Configuration
+        <Badge size="sm" color="orange" variant="light">
+          KPI Management
         </Badge>
       </Group>
 
-      <Alert color="blue" icon={<IconInfoCircle size={18} />}>
-        This module allows admins to manage violation catalogs (Attendance, Discipline, Compliance), submit incident demerit points, and generate monthly driver scoreboard reports.
-      </Alert>
+      <Tabs defaultValue="scoreboard" keepMounted={false}>
+        <Tabs.List>
+          <Tabs.Tab
+            value="scoreboard"
+            leftSection={<IconChartBar size={14} />}
+          >
+            Scoreboard
+          </Tabs.Tab>
+          <Tabs.Tab value="catalog" leftSection={<IconList size={14} />}>
+            Violation Catalog
+          </Tabs.Tab>
+          <Tabs.Tab value="log" leftSection={<IconHistory size={14} />}>
+            Demerit Log
+          </Tabs.Tab>
+        </Tabs.List>
 
-      <Paper withBorder p="xl" radius="md">
-        <Stack align="center" gap="sm" py="xl">
-          <ThemeIcon size={56} radius="xl" color="orange" variant="light">
-            <IconShield size={32} />
-          </ThemeIcon>
-          <Title order={3}>Violations & Demerit Scoring Engine</Title>
-          <Text c="dimmed" ta="center" style={{ maxWidth: 500 }} size="sm">
-            The Demerit & KPI module structure is active in your nav under <strong>Management &gt; Krisdomingo Demerit</strong>.
-          </Text>
-        </Stack>
-      </Paper>
+        <Tabs.Panel value="scoreboard" pt="md">
+          <ScoreboardTab />
+        </Tabs.Panel>
+        <Tabs.Panel value="catalog" pt="md">
+          <ViolationCatalogTab />
+        </Tabs.Panel>
+        <Tabs.Panel value="log" pt="md">
+          <DemeritLogTab />
+        </Tabs.Panel>
+      </Tabs>
     </Stack>
   );
 }

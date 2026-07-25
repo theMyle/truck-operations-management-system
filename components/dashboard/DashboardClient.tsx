@@ -5,6 +5,7 @@ import { IncomeStats } from "@/components/dashboard/IncomeStats";
 import { FleetStatusOverview } from "@/components/dashboard/FleetStatusOverview";
 import { OnTimeDeliveryWidget } from "@/components/dashboard/OnTimeDeliveryWidget";
 import { PmsWidget } from "@/components/dashboard/PmsWidget";
+import { KpiWidget } from "@/components/dashboard/KpiWidget";
 import { DailyOperationsTable } from "@/components/dashboard/DailyOperationsTable";
 import { WeeklyOperationsTable } from "@/components/dashboard/WeeklyOperationsTable";
 import { MonthlyOperationsTable } from "@/components/dashboard/MonthlyOperationsTable";
@@ -247,9 +248,20 @@ export default function DashboardClient({
             </Box>
           </Flex>
 
-          <Box style={{ flex: 1 }} w="100%">
-            <OnTimeDeliveryWidget stats={onTimeDeliveryStats} />
-          </Box>
+          <Flex
+            gap="md"
+            style={{ flex: 2 }}
+            direction={{ base: "column", sm: "row" }}
+            w="100%"
+            align="stretch"
+          >
+            <Box style={{ flex: 1 }} w="100%">
+              <OnTimeDeliveryWidget stats={onTimeDeliveryStats} />
+            </Box>
+            <Box style={{ flex: 1 }} w="100%">
+              <KpiWidget />
+            </Box>
+          </Flex>
         </Flex>
 
         <Flex

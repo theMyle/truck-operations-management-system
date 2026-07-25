@@ -33,7 +33,9 @@ import {
   IconDownload,
   IconFileTypePdf,
   IconFileSpreadsheet,
+  IconCalendar,
 } from "@tabler/icons-react";
+import { DateRangeFilterModal } from "@/components/ui/DateRangeFilterModal";
 import {
   getFleetPmsStatusAction,
   logCompletedPmsAction,
@@ -73,6 +75,7 @@ export default function PmsPage() {
   const [startDate, setStartDate] = useState<string>("");
   const [endDate, setEndDate] = useState<string>("");
   const [exporting, setExporting] = useState(false);
+  const [dateModalOpen, setDateModalOpen] = useState(false);
 
   // Reset page when filters change
   useEffect(() => {
@@ -195,8 +198,6 @@ export default function PmsPage() {
     }
     setLoadingHistory(false);
   };
-
-  // ── Export Helpers ──
 
   const fetchExportData = async () => {
     if (!startDate || !endDate) {
@@ -330,7 +331,6 @@ export default function PmsPage() {
       const allRows = [...metaData, ...exportRows];
       const ws = XLSX.utils.aoa_to_sheet(allRows);
 
-      // Column widths
       ws["!cols"] = headers.map((h, i) => {
         const maxLen = Math.max(
           h.length,
@@ -339,14 +339,12 @@ export default function PmsPage() {
         return { wch: Math.min(Math.max(maxLen + 2, 12), 50) };
       });
 
-      // Style title
       const titleRef = XLSX.utils.encode_cell({ r: 0, c: 0 });
       if (!ws[titleRef]) ws[titleRef] = { v: title.toUpperCase(), t: "s" };
       ws[titleRef].s = {
         font: { bold: true, sz: 16, color: { rgb: "1a56db" } },
       };
 
-      // Style header row
       const headerRowIdx = metaData.length - 1;
       headers.forEach((_, colIdx) => {
         const ref = XLSX.utils.encode_cell({ r: headerRowIdx, c: colIdx });
@@ -359,7 +357,6 @@ export default function PmsPage() {
         };
       });
 
-      // Stripe data rows
       exportRows.forEach((_, rowOffset) => {
         const rowIdx = headerRowIdx + 1 + rowOffset;
         const isEven = rowOffset % 2 === 0;
@@ -391,7 +388,6 @@ export default function PmsPage() {
 
   return (
     <Stack gap="md">
-      {/* Simple Clean Header */}
       <Group justify="space-between" align="center">
         <div>
           <Text fw={800} size="xl" lh={1.2}>
@@ -412,7 +408,6 @@ export default function PmsPage() {
         </Button>
       </Group>
 
-      {/* Toolbar & Filters */}
       <Paper withBorder radius="md" p="sm">
         <Group justify="space-between">
           <Group gap="xs">
@@ -437,8 +432,17 @@ export default function PmsPage() {
               size="xs"
               style={{ width: 140 }}
             />
+            <Button
+              variant={startDate || endDate ? "filled" : "outline"}
+              color={startDate || endDate ? "blue" : "gray"}
+              size="xs"
+              leftSection={<IconCalendar size={14} />}
+              onClick={() => setDateModalOpen(true)}
+            >
+              {startDate || endDate ? `${startDate || "..."} to ${endDate || "..."}` : "Date Filter"}
+            </Button>
           </Group>
-          <Group gap="xs">
+          <Group gap="xs" align="center">
             <Badge color="teal" variant="light" size="xs">
               OK: {stats.ok}
             </Badge>
@@ -448,32 +452,7 @@ export default function PmsPage() {
             <Badge color="red" variant="light" size="xs">
               Overdue: {stats.overdue}
             </Badge>
-          </Group>
-        </Group>
-      </Paper>
 
-      {/* Date Range Export */}
-      <Paper withBorder radius="md" p="sm">
-        <Group justify="space-between">
-          <Group gap="xs" align="flex-end">
-            <TextInput
-              type="date"
-              label="From"
-              value={startDate}
-              onChange={(e) => setStartDate(e.currentTarget.value)}
-              size="xs"
-              style={{ width: 150 }}
-            />
-            <TextInput
-              type="date"
-              label="To"
-              value={endDate}
-              onChange={(e) => setEndDate(e.currentTarget.value)}
-              size="xs"
-              style={{ width: 150 }}
-            />
-          </Group>
-          <Group gap="xs" align="flex-end">
             <Button
               size="xs"
               variant="light"
@@ -500,7 +479,21 @@ export default function PmsPage() {
         </Group>
       </Paper>
 
-      {/* Main Table */}
+      <DateRangeFilterModal
+        opened={dateModalOpen}
+        onClose={() => setDateModalOpen(false)}
+        dateFrom={startDate}
+        dateTo={endDate}
+        onApply={(from: string, to: string) => {
+          setStartDate(from);
+          setEndDate(to);
+        }}
+        onClear={() => {
+          setStartDate("");
+          setEndDate("");
+        }}
+      />
+
       <Paper withBorder radius="md" style={{ overflow: "hidden" }}>
         {loading ? (
           <Center p="xl">
