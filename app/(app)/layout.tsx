@@ -88,19 +88,19 @@ export default function DashboardLayout({
     {
       label: "KPI",
       icon: IconChartBar,
-      allowedRoles: [UserRole.ADMIN, UserRole.DISPATCH_OFFICER, UserRole.COORDINATOR],
+      allowedRoles: [UserRole.ADMIN, UserRole.DISPATCH_OFFICER, UserRole.COORDINATOR, UserRole.BILLING_CLERK],
       children: [
         {
           label: "Krisdomingo",
           icon: IconAlertOctagon,
           href: "/demerit",
-          allowedRoles: [UserRole.ADMIN, UserRole.DISPATCH_OFFICER, UserRole.COORDINATOR],
+          allowedRoles: [UserRole.ADMIN, UserRole.DISPATCH_OFFICER, UserRole.COORDINATOR, UserRole.BILLING_CLERK],
         },
         {
           label: "PMS",
           icon: IconTools,
           href: "/pms",
-          allowedRoles: [UserRole.ADMIN, UserRole.DISPATCH_OFFICER, UserRole.COORDINATOR],
+          allowedRoles: [UserRole.ADMIN, UserRole.DISPATCH_OFFICER, UserRole.COORDINATOR,],
         },
       ],
     },
@@ -108,7 +108,7 @@ export default function DashboardLayout({
       label: "Registration",
       icon: IconUserPlus,
       href: "/registration",
-      allowedRoles: [UserRole.ADMIN],
+      allowedRoles: [UserRole.ADMIN, UserRole.DISPATCH_OFFICER],
     },
     {
       label: "Accounts",
