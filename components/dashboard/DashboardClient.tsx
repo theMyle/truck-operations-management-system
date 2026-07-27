@@ -10,6 +10,7 @@ import { DailyOperationsTable } from "@/components/dashboard/DailyOperationsTabl
 import { WeeklyOperationsTable } from "@/components/dashboard/WeeklyOperationsTable";
 import { MonthlyOperationsTable } from "@/components/dashboard/MonthlyOperationsTable";
 import { LiveFleetTable } from "@/components/dashboard/LiveFleetTable";
+import { KrisdomingoOverallKpiWidget } from "@/components/dashboard/KrisdomingoOverallKpiWidget";
 import { useState, useEffect, useMemo } from "react";
 import { Truck } from "@/lib/db/schema";
 import { getTruckStatusLabel } from "@/lib/utils/truckStatus";
@@ -209,6 +210,11 @@ export default function DashboardClient({
   return (
     <Flex gap="md" direction={{ base: "column", lg: "row" }} align="flex-start">
       <Stack style={{ flex: 7.5 }} gap="md" w="100%">
+        {/* Featured Top Executive KPI Widget */}
+        <Box w="100%">
+          <KrisdomingoOverallKpiWidget />
+        </Box>
+
         <Flex
           gap="md"
           align="stretch"

@@ -3,6 +3,7 @@ import { booking } from "@/lib/db/schema/booking";
 import { trucks } from "@/lib/db/schema/trucks";
 import { eq, and, sql, gte, lte } from "drizzle-orm";
 import { formatTime12Hour } from "@/lib/utils/stringFormat";
+import { getActiveDaysInMonth } from "@/lib/utils/dateUtils";
 
 export async function getDailyOperations(dateStr: string) {
   const result = await db
@@ -250,9 +251,10 @@ export async function getMonthlyOperations(year: number) {
     }
   }
 
-  // Calculate activeDays (number of unique days with trips) for each month
+  // Calculate activeDays for each month using shared helper
+  const operationsStartDate = await getOperationsStartDate();
   for (let m = 1; m <= 12; m++) {
-    byMonth[m].activeDays = uniqueDatesByMonth[m].size;
+    byMonth[m].activeDays = getActiveDaysInMonth(year, m, operationsStartDate);
   }
 
   return byMonth;

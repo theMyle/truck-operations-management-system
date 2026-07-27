@@ -19,6 +19,7 @@ import {
   TextInput,
   Progress,
   Image,
+  Badge,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { DispatchRecord } from "@/app/(app)/constant";
@@ -93,14 +94,67 @@ export const STATUS_META: Record<
   "Cancel/No Show": { color: "gray", icon: <IconBan size={11} /> },
 };
 
+/* ── Arrival vs Scheduled Pickup Time Comparison Helpers ── */
+function parseTimeToMinutes(timeStr?: string): number | null {
+  if (!timeStr || typeof timeStr !== "string") return null;
+  const cleaned = timeStr.trim().toUpperCase();
+  const match = cleaned.match(/^(\d{1,2}):(\d{2})(?::\d{2})?\s*(AM|PM)?$/);
+  if (!match) return null;
+  let hours = parseInt(match[1], 10);
+  const minutes = parseInt(match[2], 10);
+  const period = match[3];
+
+  if (period) {
+    if (period === "PM" && hours < 12) hours += 12;
+    if (period === "AM" && hours === 12) hours = 0;
+  }
+  return hours * 60 + minutes;
+}
+
+export function getArrivalStatus(
+  scheduledTime?: string,
+  actualTime?: string,
+): { label: string; color: string } | null {
+  const schedMins = parseTimeToMinutes(scheduledTime);
+  const actualMins = parseTimeToMinutes(actualTime);
+
+  if (schedMins === null || actualMins === null) return null;
+
+  const diff = actualMins - schedMins;
+  if (diff === 0) {
+    return { label: "On Time", color: "teal" };
+  }
+
+  const absDiff = Math.abs(diff);
+  const hrs = Math.floor(absDiff / 60);
+  const mins = absDiff % 60;
+
+  let durationText = "";
+  if (hrs > 0 && mins > 0) {
+    durationText = `${hrs}h ${mins}m`;
+  } else if (hrs > 0) {
+    durationText = `${hrs}h`;
+  } else {
+    durationText = `${mins}m`;
+  }
+
+  if (diff > 0) {
+    return { label: `${durationText} late`, color: diff > 30 ? "red" : "orange" };
+  } else {
+    return { label: `${durationText} early`, color: "blue" };
+  }
+}
+
 function TimeField({
   label,
   value,
   onChange,
+  statusBadge,
 }: {
   label: string;
   value: string;
   onChange: (val: string) => void;
+  statusBadge?: React.ReactNode;
 }) {
   // parse existing HH:mm value into parts
   const toHour12 = (hh: number) => {
@@ -162,8 +216,11 @@ function TimeField({
 
   return (
     <Stack gap={4}>
-      <Group justify="space-between">
-        <Text style={labelStyle}>{label}</Text>
+      <Group justify="space-between" align="center" wrap="nowrap">
+        <Group gap={6} align="center" wrap="nowrap">
+          <Text style={labelStyle}>{label}</Text>
+          {statusBadge}
+        </Group>
         {value && (
           <Tooltip label="Clear" withArrow fz={10}>
             <ActionIcon
@@ -295,11 +352,10 @@ function PodUploadField({
         onDrop={isUploading ? undefined : handleDrop}
         style={{
           minHeight: 98,
-          border: `1px dashed ${
-            isDragging
-              ? "var(--mantine-color-blue-5)"
-              : "var(--mantine-color-blue-4)"
-          }`,
+          border: `1px dashed ${isDragging
+            ? "var(--mantine-color-blue-5)"
+            : "var(--mantine-color-blue-4)"
+            }`,
           borderRadius: 8,
           background: isDragging
             ? "var(--mantine-color-blue-0)"
@@ -482,6 +538,11 @@ export function TripDetailsModal({
   );
 
   const [form, setForm] = useState<TripDetailsForm>(initial);
+  const scheduledTime = record?.pickUpTime || record?.rawPickupTime;
+
+  const arrivalStatus = useMemo(() => {
+    return getArrivalStatus(scheduledTime, form.arrivalPickup);
+  }, [scheduledTime, form.arrivalPickup]);
   // The actual File object for the pending upload — separate from form
   // because form.podFileUrl is just a blob preview URL (not uploadable)
   const [pendingFile, setPendingFile] = useState<File | null>(null);
@@ -595,12 +656,12 @@ export function TripDetailsModal({
     !!form.deliveryStatus &&
     (isCompletedStatus
       ? hasDr &&
-        !!form.arrivalPickup &&
-        !!form.loadingStart &&
-        !!form.loadingEnd &&
-        !!form.departurePickup &&
-        !!form.finishDelivery &&
-        (!podRequired || !!form.podFileUrl)
+      !!form.arrivalPickup &&
+      !!form.loadingStart &&
+      !!form.loadingEnd &&
+      !!form.departurePickup &&
+      !!form.finishDelivery &&
+      (!podRequired || !!form.podFileUrl)
       : true);
 
   if (!record) return null;
@@ -643,16 +704,16 @@ export function TripDetailsModal({
         // Compress: PDF via Ghostscript WASM (in Web Worker), images via Canvas API
         setUploadProgress(20);
         const compressed = isPdfFile
-          ? (isGeneratedPdf 
-              ? pendingFile 
-              : await compressPdf(pendingFile, (p) => {
-                  setUploadStatus(p.message);
-                  if (p.message.includes("Compressing")) {
-                    setUploadProgress(40);
-                  } else if (p.message.includes("Compressed") || p.message.includes("optimised")) {
-                    setUploadProgress(65);
-                  }
-                }))
+          ? (isGeneratedPdf
+            ? pendingFile
+            : await compressPdf(pendingFile, (p) => {
+              setUploadStatus(p.message);
+              if (p.message.includes("Compressing")) {
+                setUploadProgress(40);
+              } else if (p.message.includes("Compressed") || p.message.includes("optimised")) {
+                setUploadProgress(65);
+              }
+            }))
           : await compressImage(pendingFile);
 
         setUploadStatus("Preparing upload details…");
@@ -785,21 +846,39 @@ export function TripDetailsModal({
             p="md"
             style={{ backgroundColor: "var(--mantine-color-gray-0)" }}
           >
-            <Text
-              fw={800}
-              style={{ fontSize: "9px" }}
-              tt="uppercase"
-              lts={1}
-              c="blue.6"
-              mb="sm"
-            >
-              Timeline
-            </Text>
+            <Group justify="space-between" align="center" mb="sm">
+              <Text
+                fw={800}
+                style={{ fontSize: "9px" }}
+                tt="uppercase"
+                lts={1}
+                c="blue.6"
+              >
+                Timeline
+              </Text>
+              {scheduledTime && (
+                <Text style={{ fontSize: "10px" }} fw={600} c="dimmed">
+                  Scheduled Pickup: <Text span style={{ fontSize: "10px", paddingLeft: "3px" }} fw={700} c="blue.7">{scheduledTime}</Text>
+                </Text>
+              )}
+            </Group>
             <SimpleGrid cols={2} spacing="sm" verticalSpacing="sm">
               <TimeField
                 label="Arrival at Pick Up"
                 value={form.arrivalPickup}
                 onChange={(v) => set("arrivalPickup", v)}
+                statusBadge={
+                  arrivalStatus ? (
+                    <Badge
+                      size="xs"
+                      variant="light"
+                      color={arrivalStatus.color}
+                      style={{ textTransform: "none", fontSize: "10px", padding: "0 6px" }}
+                    >
+                      {arrivalStatus.label}
+                    </Badge>
+                  ) : null
+                }
               />
               <TimeField
                 label="Loading Start"
@@ -1000,7 +1079,7 @@ export function TripDetailsModal({
         zIndex={1000}
       >
         {form.podFileType === "application/pdf" ||
-        form.podFile.toLowerCase().endsWith(".pdf") ? (
+          form.podFile.toLowerCase().endsWith(".pdf") ? (
           <iframe
             src={form.podFileUrl}
             title="POD PDF Preview"

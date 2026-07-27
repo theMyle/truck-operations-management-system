@@ -289,7 +289,7 @@ export function StatementOfAccountModal({
     // Table Headers
     const headers = [
       "#", "Date", "DR / Booking #", "Plate #", "Fleet Type",
-      "Pickup Location", "# Drops", "Drop-Off Location",
+      "Route", "# Drops", "Drop-Off Location",
       "Base Rate (₱)", "Excess Drop (₱)", "Amount (₱)"
     ];
 
@@ -319,7 +319,7 @@ export function StatementOfAccountModal({
       setCell(currentRow, 2, r.bookingDRNo || r.bookingDr || "—", dataCellCenter);
       setCell(currentRow, 3, r.plateNo || "—", dataCellCenter);
       setCell(currentRow, 4, r.fleetType || r.unit || "—", dataCellCenter);
-      setCell(currentRow, 5, r.pickLocation || "—", dataCellLeft);
+      setCell(currentRow, 5, r.ruta || "—", dataCellLeft);
       setCell(currentRow, 6, drops, dataCellCenter);
       setCell(currentRow, 7, (r.dropOffLocation || "—").replace(/\n/g, ", "), dataCellLeft);
       setCell(currentRow, 8, rate, dataCellRight);
@@ -417,7 +417,7 @@ export function StatementOfAccountModal({
           <td>${r.bookingDRNo || r.bookingDr || "—"}</td>
           <td>${r.plateNo || "—"}</td>
           <td>${r.fleetType || r.unit || "—"}</td>
-          <td>${r.pickLocation || "—"}</td>
+          <td>${r.ruta || "—"}</td>
           <td>${drops}</td>
           <td>₱${rate.toLocaleString("en-PH", { minimumFractionDigits: 2 })}</td>
           <td>₱${excess.toLocaleString("en-PH", { minimumFractionDigits: 2 })}</td>
@@ -472,7 +472,7 @@ export function StatementOfAccountModal({
               <th>DR / Booking #</th>
               <th>Plate #</th>
               <th>Fleet</th>
-              <th>Pickup Location</th>
+              <th>Route</th>
               <th>Drops</th>
               <th>Base Rate</th>
               <th>Excess Drop</th>
@@ -634,7 +634,7 @@ export function StatementOfAccountModal({
                         <Table.Td style={{ fontSize: "10px" }}>{r.bookingDRNo || r.bookingDr || "—"}</Table.Td>
                         <Table.Td style={{ fontSize: "10px", fontFamily: "monospace" }}>{r.plateNo || "—"}</Table.Td>
                         <Table.Td style={{ fontSize: "10px" }}>{r.fleetType || r.unit || "—"}</Table.Td>
-                        <Table.Td style={{ fontSize: "10px" }}>{r.pickLocation || "—"}</Table.Td>
+                        <Table.Td style={{ fontSize: "10px" }}>{r.ruta || "—"}</Table.Td>
                         <Table.Td style={{ fontSize: "10px", fontWeight: 700 }}>
                           ₱{rate.toLocaleString("en-PH", { minimumFractionDigits: 2 })}
                         </Table.Td>

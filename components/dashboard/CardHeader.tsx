@@ -7,16 +7,18 @@ interface CardHeaderProps {
 }
 
 export const CardHeader = ({ title, subtitle }: CardHeaderProps) => (
-  <Box mb="sm">
-    <Group justify="space-between" align="center">
-      <Text fw={700} style={{ fontSize: '10px' }} c="gray.9" tt="uppercase" lts={1}>
+  <Box mb="xs">
+    <Group justify="space-between" align="center" wrap="nowrap">
+      <Text fw={800} style={{ fontSize: "10px" }} c="gray.9" tt="uppercase" lts={0.8} truncate>
         {title}
       </Text>
       {subtitle && (
-        typeof subtitle === 'string' ? (
-          <Text style={{ fontSize: '10px', fontWeight: 'bold' }} c="dimmed">{subtitle}</Text>
+        typeof subtitle === "string" ? (
+          <Text style={{ fontSize: "10px", fontWeight: "bold" }} c="dimmed" truncate>
+            {subtitle}
+          </Text>
         ) : (
-          subtitle
+          <Box style={{ flexShrink: 0 }}>{subtitle}</Box>
         )
       )}
     </Group>

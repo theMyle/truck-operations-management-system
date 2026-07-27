@@ -15,9 +15,6 @@ import {
 import { CardHeader } from "./CardHeader";
 import {
   IconAlertOctagon,
-  IconStarFilled,
-  IconCircleCheck,
-  IconAlertTriangle,
   IconChevronRight,
 } from "@tabler/icons-react";
 import Link from "next/link";
@@ -180,7 +177,7 @@ export const KpiWidget = () => {
                 <Stack gap={4}>
                   <Group justify="space-between" align="center">
                     <Group gap={4}>
-                      <IconStarFilled size={12} color="var(--mantine-color-teal-6)" />
+
                       <Text size="10px" fw={700} c="teal">
                         Excellent (90-100 pts)
                       </Text>
@@ -192,7 +189,6 @@ export const KpiWidget = () => {
 
                   <Group justify="space-between" align="center">
                     <Group gap={4}>
-                      <IconCircleCheck size={12} color="var(--mantine-color-blue-6)" />
                       <Text size="10px" fw={700} c="blue">
                         Good (80-89 pts)
                       </Text>
@@ -204,7 +200,6 @@ export const KpiWidget = () => {
 
                   <Group justify="space-between" align="center">
                     <Group gap={4}>
-                      <IconAlertTriangle size={12} color="var(--mantine-color-orange-6)" />
                       <Text size="10px" fw={700} c="orange">
                         Coaching Needed (70-79 pts)
                       </Text>
@@ -216,7 +211,7 @@ export const KpiWidget = () => {
 
                   <Group justify="space-between" align="center">
                     <Group gap={4}>
-                      <IconAlertOctagon size={12} color="var(--mantine-color-red-6)" />
+
                       <Text size="10px" fw={700} c="red">
                         Review Needed (&lt; 70 pts)
                       </Text>
