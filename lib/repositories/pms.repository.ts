@@ -149,4 +149,53 @@ export const pmsRepository = {
 
     return results;
   },
+
+  updatePmsLog: async (
+    id: string,
+    data: {
+      pmsDate: string;
+      pmsOdo: number;
+      serviceType?: string;
+      cost?: string;
+      performedBy?: string;
+      remarks?: string;
+    }
+  ) => {
+    return await db.transaction(async (tx) => {
+      const [updatedLog] = await tx
+        .update(pmsLogs)
+        .set({
+          pmsDate: data.pmsDate,
+          pmsOdo: data.pmsOdo,
+          serviceType: data.serviceType || "General PMS",
+          cost: data.cost || "0.00",
+          performedBy: data.performedBy,
+          remarks: data.remarks,
+          updatedAt: new Date(),
+        })
+        .where(eq(pmsLogs.id, id))
+        .returning();
+
+      if (updatedLog) {
+        // Sync with truck's latest PMS date and odometer
+        const latestLog = await tx.query.pmsLogs.findFirst({
+          where: eq(pmsLogs.plateNumber, updatedLog.plateNumber),
+          orderBy: [desc(pmsLogs.pmsDate), desc(pmsLogs.createdAt)],
+        });
+
+        if (latestLog && latestLog.id === id) {
+          await tx
+            .update(trucks)
+            .set({
+              lastPmsDate: latestLog.pmsDate,
+              lastPmsOdo: latestLog.pmsOdo,
+              updatedAt: new Date(),
+            })
+            .where(eq(trucks.plateNumber, updatedLog.plateNumber));
+        }
+      }
+
+      return updatedLog;
+    });
+  },
 };
