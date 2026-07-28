@@ -28,7 +28,7 @@ export const trucks = pgTable("trucks", {
   isActive: boolean("is_active").notNull().default(true),
   lastPmsDate: date("last_pms_date"),
   lastPmsOdo: integer("last_pms_odo").default(0),
-  pmsIntervalKm: integer("pms_interval_km").default(10000),
+  pmsIntervalKm: integer("pms_interval_km").default(5000),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });

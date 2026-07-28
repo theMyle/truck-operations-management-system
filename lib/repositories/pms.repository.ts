@@ -51,8 +51,8 @@ export const pmsRepository = {
       const latestTripOdo = maxOdoMap.get(t.plateNumber) || 0;
       const currentOdo = Math.max(latestTripOdo, lastPmsOdo);
       const kmSinceLastPms = Math.max(0, currentOdo - lastPmsOdo);
-      const interval = t.pmsIntervalKm || 10000;
-      const warningThreshold = Math.floor(interval * 0.9); // 9,000 km by default
+      const interval = t.pmsIntervalKm || 5000;
+      const warningThreshold = Math.floor(interval * 0.9); // 4,500 km by default
 
       let pmsStatus: "ok" | "due_soon" | "overdue" = "ok";
       if (kmSinceLastPms >= interval) {
