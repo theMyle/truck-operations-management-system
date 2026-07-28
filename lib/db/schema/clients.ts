@@ -6,15 +6,25 @@ import {
   timestamp,
   decimal,
   uuid,
+  jsonb,
   boolean,
 } from "drizzle-orm/pg-core";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
+
+export interface ClientSoaConfig {
+  orientation?: "portrait" | "landscape";
+  columns?: string[];
+  includeVatDefault?: boolean;
+  includeEwtDefault?: boolean;
+  customNotes?: string;
+}
 
 export const clients = pgTable("clients", {
   id: uuid("id").primaryKey().defaultRandom(),
   clientName: text("client_name").notNull(),
   hasFixedRoutes: boolean("has_fixed_routes").notNull().default(false),
   podRequired: boolean("pod_required").notNull().default(true),
+  soaConfig: jsonb("soa_config").$type<ClientSoaConfig>(),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
