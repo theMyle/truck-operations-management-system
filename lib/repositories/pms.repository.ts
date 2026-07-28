@@ -28,21 +28,21 @@ export const pmsRepository = {
 
     const plateNumbers = allTrucks.map((t) => t.plateNumber);
 
-    // Get maximum odoEnd from tripOdoDetails grouped by truck plateNumber
-    const maxOdoResults = await db
-      .select({
+    // Get latest odoEnd from tripOdoDetails ordered by most recent booking date
+    const latestOdoResults = await db
+      .selectDistinctOn([booking.plateNumber], {
         plateNumber: booking.plateNumber,
-        maxOdo: sql<number>`COALESCE(MAX(${tripOdoDetails.odoEnd}), 0)`,
+        latestOdo: tripOdoDetails.odoEnd,
       })
       .from(tripOdoDetails)
       .innerJoin(booking, eq(tripOdoDetails.bookingId, booking.id))
-      .where(inArray(booking.plateNumber, plateNumbers))
-      .groupBy(booking.plateNumber);
+      .where(and(inArray(booking.plateNumber, plateNumbers), gte(tripOdoDetails.odoEnd, 0)))
+      .orderBy(booking.plateNumber, desc(booking.pickupDate), desc(tripOdoDetails.odoEnd));
 
     const maxOdoMap = new Map<string, number>();
-    maxOdoResults.forEach((r) => {
+    latestOdoResults.forEach((r) => {
       if (r.plateNumber) {
-        maxOdoMap.set(r.plateNumber, Number(r.maxOdo) || 0);
+        maxOdoMap.set(r.plateNumber, Number(r.latestOdo) || 0);
       }
     });
 

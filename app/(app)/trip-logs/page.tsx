@@ -420,7 +420,9 @@ export default function DispatchRecordsPage() {
               .map((o: any) => Number(o.odoEnd) || 0)
               .filter((v: number) => v > 0);
             if (validEnds.length > 0) {
-              plateOdoTracker[plate] = Math.max(...validEnds);
+              // Take the latest trip's ending odometer chronologically rather than mathematical MAX
+              // to prevent historical typos from corrupting subsequent booking starting odometers.
+              plateOdoTracker[plate] = validEnds[validEnds.length - 1];
             }
           }
         });

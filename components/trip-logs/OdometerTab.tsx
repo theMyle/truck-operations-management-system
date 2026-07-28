@@ -121,8 +121,23 @@ export function NewOdometerTab({
       {form.values.tripType === "single" && (
         <SimpleGrid cols={2} spacing="sm">
           <TextInput
-            label="ODO Start — Garage"
-            placeholder="e.g. 12000"
+            label={
+              <Group justify="space-between" align="center" style={{ width: "100%" }}>
+                <span>ODO Start — Garage</span>
+                {isKtsTruck && lastRecordedEnd > 0 && (
+                  <Button
+                    variant="subtle"
+                    color="blue"
+                    size="compact-xs"
+                    onClick={() => form.setFieldValue("trips.0.odoStart", lastRecordedEnd)}
+                    style={{ fontSize: "9px", padding: "0 4px", height: "18px" }}
+                  >
+                    Last ODO: {lastRecordedEnd.toLocaleString()} km
+                  </Button>
+                )}
+              </Group>
+            }
+            placeholder={lastRecordedEnd > 0 ? String(lastRecordedEnd) : "e.g. 12000"}
             type="number"
             size="xs"
             value={form.values.trips[0]?.odoStart || ""}
@@ -173,9 +188,24 @@ export function NewOdometerTab({
                 <SimpleGrid cols={2} spacing="sm">
                   <TextInput
                     label={
-                      idx === 0
-                        ? "ODO Start — Garage"
-                        : `ODO Start — ODO End of Trip ${idx}`
+                      idx === 0 ? (
+                        <Group justify="space-between" align="center" style={{ width: "100%" }}>
+                          <span>ODO Start — Garage</span>
+                          {isKtsTruck && lastRecordedEnd > 0 && (
+                            <Button
+                              variant="subtle"
+                              color="blue"
+                              size="compact-xs"
+                              onClick={() => form.setFieldValue("trips.0.odoStart", lastRecordedEnd)}
+                              style={{ fontSize: "9px", padding: "0 4px", height: "18px" }}
+                            >
+                              📌 Last ODO: {lastRecordedEnd.toLocaleString()} km
+                            </Button>
+                          )}
+                        </Group>
+                      ) : (
+                        `ODO Start — ODO End of Trip ${idx}`
+                      )
                     }
                     type="number"
                     size="xs"
