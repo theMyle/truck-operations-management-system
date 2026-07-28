@@ -13,6 +13,15 @@ const clientInputSchema = insertClientSchema
     updatedAt: true,
   })
   .extend({
+    soaConfig: z
+      .object({
+        orientation: z.enum(["portrait", "landscape"]).optional(),
+        columns: z.array(z.string()).optional(),
+        includeVatDefault: z.boolean().optional(),
+        includeEwtDefault: z.boolean().optional(),
+        customNotes: z.string().optional(),
+      })
+      .optional(),
     routes: z
       .array(
         z.object({ route: z.string().min(1), rate: z.string().optional() }),
