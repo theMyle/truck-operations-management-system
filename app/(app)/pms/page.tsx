@@ -34,6 +34,7 @@ import {
   IconFileTypePdf,
   IconFileSpreadsheet,
   IconCalendar,
+  IconPencil,
 } from "@tabler/icons-react";
 import { DateRangeFilterModal } from "@/components/ui/DateRangeFilterModal";
 import { usePmsExport } from "@/app/hooks/usePmsExport";
@@ -42,6 +43,7 @@ import {
   logCompletedPmsAction,
   getPmsHistoryAction,
   getPmsLogsByDateRangeAction,
+  updatePmsLogAction,
 } from "@/lib/actions/pms";
 import type { TruckPmsStatus } from "@/lib/repositories/pms.repository";
 
@@ -90,6 +92,7 @@ export default function PmsPage() {
   const [pmsOdo, setPmsOdo] = useState<number>(0);
   const [serviceType, setServiceType] = useState("General PMS");
   const [cost, setCost] = useState<string>("0");
+  const [editingLogId, setEditingLogId] = useState<string | null>(null);
   const [performedBy, setPerformedBy] = useState("");
   const [remarks, setRemarks] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -145,6 +148,7 @@ export default function PmsPage() {
 
   const handleOpenLogModal = (truck: TruckPmsStatus) => {
     setSelectedTruck(truck);
+    setEditingLogId(null);
     setPmsDate(new Date().toISOString().split("T")[0]);
     setPmsOdo(truck.currentOdo || truck.lastPmsOdo || 0);
     setServiceType("General PMS");
@@ -154,29 +158,64 @@ export default function PmsPage() {
     setLogModalOpen(true);
   };
 
+  const handleEditPmsLog = (logItem: any) => {
+    const truck = fleet.find((t) => t.plateNumber === historyTruckPlate) || ({
+      plateNumber: historyTruckPlate,
+      currentOdo: Number(logItem.pmsOdo),
+      lastPmsOdo: Number(logItem.pmsOdo),
+    } as TruckPmsStatus);
+
+    setSelectedTruck(truck);
+    setEditingLogId(logItem.id);
+    setPmsDate(logItem.pmsDate || new Date().toISOString().split("T")[0]);
+    setPmsOdo(Number(logItem.pmsOdo) || 0);
+    setServiceType(logItem.serviceType || "General PMS");
+    setCost(String(logItem.cost || "0"));
+    setPerformedBy(logItem.performedBy || "");
+    setRemarks(logItem.remarks || "");
+    setLogModalOpen(true);
+  };
+
   const handleSavePmsLog = async () => {
     if (!selectedTruck || !pmsDate) return;
     setSubmitting(true);
 
-    const formattedDate = pmsDate;
-    const res = await logCompletedPmsAction({
-      plateNumber: selectedTruck.plateNumber,
-      pmsDate: formattedDate,
-      pmsOdo: pmsOdo,
-      serviceType,
-      cost,
-      performedBy: performedBy || undefined,
-      remarks: remarks || undefined,
-    });
+    let res;
+    if (editingLogId) {
+      res = await updatePmsLogAction({
+        id: editingLogId,
+        pmsDate,
+        pmsOdo,
+        serviceType,
+        cost,
+        performedBy: performedBy || undefined,
+        remarks: remarks || undefined,
+      });
+    } else {
+      res = await logCompletedPmsAction({
+        plateNumber: selectedTruck.plateNumber,
+        pmsDate,
+        pmsOdo,
+        serviceType,
+        cost,
+        performedBy: performedBy || undefined,
+        remarks: remarks || undefined,
+      });
+    }
 
     if (res?.data?.success) {
       notifications.show({
-        title: "PMS Recorded",
-        message: `Updated PMS date for ${selectedTruck.plateNumber}.`,
+        title: editingLogId ? "PMS Record Updated" : "PMS Recorded",
+        message: editingLogId
+          ? `Successfully updated PMS entry for ${selectedTruck.plateNumber}.`
+          : `Updated PMS date for ${selectedTruck.plateNumber}.`,
         color: "green",
       });
       setLogModalOpen(false);
       fetchFleetStatus();
+      if (historyTruckPlate) {
+        handleOpenHistory(historyTruckPlate);
+      }
     } else {
       notifications.show({
         title: "Error",
@@ -455,12 +494,13 @@ export default function PmsPage() {
         onClose={() => setLogModalOpen(false)}
         title={
           <Text fw={700} size="sm">
-            Record PMS — {selectedTruck?.plateNumber}
+            {editingLogId ? "Edit PMS Maintenance Entry" : "Record PMS Maintenance"} — {selectedTruck?.plateNumber}
           </Text>
         }
         centered
         radius="md"
         size="sm"
+        zIndex={1100}
       >
         <Stack gap="xs">
           <TextInput
@@ -515,7 +555,7 @@ export default function PmsPage() {
               Cancel
             </Button>
             <Button size="xs" color="blue" onClick={handleSavePmsLog} loading={submitting}>
-              Save
+              {editingLogId ? "Update Entry" : "Save Record"}
             </Button>
           </Group>
         </Stack>
@@ -531,7 +571,7 @@ export default function PmsPage() {
           </Text>
         }
         position="right"
-        size="md"
+        size="lg"
       >
         <Stack gap="xs" mt="sm">
           {loadingHistory ? (
@@ -543,28 +583,42 @@ export default function PmsPage() {
               No historical records.
             </Text>
           ) : (
-            <Table verticalSpacing="xs">
-              <Table.Thead bg="var(--mantine-color-dark-6)">
-                <Table.Tr>
-                  <Table.Th style={{ fontSize: "10px" }}>Date</Table.Th>
-                  <Table.Th style={{ fontSize: "10px" }}>Odo</Table.Th>
-                  <Table.Th style={{ fontSize: "10px" }}>Service</Table.Th>
-                  <Table.Th style={{ fontSize: "10px" }}>Cost</Table.Th>
-                </Table.Tr>
-              </Table.Thead>
-              <Table.Tbody>
-                {pmsHistory.map((h) => (
-                  <Table.Tr key={h.id}>
-                    <Table.Td style={{ fontSize: "11px" }}>{h.pmsDate}</Table.Td>
-                    <Table.Td style={{ fontSize: "11px" }} fw={600}>
-                      {Number(h.pmsOdo).toLocaleString()} km
-                    </Table.Td>
-                    <Table.Td style={{ fontSize: "11px" }}>{h.serviceType}</Table.Td>
-                    <Table.Td style={{ fontSize: "11px" }}>₱{Number(h.cost || 0).toLocaleString()}</Table.Td>
+            <Paper withBorder radius="sm" style={{ overflow: "hidden" }}>
+              <Table verticalSpacing="xs" striped highlightOnHover>
+                <Table.Thead bg="blue.6">
+                  <Table.Tr>
+                    <Table.Th style={{ fontSize: "10px", color: "#ffffff" }}>Date</Table.Th>
+                    <Table.Th style={{ fontSize: "10px", color: "#ffffff" }}>Odo (km)</Table.Th>
+                    <Table.Th style={{ fontSize: "10px", color: "#ffffff" }}>Service</Table.Th>
+                    <Table.Th style={{ fontSize: "10px", color: "#ffffff" }}>Cost (₱)</Table.Th>
+                    <Table.Th style={{ fontSize: "10px", color: "#ffffff", textAlign: "center" }}>Action</Table.Th>
                   </Table.Tr>
-                ))}
-              </Table.Tbody>
-            </Table>
+                </Table.Thead>
+                <Table.Tbody>
+                  {pmsHistory.map((h) => (
+                    <Table.Tr key={h.id}>
+                      <Table.Td style={{ fontSize: "11px" }}>{h.pmsDate}</Table.Td>
+                      <Table.Td style={{ fontSize: "11px" }} fw={600}>
+                        {Number(h.pmsOdo).toLocaleString()} km
+                      </Table.Td>
+                      <Table.Td style={{ fontSize: "11px" }}>{h.serviceType}</Table.Td>
+                      <Table.Td style={{ fontSize: "11px" }}>₱{Number(h.cost || 0).toLocaleString()}</Table.Td>
+                      <Table.Td style={{ fontSize: "11px", textAlign: "center" }}>
+                        <ActionIcon
+                          color="blue"
+                          variant="subtle"
+                          size="xs"
+                          title="Edit PMS Entry"
+                          onClick={() => handleEditPmsLog(h)}
+                        >
+                          <IconPencil size={14} />
+                        </ActionIcon>
+                      </Table.Td>
+                    </Table.Tr>
+                  ))}
+                </Table.Tbody>
+              </Table>
+            </Paper>
           )}
         </Stack>
       </Drawer>

@@ -65,3 +65,27 @@ export const getPmsLogsByDateRangeAction = actionClient
       return { success: false, error: err?.message || "Failed to fetch PMS logs" };
     }
   });
+
+const UpdatePmsSchema = z.object({
+  id: z.string().min(1, "Log ID is required"),
+  pmsDate: z.string().min(1, "PMS date is required"),
+  pmsOdo: z.number().min(0, "Odometer reading must be 0 or higher"),
+  serviceType: z.string().optional(),
+  cost: z.string().optional(),
+  performedBy: z.string().optional(),
+  remarks: z.string().optional(),
+});
+
+export const updatePmsLogAction = actionClient
+  .schema(UpdatePmsSchema)
+  .action(async ({ parsedInput }) => {
+    try {
+      const { id, ...data } = parsedInput;
+      const updated = await pmsRepository.updatePmsLog(id, data);
+      revalidatePath("/pms");
+      revalidatePath("/dashboard");
+      return { success: true, data: updated };
+    } catch (err: any) {
+      return { success: false, error: err?.message || "Failed to update PMS entry" };
+    }
+  });
