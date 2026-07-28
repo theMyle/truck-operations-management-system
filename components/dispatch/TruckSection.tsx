@@ -20,7 +20,7 @@ export function TruckSection({
 }) {
   // Check PMS warning status
   const lastPmsOdo = (selectedTruck as any)?.lastPmsOdo || 0;
-  const pmsInterval = (selectedTruck as any)?.pmsIntervalKm || 10000;
+  const pmsInterval = (selectedTruck as any)?.pmsIntervalKm || 5000;
   const lastPmsDate = (selectedTruck as any)?.lastPmsDate;
 
   return (
