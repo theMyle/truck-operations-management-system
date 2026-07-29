@@ -152,7 +152,9 @@ export const updateTripMonitoringAction = actionClient
       ""
     ).trim();
 
-    if (!effectiveBookingDRNo) {
+    if (currentBooking.bookingDRNo) {
+      parsedInput.bookingDRNo = currentBooking.bookingDRNo;
+    } else if (!effectiveBookingDRNo) {
       if (isSubcon) {
         throw new Error(
           "Booking / DR# is required for Subcon trucks before proceeding.",
@@ -163,16 +165,6 @@ export const updateTripMonitoringAction = actionClient
           : new Date().getFullYear();
         const autoDrNo = await generateKtsRentalBookingNo(db, yr);
         parsedInput.bookingDRNo = autoDrNo;
-      }
-    } else if (parsedInput.bookingDRNo) {
-      const isDuplicate = await bookingRepository.checkDuplicateDRNo(
-        parsedInput.bookingDRNo,
-        parsedInput.id,
-      );
-      if (isDuplicate) {
-        throw new Error(
-          `Booking / DR# "${parsedInput.bookingDRNo}" is already recorded in the system.`,
-        );
       }
     }
 
