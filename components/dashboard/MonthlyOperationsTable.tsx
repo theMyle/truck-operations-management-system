@@ -84,50 +84,6 @@ export const MonthlyOperationsTable = ({
   const totalSubcon = data.reduce((acc, curr) => acc + curr.subcon, 0);
   const totalTrips = totalKts + totalSubcon;
 
-  const totalKtsPct = React.useMemo(() => {
-    const startYearMonth = operationsStartDate ? operationsStartDate.slice(0, 7) : "";
-    const todayYearMonth = todayStr ? todayStr.slice(0, 7) : "";
-
-    const activeMonths = data.filter((item) => {
-      const monthYearMonth = `${year}-${MONTH_MAP[item.day]}`;
-      const isAfterStart = !startYearMonth || monthYearMonth >= startYearMonth;
-      const isBeforeToday = !todayYearMonth || monthYearMonth <= todayYearMonth;
-      return isAfterStart && isBeforeToday;
-    });
-
-    if (activeMonths.length === 0) return "0.0";
-
-    const sumPct = activeMonths.reduce((sum, item) => {
-      const days = item.activeDays && item.activeDays > 0 ? item.activeDays : getDaysInMonth(item.day, year);
-      const pct = totalKtsTrucks > 0 ? (item.ktsTrucks / (totalKtsTrucks * days)) * 100 : 0;
-      return sum + pct;
-    }, 0);
-
-    return (sumPct / activeMonths.length).toFixed(1);
-  }, [data, totalKtsTrucks, year, operationsStartDate, todayStr]);
-
-  const totalSubconPct = React.useMemo(() => {
-    const startYearMonth = operationsStartDate ? operationsStartDate.slice(0, 7) : "";
-    const todayYearMonth = todayStr ? todayStr.slice(0, 7) : "";
-
-    const activeMonths = data.filter((item) => {
-      const monthYearMonth = `${year}-${MONTH_MAP[item.day]}`;
-      const isAfterStart = !startYearMonth || monthYearMonth >= startYearMonth;
-      const isBeforeToday = !todayYearMonth || monthYearMonth <= todayYearMonth;
-      return isAfterStart && isBeforeToday;
-    });
-
-    if (activeMonths.length === 0) return "0.0";
-
-    const sumPct = activeMonths.reduce((sum, item) => {
-      const days = item.activeDays && item.activeDays > 0 ? item.activeDays : getDaysInMonth(item.day, year);
-      const pct = totalSubconTrucks > 0 ? (item.subconTrucks / (totalSubconTrucks * days)) * 100 : 0;
-      return sum + pct;
-    }, 0);
-
-    return (sumPct / activeMonths.length).toFixed(1);
-  }, [data, totalSubconTrucks, year, operationsStartDate, todayStr]);
-
   const totalOnTimePct = React.useMemo(() => {
     const startYearMonth = operationsStartDate ? operationsStartDate.slice(0, 7) : "";
     const todayYearMonth = todayStr ? todayStr.slice(0, 7) : "";
@@ -150,7 +106,7 @@ export const MonthlyOperationsTable = ({
       withBorder
       radius="md"
       p="md"
-      style={{ height: "100%", display: "flex", flexDirection: "column" }}
+      style={{ height: 315, display: "flex", flexDirection: "column" }}
     >
       <CardHeader
         title="MONTHLY SUMMARY REPORT"
@@ -166,13 +122,14 @@ export const MonthlyOperationsTable = ({
         }
       />
 
-      <ScrollArea style={{ flex: 1 }} mah={200} scrollbarSize={4} offsetScrollbars type="auto">
+      <Box style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+        {/* Fixed Header */}
         <Table
           verticalSpacing={4}
           horizontalSpacing="xs"
           style={{ tableLayout: "fixed", minWidth: 520 }}
         >
-          <Table.Thead>
+          <Table.Thead bg="gray.0">
             <Table.Tr>
               <Table.Th w="26%">
                 <Text style={{ fontSize: "10px" }} c="dimmed" fw={700}>
@@ -206,90 +163,100 @@ export const MonthlyOperationsTable = ({
               </Table.Th>
             </Table.Tr>
           </Table.Thead>
-          <Table.Tbody>
-            {data.map((item, idx) => {
-              const days = item.activeDays && item.activeDays > 0 ? item.activeDays : getDaysInMonth(item.day, year);
-              const ktsPct = totalKtsTrucks > 0 ? ((item.ktsTrucks / (totalKtsTrucks * days)) * 100).toFixed(1) : "0.0";
-              const subconPct = totalSubconTrucks > 0 ? ((item.subconTrucks / (totalSubconTrucks * days)) * 100).toFixed(1) : "0.0";
-              const onTimePct = item.completedDeliveries > 0 ? ((item.onTimeDeliveries / item.completedDeliveries) * 100).toFixed(1) : "0.0";
+        </Table>
 
-              return (
-                <Table.Tr key={idx}>
-                  <Table.Td>
-                    <Text style={{ fontSize: "11px" }} fw={600}>
-                      {item.day}
-                    </Text>
-                  </Table.Td>
-                  <Table.Td ta="center">
-                    <Text style={{ fontSize: "11px" }} fw={700} c="blue.6">
-                      {item.kts}
-                    </Text>
-                  </Table.Td>
-                  <Table.Td ta="center">
-                    <Text style={{ fontSize: "11px" }} fw={500} c="dimmed">
-                      {ktsPct}%
-                    </Text>
-                  </Table.Td>
-                  <Table.Td ta="center">
-                    <Text style={{ fontSize: "11px" }} fw={700} c="blue.6">
-                      {item.subcon}
-                    </Text>
-                  </Table.Td>
-                  <Table.Td ta="center">
-                    <Text style={{ fontSize: "11px" }} fw={500} c="dimmed">
-                      {subconPct}%
-                    </Text>
-                  </Table.Td>
-                  <Table.Td ta="center">
-                    <Text style={{ fontSize: "11px" }} fw={700} c="green.6">
-                      {onTimePct}%
-                    </Text>
-                  </Table.Td>
-                </Table.Tr>
-              );
-            })}
+        {/* Scrollable Month Rows Only */}
+        <ScrollArea style={{ flex: 1 }} type="auto">
+          <Table
+            verticalSpacing={4}
+            horizontalSpacing="xs"
+            style={{ tableLayout: "fixed", minWidth: 520 }}
+          >
+            <Table.Tbody>
+              {data.map((item, idx) => {
+                const days = item.activeDays && item.activeDays > 0 ? item.activeDays : getDaysInMonth(item.day, year);
+                const ktsPct = totalKtsTrucks > 0 ? ((item.ktsTrucks / (totalKtsTrucks * days)) * 100).toFixed(1) : "0.0";
+                const subconPct = totalSubconTrucks > 0 ? ((item.subconTrucks / (totalSubconTrucks * days)) * 100).toFixed(1) : "0.0";
+                const onTimePct = item.completedDeliveries > 0 ? ((item.onTimeDeliveries / item.completedDeliveries) * 100).toFixed(1) : "0.0";
+
+                return (
+                  <Table.Tr key={idx}>
+                    <Table.Td w="26%">
+                      <Text style={{ fontSize: "11px" }} fw={600}>
+                        {item.day}
+                      </Text>
+                    </Table.Td>
+                    <Table.Td w="12%" ta="center">
+                      <Text style={{ fontSize: "11px" }} fw={700} c="blue.6">
+                        {item.kts}
+                      </Text>
+                    </Table.Td>
+                    <Table.Td w="18%" ta="center">
+                      <Text style={{ fontSize: "11px" }} fw={500} c="dimmed">
+                        {ktsPct}%
+                      </Text>
+                    </Table.Td>
+                    <Table.Td w="14%" ta="center">
+                      <Text style={{ fontSize: "11px" }} fw={700} c="blue.6">
+                        {item.subcon}
+                      </Text>
+                    </Table.Td>
+                    <Table.Td w="18%" ta="center">
+                      <Text style={{ fontSize: "11px" }} fw={500} c="dimmed">
+                        {subconPct}%
+                      </Text>
+                    </Table.Td>
+                    <Table.Td w="14%" ta="center">
+                      <Text style={{ fontSize: "11px" }} fw={700} c="green.6">
+                        {onTimePct}%
+                      </Text>
+                    </Table.Td>
+                  </Table.Tr>
+                );
+              })}
             </Table.Tbody>
-            <Table.Tfoot bg="blue.0" style={{ borderTop: "2px solid var(--mantine-color-blue-2)" }}>
-              <Table.Tr>
-                <Table.Td>
-                  <Group gap="xs" justify="flex-start">
-                    <Text style={{ fontSize: "11px" }} fw={800} c="gray.8">
-                      TOTAL
-                    </Text>
-                    <Text style={{ fontSize: "11px" }} fw={900} c="blue.9">
-                      {totalTrips}
-                    </Text>
-                  </Group>
-                </Table.Td>
-                <Table.Td ta="center">
-                  <Text style={{ fontSize: "11px" }} fw={900} c="blue.9">
-                    {totalKts}
-                  </Text>
-                </Table.Td>
-                <Table.Td ta="center">
-                  <Text style={{ fontSize: "11px" }} fw={800} c="blue.8">
-                    {totalKtsPct}%
-                  </Text>
-                </Table.Td>
-                <Table.Td ta="center">
-                  <Text style={{ fontSize: "11px" }} fw={900} c="blue.9">
-                    {totalSubcon}
-                  </Text>
-                </Table.Td>
-                <Table.Td ta="center">
-                  <Text style={{ fontSize: "11px" }} fw={800} c="blue.8">
-                    {totalSubconPct}%
-                  </Text>
-                </Table.Td>
-                <Table.Td ta="center">
-                  <Text style={{ fontSize: "11px" }} fw={800} c="green.8">
-                    {totalOnTimePct}%
-                  </Text>
-                </Table.Td>
-              </Table.Tr>
-            </Table.Tfoot>
           </Table>
         </ScrollArea>
+
+        {/* Pinned Footer — Fixed at Bottom, Aligned horizontally with Weekly TOTAL */}
+        <Table
+          verticalSpacing={4}
+          horizontalSpacing="xs"
+          style={{ tableLayout: "fixed", minWidth: 520 }}
+        >
+          <Table.Tfoot bg="blue.0" style={{ borderTop: "2px solid var(--mantine-color-blue-2)" }}>
+            <Table.Tr>
+              <Table.Td w="26%">
+                <Group gap="xs" justify="flex-start">
+                  <Text style={{ fontSize: "11px" }} fw={800} c="gray.8">
+                    TOTAL
+                  </Text>
+                  <Text style={{ fontSize: "11px" }} fw={900} c="blue.9">
+                    {totalTrips}
+                  </Text>
+                </Group>
+              </Table.Td>
+              <Table.Td w="12%" ta="center">
+                <Text style={{ fontSize: "11px" }} fw={900} c="blue.9">
+                  {totalKts}
+                </Text>
+              </Table.Td>
+              <Table.Td w="18%" ta="center" />
+              <Table.Td w="14%" ta="center">
+                <Text style={{ fontSize: "11px" }} fw={900} c="blue.9">
+                  {totalSubcon}
+                </Text>
+              </Table.Td>
+              <Table.Td w="18%" ta="center" />
+              <Table.Td w="14%" ta="center">
+                <Text style={{ fontSize: "11px" }} fw={800} c="green.8">
+                  {totalOnTimePct}%
+                </Text>
+              </Table.Td>
+            </Table.Tr>
+          </Table.Tfoot>
+        </Table>
+      </Box>
     </Paper>
   );
 };

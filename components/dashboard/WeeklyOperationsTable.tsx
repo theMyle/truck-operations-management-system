@@ -171,13 +171,21 @@ export const WeeklyOperationsTable = ({ data, totalKtsTrucks, totalSubconTrucks 
                     {totalKts}
                   </Text>
                 </Table.Td>
-                <Table.Td ta="center" />
+                <Table.Td ta="center">
+                  <Text style={{ fontSize: "11px" }} fw={800} c="blue.8">
+                    {totalKtsPct}%
+                  </Text>
+                </Table.Td>
                 <Table.Td ta="center">
                   <Text style={{ fontSize: "11px" }} fw={900} c="blue.9">
                     {totalSubcon}
                   </Text>
                 </Table.Td>
-                <Table.Td ta="center" />
+                <Table.Td ta="center">
+                  <Text style={{ fontSize: "11px" }} fw={800} c="blue.8">
+                    {totalSubconPct}%
+                  </Text>
+                </Table.Td>
                 <Table.Td ta="center">
                   <Text style={{ fontSize: "11px" }} fw={800} c="green.8">
                     {totalOnTimePct}%
