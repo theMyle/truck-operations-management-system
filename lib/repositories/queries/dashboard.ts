@@ -317,6 +317,32 @@ export async function getOperationsStartDate() {
   return result[0]?.minDate || null;
 }
 
+function parseScheduledDateTime(dateStr?: string, timeStr?: string): Date | null {
+  if (!dateStr || !timeStr) return null;
+  const t = timeStr.trim();
+  const m12 = t.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+  if (m12) {
+    let h = parseInt(m12[1], 10);
+    const m = parseInt(m12[2], 10);
+    const period = m12[3].toUpperCase();
+    if (period === "PM" && h < 12) h += 12;
+    if (period === "AM" && h === 12) h = 0;
+    const d = new Date(dateStr);
+    d.setHours(h, m, 0, 0);
+    return d;
+  }
+  const m24 = t.match(/^(\d{1,2}):(\d{2})/);
+  if (m24) {
+    const h = parseInt(m24[1], 10);
+    const m = parseInt(m24[2], 10);
+    const d = new Date(dateStr);
+    d.setHours(h, m, 0, 0);
+    return d;
+  }
+  const fallback = new Date(`${dateStr} ${timeStr}`);
+  return isNaN(fallback.getTime()) ? null : fallback;
+}
+
 export async function getDailyOnTimeDeliveryBreakdown(targetDate?: string) {
   const dateToUse = targetDate || new Date().toISOString().split("T")[0];
 
@@ -330,6 +356,10 @@ export async function getDailyOnTimeDeliveryBreakdown(targetDate?: string) {
       pickupDate: booking.pickupDate,
       pickupTime: booking.pickupTime,
       pickupArrivalTime: booking.pickupArrivalTime,
+      loadingStartTime: booking.loadingStartTime,
+      loadingEndTime: booking.loadingEndTime,
+      pickupDepartureTime: booking.pickupDepartureTime,
+      finishedDeliveryTime: booking.finishedDeliveryTime,
       deliveryStatus: booking.deliveryStatus,
       tripRemarks: booking.tripRemarks,
     })
@@ -344,22 +374,42 @@ export async function getDailyOnTimeDeliveryBreakdown(targetDate?: string) {
   let onTimeCount = 0;
   let lateCount = 0;
 
+  const toTimeString = (dt?: Date | string | null) => {
+    if (!dt) return "";
+    let str = "";
+    if (dt instanceof Date) {
+      str = dt.toISOString();
+    } else {
+      str = String(dt);
+    }
+    const match = str.match(/(\d{2}):(\d{2})/);
+    return match ? `${match[1]}:${match[2]}` : "";
+  };
+
+  const formatWallClock12Hour = (dt?: Date | string | null) => {
+    const time24 = toTimeString(dt);
+    if (!time24) return "—";
+    const [hhStr, mmStr] = time24.split(":");
+    let hh = parseInt(hhStr, 10);
+    const period = hh >= 12 ? "PM" : "AM";
+    if (hh === 0) hh = 12;
+    else if (hh > 12) hh -= 12;
+    return `${String(hh).padStart(2, "0")}:${mmStr} ${period}`;
+  };
+
   const trips = result.map((row) => {
     let isOnTime = true;
     let delayMinutes = 0;
 
     if (row.pickupDate && row.pickupTime && row.pickupArrivalTime) {
-      try {
-        const scheduled = new Date(`${row.pickupDate} ${row.pickupTime}`);
-        const actual = new Date(row.pickupArrivalTime);
-        if (!isNaN(scheduled.getTime()) && !isNaN(actual.getTime())) {
-          if (actual > scheduled) {
-            isOnTime = false;
-            delayMinutes = Math.round((actual.getTime() - scheduled.getTime()) / (1000 * 60));
-          }
+      const scheduled = parseScheduledDateTime(row.pickupDate, row.pickupTime);
+      const actualTimeStr = toTimeString(row.pickupArrivalTime);
+      if (scheduled && actualTimeStr) {
+        const actual = parseScheduledDateTime(row.pickupDate, actualTimeStr);
+        if (actual && actual > scheduled) {
+          isOnTime = false;
+          delayMinutes = Math.round((actual.getTime() - scheduled.getTime()) / (1000 * 60));
         }
-      } catch (e) {
-        // Ignore date parse errors
       }
     }
 
@@ -377,13 +427,13 @@ export async function getDailyOnTimeDeliveryBreakdown(targetDate?: string) {
       plateNumber: row.plateNumber || "—",
       pickupDate: row.pickupDate || dateToUse,
       pickupTime: row.pickupTime ? formatTime12Hour(row.pickupTime) : "—",
-      pickupArrivalTime: row.pickupArrivalTime
-        ? new Date(row.pickupArrivalTime).toLocaleTimeString("en-US", {
-            hour: "2-digit",
-            minute: "2-digit",
-            hour12: true,
-          })
-        : "—",
+      pickupArrivalTime: formatWallClock12Hour(row.pickupArrivalTime),
+      rawPickupTime: row.pickupTime || "",
+      rawPickupArrivalTime: toTimeString(row.pickupArrivalTime),
+      rawLoadingStart: toTimeString(row.loadingStartTime),
+      rawLoadingEnd: toTimeString(row.loadingEndTime),
+      rawDeparturePickup: toTimeString(row.pickupDepartureTime),
+      rawFinishDelivery: toTimeString(row.finishedDeliveryTime),
       deliveryStatus: row.deliveryStatus || "Pending",
       tripRemarks: row.tripRemarks || "",
       isOnTime,

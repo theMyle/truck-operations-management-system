@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useState, useEffect, useCallback } from "react";
 import {
   Modal,
@@ -14,12 +16,19 @@ import {
   Button,
   Loader,
   Center,
+  ActionIcon,
 } from "@mantine/core";
+import { notifications } from "@mantine/notifications";
 import {
   IconClock,
   IconCalendar,
+  IconPencil,
 } from "@tabler/icons-react";
-import { getDailyOnTimeDeliveryBreakdownAction } from "@/lib/actions/booking";
+import {
+  getDailyOnTimeDeliveryBreakdownAction,
+  updateTripMonitoringAction,
+} from "@/lib/actions/booking";
+import { TimeField } from "@/components/ui/TimeField";
 
 interface OnTimeDeliveryModalProps {
   opened: boolean;
@@ -35,6 +44,12 @@ interface TripBreakdownItem {
   pickupDate: string;
   pickupTime: string;
   pickupArrivalTime: string;
+  rawPickupTime?: string;
+  rawPickupArrivalTime?: string;
+  rawLoadingStart?: string;
+  rawLoadingEnd?: string;
+  rawDeparturePickup?: string;
+  rawFinishDelivery?: string;
   deliveryStatus: string;
   tripRemarks: string;
   isOnTime: boolean;
@@ -50,12 +65,26 @@ interface BreakdownData {
   trips: TripBreakdownItem[];
 }
 
-export function OnTimeDeliveryModal({ opened, onClose }: OnTimeDeliveryModalProps) {
+export function OnTimeDeliveryModal({
+  opened,
+  onClose,
+}: OnTimeDeliveryModalProps) {
   const [selectedDate, setSelectedDate] = useState<string>(
     () => new Date().toISOString().split("T")[0]
   );
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<BreakdownData | null>(null);
+
+  /* ── Edit State for All Time Inputs ── */
+  const [editingTrip, setEditingTrip] = useState<TripBreakdownItem | null>(null);
+  const [editPickupTime, setEditPickupTime] = useState("");
+  const [editArrivalTime, setEditArrivalTime] = useState("");
+  const [editLoadingStart, setEditLoadingStart] = useState("");
+  const [editLoadingEnd, setEditLoadingEnd] = useState("");
+  const [editDeparturePickup, setEditDeparturePickup] = useState("");
+  const [editFinishDelivery, setEditFinishDelivery] = useState("");
+  const [editRemarks, setEditRemarks] = useState("");
+  const [saving, setSaving] = useState(false);
 
   const fetchBreakdown = useCallback(async (dateStr: string) => {
     setLoading(true);
@@ -77,7 +106,52 @@ export function OnTimeDeliveryModal({ opened, onClose }: OnTimeDeliveryModalProp
     }
   }, [opened, selectedDate, fetchBreakdown]);
 
+  const handleOpenEdit = (trip: TripBreakdownItem) => {
+    setEditingTrip(trip);
+    setEditPickupTime(trip.rawPickupTime || "");
+    setEditArrivalTime(trip.rawPickupArrivalTime || "");
+    setEditLoadingStart(trip.rawLoadingStart || "");
+    setEditLoadingEnd(trip.rawLoadingEnd || "");
+    setEditDeparturePickup(trip.rawDeparturePickup || "");
+    setEditFinishDelivery(trip.rawFinishDelivery || "");
+    setEditRemarks(trip.tripRemarks || "");
+  };
 
+  const handleSaveEdit = async () => {
+    if (!editingTrip) return;
+    setSaving(true);
+    try {
+      await updateTripMonitoringAction({
+        id: editingTrip.id,
+        pickupDate: editingTrip.pickupDate,
+        pickupTime: editPickupTime,
+        arrivalPickup: editArrivalTime,
+        loadingStart: editLoadingStart,
+        loadingEnd: editLoadingEnd,
+        departurePickup: editDeparturePickup,
+        finishDelivery: editFinishDelivery,
+        deliveryStatus: editingTrip.deliveryStatus || "Completed",
+        tripRemarks: editRemarks,
+      });
+
+      notifications.show({
+        title: "Trip Updated",
+        message: "Trip time inputs successfully updated.",
+        color: "teal",
+      });
+
+      setEditingTrip(null);
+      fetchBreakdown(selectedDate);
+    } catch (err: any) {
+      notifications.show({
+        title: "Update Error",
+        message: err?.message || "Failed to update trip times.",
+        color: "red",
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const setPresetDate = (type: "today" | "yesterday") => {
     const d = new Date();
@@ -89,228 +163,303 @@ export function OnTimeDeliveryModal({ opened, onClose }: OnTimeDeliveryModalProp
 
   const percentage = data ? parseFloat(data.onTimePercentage) || 0 : 0;
   const isGood = percentage >= 90;
-  const mainColor = isGood ? "teal" : percentage >= 75 ? "blue" : "orange";
 
   return (
-    <Modal
-      opened={opened}
-      onClose={onClose}
-      title={
-        <Group gap={8}>
-          <IconClock size={20} color="var(--mantine-color-blue-6)" />
-          <div>
-            <Text fw={800} size="sm">
-              On-Time Delivery Analytics & Remarks
-            </Text>
-            <Text size="xs" c="dimmed">
-              Daily performance breakdown, delay logs, and delay remarks
-            </Text>
-          </div>
-        </Group>
-      }
-      size="xl"
-      radius="md"
-      centered
-      scrollAreaComponent={ScrollArea.Autosize}
-    >
-      <Stack gap="md">
-        {/* Date Selector & Controls Bar */}
-        <Paper withBorder p="xs" bg="gray.0" radius="sm">
-          <Group justify="space-between" align="center" wrap="nowrap">
-            <Group gap="xs" align="center">
-              <IconCalendar size={16} color="var(--mantine-color-gray-6)" />
-              <Text size="xs" fw={700}>
-                Select Operating Date:
+    <>
+      <Modal
+        opened={opened}
+        onClose={onClose}
+        title={
+          <Group gap={8}>
+            <IconClock size={22} color="var(--mantine-color-blue-6)" />
+            <div>
+              <Text fw={800} size="md" c="blue.9">
+                Daily On-Time Delivery Audit & Log
               </Text>
-              <TextInput
-                type="date"
-                size="xs"
-                value={selectedDate}
-                onChange={(e) => setSelectedDate(e.currentTarget.value)}
-                styles={{ input: { fontSize: "11px", fontWeight: 600 } }}
-                radius="md"
-              />
-              <Button
-                variant="light"
-                size="xs"
-                radius="md"
-                onClick={() => setPresetDate("today")}
-              >
-                Today
-              </Button>
-              <Button
-                variant="subtle"
-                size="xs"
-                color="gray"
-                radius="md"
-                onClick={() => setPresetDate("yesterday")}
-              >
-                Yesterday
-              </Button>
-            </Group>
-
-            {data && (
-              <Badge variant="light" color={mainColor} size="sm" radius="sm">
-                {data.date} Performance: {data.onTimePercentage}%
-              </Badge>
-            )}
+              <Text size="11px" c="dimmed">
+                Review and manage daily trip arrival compliance against scheduled pickup times
+              </Text>
+            </div>
           </Group>
-        </Paper>
+        }
+        size="xl"
+        radius="md"
+        centered
+        scrollAreaComponent={ScrollArea.Autosize}
+      >
+        <Stack gap="md">
+          {/* Controls: Date Picker & Quick Actions */}
+          <Paper withBorder p="xs" radius="sm" bg="gray.0">
+            <Group justify="space-between" align="flex-end">
+              <Group gap="xs">
+                <TextInput
+                  label="Select Audit Date"
+                  type="date"
+                  size="xs"
+                  value={selectedDate}
+                  onChange={(e) => setSelectedDate(e.currentTarget.value)}
+                  leftSection={<IconCalendar size={14} />}
+                />
+                <Button.Group mt={20}>
+                  <Button
+                    variant={selectedDate === new Date().toISOString().split("T")[0] ? "filled" : "outline"}
+                    size="xs"
+                    color="blue"
+                    onClick={() => setPresetDate("today")}
+                  >
+                    Today
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="xs"
+                    color="gray"
+                    onClick={() => setPresetDate("yesterday")}
+                  >
+                    Yesterday
+                  </Button>
+                </Button.Group>
+              </Group>
 
-        {loading ? (
-          <Center py={40}>
-            <Stack align="center" gap="xs">
+              {data && (
+                <Badge size="lg" color={isGood ? "teal" : percentage >= 75 ? "blue" : "orange"} variant="light">
+                  {data.onTimePercentage}% On-Time
+                </Badge>
+              )}
+            </Group>
+          </Paper>
+
+          {loading ? (
+            <Center h={180}>
               <Loader size="sm" color="blue" />
-              <Text size="xs" c="dimmed">
-                Loading delivery analytics…
-              </Text>
-            </Stack>
-          </Center>
-        ) : data ? (
-          <>
-            {/* Visual Ring Chart & Summary Grid */}
-            <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
-              <Paper withBorder p="sm" radius="md">
-                <Group gap="md" align="center">
-                  <RingProgress
-                    size={110}
-                    thickness={12}
-                    roundCaps
-                    sections={[
-                      { value: percentage, color: "teal" },
-                      { value: 100 - percentage, color: "red" },
-                    ]}
-                    label={
-                      <Text ta="center" fw={800} size="md" c={mainColor}>
-                        {percentage}%
+            </Center>
+          ) : data ? (
+            <>
+              {/* Stat Summary Cards with Bigger Donut Chart */}
+              <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="xs">
+                <Paper withBorder p="md" radius="sm" bg="blue.0">
+                  <Group justify="space-between" align="center">
+                    <RingProgress
+                      size={100}
+                      thickness={10}
+                      roundCaps
+                      sections={[{ value: percentage, color: isGood ? "teal" : percentage >= 75 ? "blue" : "orange" }]}
+                      label={
+                        <Text ta="center" fz={18} fw={900} c={isGood ? "teal.9" : "blue.9"}>
+                          {Math.round(percentage)}%
+                        </Text>
+                      }
+                    />
+                    <Stack gap={2} align="flex-end">
+                      <Text size="xs" fw={800} c="dimmed" tt="uppercase">
+                        Performance Rating
                       </Text>
-                    }
-                  />
-                  <Stack gap={2}>
-                    <Text size="xs" fw={800} c="dimmed" tt="uppercase">
-                      Delivery On-Time Status
-                    </Text>
-                    <Group gap={6}>
-                      <Badge color="teal" size="xs" variant="dot">
-                        {data.onTimeCount} On-Time
-                      </Badge>
-                      <Badge color="red" size="xs" variant="dot">
-                        {data.lateCount} Late
-                      </Badge>
-                    </Group>
-                    <Text size="xs" c="dimmed" mt={4}>
-                      {data.totalDeliveries} total completed/logged trips on {data.date}
-                    </Text>
-                  </Stack>
-                </Group>
-              </Paper>
+                      <Group gap={4} align="baseline">
+                        <Text size="28px" fw={900} c="blue.9" style={{ lineHeight: 1 }}>
+                          {data.onTimeCount}
+                        </Text>
+                        <Text size="xs" c="dimmed" fw={700}>
+                          / {data.totalDeliveries} On-Time
+                        </Text>
+                      </Group>
+                      <Text size="xs" c="dimmed" mt={4}>
+                        {data.totalDeliveries} total completed/logged trips on {data.date}
+                      </Text>
+                    </Stack>
+                  </Group>
+                </Paper>
 
-              <SimpleGrid cols={2} spacing="xs">
-                <Paper withBorder p="xs" radius="sm" bg="teal.0">
-                  <Text size="xs" c="teal.8" fw={700} tt="uppercase">
-                    On-Time Trips
-                  </Text>
-                  <Text size="xl" fw={800} c="teal.9">
-                    {data.onTimeCount}
-                  </Text>
-                  <Text size="xs" c="dimmed">
-                    Arrived on/before schedule
-                  </Text>
-                </Paper>
-                <Paper withBorder p="xs" radius="sm" bg="red.0">
-                  <Text size="xs" c="red.8" fw={700} tt="uppercase">
-                    Late Trips
-                  </Text>
-                  <Text size="xl" fw={800} c="red.9">
-                    {data.lateCount}
-                  </Text>
-                  <Text size="xs" c="dimmed">
-                    Delayed arrival at pickup
-                  </Text>
-                </Paper>
+                <SimpleGrid cols={2} spacing="xs">
+                  <Paper withBorder p="md" radius="sm" bg="teal.0">
+                    <Text size="xs" c="teal.8" fw={800} tt="uppercase">
+                      On-Time Trips
+                    </Text>
+                    <Text size="28px" fw={900} c="teal.9" style={{ lineHeight: 1.1, marginTop: 4 }}>
+                      {data.onTimeCount}
+                    </Text>
+                    <Text size="xs" c="dimmed" mt={2}>
+                      Arrived on/before schedule
+                    </Text>
+                  </Paper>
+                  <Paper withBorder p="md" radius="sm" bg="red.0">
+                    <Text size="xs" c="red.8" fw={800} tt="uppercase">
+                      Late Trips
+                    </Text>
+                    <Text size="28px" fw={900} c="red.9" style={{ lineHeight: 1.1, marginTop: 4 }}>
+                      {data.lateCount}
+                    </Text>
+                    <Text size="xs" c="dimmed" mt={2}>
+                      Delayed arrival at pickup
+                    </Text>
+                  </Paper>
+                </SimpleGrid>
               </SimpleGrid>
-            </SimpleGrid>
 
-            {/* Trip List Table */}
-            <Stack gap="xs">
-              <Text size="xs" fw={700} c="dimmed" tt="uppercase">
-                Daily Trip Logs & Remarks ({data.trips.length})
-              </Text>
+              {/* Trip List Table */}
+              <Stack gap="xs">
+                <Text size="xs" fw={700} c="dimmed" tt="uppercase">
+                  Daily Trip Logs & Remarks ({data.trips.length})
+                </Text>
 
-              <Paper withBorder radius="sm" style={{ overflow: "hidden" }}>
-                <ScrollArea h={240}>
-                  <Table striped highlightOnHover>
-                    <Table.Thead bg="gray.1">
-                      <Table.Tr>
-                        <Table.Th style={{ fontSize: "10px" }}>DR / Booking #</Table.Th>
-                        <Table.Th style={{ fontSize: "10px" }}>Driver & Plate</Table.Th>
-                        <Table.Th style={{ fontSize: "10px" }}>Scheduled</Table.Th>
-                        <Table.Th style={{ fontSize: "10px" }}>Actual Arrival</Table.Th>
-                        <Table.Th style={{ fontSize: "10px" }}>Status</Table.Th>
-                        <Table.Th style={{ fontSize: "10px" }}>Remarks</Table.Th>
-                      </Table.Tr>
-                    </Table.Thead>
-                    <Table.Tbody>
-                      {data.trips.length === 0 ? (
+                <Paper withBorder radius="sm" style={{ overflow: "hidden" }}>
+                  <ScrollArea h={280}>
+                    <Table striped highlightOnHover>
+                      <Table.Thead bg="gray.1">
                         <Table.Tr>
-                          <Table.Td colSpan={6} align="center">
-                            <Text size="xs" c="dimmed" py="md">
-                              No arrival logs recorded for this date ({data.date}).
-                            </Text>
-                          </Table.Td>
+                          <Table.Th style={{ fontSize: "10px" }}>DR / Booking #</Table.Th>
+                          <Table.Th style={{ fontSize: "10px" }}>Driver & Plate</Table.Th>
+                          <Table.Th style={{ fontSize: "10px" }}>Scheduled</Table.Th>
+                          <Table.Th style={{ fontSize: "10px" }}>Actual Arrival</Table.Th>
+                          <Table.Th style={{ fontSize: "10px" }}>Status</Table.Th>
+                          <Table.Th style={{ fontSize: "10px" }}>Remarks</Table.Th>
+                          <Table.Th style={{ fontSize: "10px", textAlign: "center" }}>Edit</Table.Th>
                         </Table.Tr>
-                      ) : (
-                        data.trips.map((t) => (
-                          <Table.Tr key={t.id}>
-                            <Table.Td style={{ fontSize: "10px", fontWeight: 700 }}>
-                              {t.bookingDRNo}
-                              <Text size="9px" c="dimmed" fw={500}>
-                                {t.clientName}
+                      </Table.Thead>
+                      <Table.Tbody>
+                        {data.trips.length === 0 ? (
+                          <Table.Tr>
+                            <Table.Td colSpan={7} align="center">
+                              <Text size="xs" c="dimmed" py="md">
+                                No arrival logs recorded for this date ({data.date}).
                               </Text>
-                            </Table.Td>
-                            <Table.Td style={{ fontSize: "10px" }}>
-                              {t.driverName}
-                              <Text size="9px" c="dimmed" style={{ fontFamily: "monospace" }}>
-                                {t.plateNumber}
-                              </Text>
-                            </Table.Td>
-                            <Table.Td style={{ fontSize: "10px", color: "var(--mantine-color-blue-7)" }}>
-                              {t.pickupTime}
-                            </Table.Td>
-                            <Table.Td style={{ fontSize: "10px", color: "var(--mantine-color-blue-9)", fontWeight: 600 }}>
-                              {t.pickupArrivalTime}
-                            </Table.Td>
-                            <Table.Td>
-                              {t.isOnTime ? (
-                                <Badge color="teal" variant="light" size="xs">
-                                  On-Time
-                                </Badge>
-                              ) : (
-                                <Badge color="red" variant="filled" size="xs">
-                                  {t.delayMinutes} mins Late
-                                </Badge>
-                              )}
-                            </Table.Td>
-                            <Table.Td style={{ fontSize: "10px", color: "var(--mantine-color-gray-7)" }}>
-                              {t.tripRemarks || "—"}
                             </Table.Td>
                           </Table.Tr>
-                        ))
-                      )}
-                    </Table.Tbody>
-                  </Table>
-                </ScrollArea>
-              </Paper>
-            </Stack>
-          </>
-        ) : null}
+                        ) : (
+                          data.trips.map((t) => (
+                            <Table.Tr key={t.id}>
+                              <Table.Td style={{ fontSize: "10px", fontWeight: 700 }}>
+                                {t.bookingDRNo}
+                                <Text size="9px" c="dimmed" fw={500}>
+                                  {t.clientName}
+                                </Text>
+                              </Table.Td>
+                              <Table.Td style={{ fontSize: "10px" }}>
+                                {t.driverName}
+                                <Text size="9px" c="dimmed" style={{ fontFamily: "monospace" }}>
+                                  {t.plateNumber}
+                                </Text>
+                              </Table.Td>
+                              <Table.Td style={{ fontSize: "10px", color: "var(--mantine-color-blue-7)" }}>
+                                {t.pickupTime}
+                              </Table.Td>
+                              <Table.Td style={{ fontSize: "10px", color: "var(--mantine-color-blue-9)", fontWeight: 600 }}>
+                                {t.pickupArrivalTime}
+                              </Table.Td>
+                              <Table.Td>
+                                {t.isOnTime ? (
+                                  <Badge color="teal" variant="light" size="xs">
+                                    On-Time
+                                  </Badge>
+                                ) : (
+                                  <Badge color="red" variant="filled" size="xs">
+                                    {t.delayMinutes} mins Late
+                                  </Badge>
+                                )}
+                              </Table.Td>
+                              <Table.Td style={{ fontSize: "10px", color: "var(--mantine-color-gray-7)" }}>
+                                {t.tripRemarks || "—"}
+                              </Table.Td>
+                              <Table.Td align="center">
+                                <ActionIcon
+                                  size="xs"
+                                  color="blue"
+                                  variant="light"
+                                  onClick={() => handleOpenEdit(t)}
+                                  title="Edit all time inputs"
+                                >
+                                  <IconPencil size={13} />
+                                </ActionIcon>
+                              </Table.Td>
+                            </Table.Tr>
+                          ))
+                        )}
+                      </Table.Tbody>
+                    </Table>
+                  </ScrollArea>
+                </Paper>
+              </Stack>
+            </>
+          ) : null}
 
-        <Group justify="flex-end" mt="xs">
-          <Button variant="default" size="xs" onClick={onClose}>
-            Close
-          </Button>
-        </Group>
-      </Stack>
-    </Modal>
+          <Group justify="flex-end" mt="xs">
+            <Button variant="default" size="xs" onClick={onClose}>
+              Close
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
+
+      {/* Edit All Trip Time Inputs Modal */}
+      <Modal
+        opened={!!editingTrip}
+        onClose={() => setEditingTrip(null)}
+        title={
+          <Group gap={6}>
+            <IconPencil size={16} color="var(--mantine-color-blue-6)" />
+            <Text fw={800} size="sm">
+              Edit All Trip Time Inputs — {editingTrip?.clientName} {editingTrip?.bookingDRNo}
+            </Text>
+          </Group>
+        }
+        size="35%"
+        radius="md"
+        centered
+      >
+        <Stack gap="sm">
+          <Text size="11px" c="dimmed">
+            Update all scheduled and actual trip monitoring times for {editingTrip?.clientName} ({editingTrip?.plateNumber}).
+          </Text>
+
+          <SimpleGrid cols={2} spacing="sm">
+            <TimeField
+              label="Scheduled Pickup Time"
+              value={editPickupTime}
+              onChange={(val) => setEditPickupTime(val)}
+            />
+            <TimeField
+              label="Actual Arrival at Pickup"
+              value={editArrivalTime}
+              onChange={(val) => setEditArrivalTime(val)}
+            />
+            <TimeField
+              label="Loading Start Time"
+              value={editLoadingStart}
+              onChange={(val) => setEditLoadingStart(val)}
+            />
+            <TimeField
+              label="Loading End Time"
+              value={editLoadingEnd}
+              onChange={(val) => setEditLoadingEnd(val)}
+            />
+            <TimeField
+              label="Departure Pickup Time"
+              value={editDeparturePickup}
+              onChange={(val) => setEditDeparturePickup(val)}
+            />
+            <TimeField
+              label="Finish Delivery Time"
+              value={editFinishDelivery}
+              onChange={(val) => setEditFinishDelivery(val)}
+            />
+          </SimpleGrid>
+
+          <TextInput
+            label="Trip Remarks"
+            placeholder="e.g. Delayed due to tollgate queue"
+            size="xs"
+            value={editRemarks}
+            onChange={(e) => setEditRemarks(e.target.value)}
+          />
+
+          <Group justify="flex-end" mt="xs">
+            <Button variant="default" size="xs" onClick={() => setEditingTrip(null)}>
+              Cancel
+            </Button>
+            <Button size="xs" color="blue" loading={saving} onClick={handleSaveEdit}>
+              Save Changes
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
+    </>
   );
 }
