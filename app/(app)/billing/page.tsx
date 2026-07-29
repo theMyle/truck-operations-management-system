@@ -480,15 +480,18 @@ export default function BillingModule() {
           if (r.id === selectedBillingRecord.id) {
             const clientRateVal = Number(r.tripRate) || 0;
             const amountPaidVal = Number(amountPaidInput) || 0;
-            let billingStatus = "unpaid";
+            let billingStatus = "unbilled";
+            if (soaNumberInput && soaNumberInput.trim().length > 0) {
+              billingStatus = "pending";
+            }
             if (amountPaidVal >= clientRateVal && clientRateVal > 0) {
               billingStatus = "paid";
             } else if (amountPaidVal > 0 && amountPaidVal < clientRateVal) {
               billingStatus = "partially_paid";
-            } else if (dueDateInput) {
+            } else if (dueDateInput && soaNumberInput && soaNumberInput.trim().length > 0) {
               const due = new Date(dueDateInput);
               const today = new Date();
-              due.setHours(0, 0, 0, 0);
+              due.setHours(23, 59, 59, 999);
               today.setHours(0, 0, 0, 0);
               if (today > due && amountPaidVal < clientRateVal) {
                 billingStatus = "overdue";

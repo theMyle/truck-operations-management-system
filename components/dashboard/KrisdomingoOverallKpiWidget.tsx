@@ -51,11 +51,11 @@ export const KrisdomingoOverallKpiWidget = () => {
     switch (rating) {
       case "Excellent":
         return "teal";
-      case "Good":
+      case "Satisfactory":
         return "blue";
       case "Needs Improvement":
         return "orange";
-      case "Critical":
+      case "Poor/Critical":
         return "red";
       default:
         return "gray";
@@ -81,10 +81,10 @@ export const KrisdomingoOverallKpiWidget = () => {
             <div>
               <Group gap="xs">
                 <Text fw={900} size="md" c="white" lts={0.5}>
-                  KRISDOMINGO KPI OVERALL SCORE
+                  {(currentMonthInfo?.month || "MONTHLY").toUpperCase()} {new Date().getFullYear()} KPI OVERALL SCORE
                 </Text>
                 <Badge color="blue.3" variant="light" size="xs" radius="sm">
-                  {new Date().getFullYear()} Report
+                  {currentMonthInfo?.month || "Monthly"} Report
                 </Badge>
               </Group>
               <Text size="11px" c="blue.1" fw={500}>
@@ -103,7 +103,7 @@ export const KrisdomingoOverallKpiWidget = () => {
             onClick={() => setModalOpened(true)}
             styles={{ root: { fontWeight: 800, fontSize: "11px" } }}
           >
-            View Monthly Report
+            View Full Report
           </Button>
         </Group>
 
@@ -113,7 +113,7 @@ export const KrisdomingoOverallKpiWidget = () => {
           </Center>
         ) : (
           <SimpleGrid cols={{ base: 1, md: 6 }} spacing="md">
-            {/* Overall Score Badge */}
+            {/* Monthly Overall Score Badge */}
             <Box style={{ gridColumn: "span 1" }}>
               <Paper
                 p="xs"
@@ -126,24 +126,24 @@ export const KrisdomingoOverallKpiWidget = () => {
                 }}
               >
                 <Text size="9px" fw={800} tt="uppercase" c="blue.2" lts={0.5}>
-                  Overall Score
+                  {currentMonthInfo?.month || "Monthly"} Score
                 </Text>
                 <Text fw={900} style={{ fontSize: "28px", lineHeight: 1.1 }} c="white" my={2}>
-                  {reportData?.fullYearAvgScore ?? 76.4}%
+                  {currentMonthInfo?.hasData ? `${currentMonthInfo.overallScore.toFixed(1)}%` : `${reportData?.currentMonthScore ?? 0}%`}
                 </Text>
                 <Badge
-                  color={getRatingColor(reportData?.fullYearAvgRating)}
+                  color={getRatingColor(currentMonthInfo?.hasData ? currentMonthInfo.overallRating : reportData?.currentMonthRating)}
                   variant="filled"
                   size="sm"
                   radius="sm"
                   w="100%"
                 >
-                  {reportData?.fullYearAvgRating ?? "Good"}
+                  {currentMonthInfo?.hasData ? currentMonthInfo.overallRating : reportData?.currentMonthRating ?? "Satisfactory"}
                 </Badge>
               </Paper>
             </Box>
 
-            {/* 5 Sub-KPI Components Breakdown */}
+            {/* 5 Sub-KPI Components Breakdown (Monthly Performance) */}
             <Box style={{ gridColumn: "span 5" }}>
               <SimpleGrid cols={{ base: 1, sm: 3, md: 5 }} spacing="xs">
                 {/* 1. Fleet Util */}
@@ -158,10 +158,10 @@ export const KrisdomingoOverallKpiWidget = () => {
                     </Badge>
                   </Group>
                   <Text fw={800} size="sm" c="white">
-                    {currentMonthInfo?.hasData ? `${currentMonthInfo.fleetUtilization.toFixed(1)}%` : "71.3%"}
+                    {currentMonthInfo?.hasData ? `${currentMonthInfo.fleetUtilization.toFixed(1)}%` : "0.0%"}
                   </Text>
                   <Progress
-                    value={currentMonthInfo?.hasData ? currentMonthInfo.fleetUtilization : 71.3}
+                    value={currentMonthInfo?.fleetUtilization ?? 0}
                     color="blue.3"
                     size="xs"
                     mt={4}
@@ -181,10 +181,10 @@ export const KrisdomingoOverallKpiWidget = () => {
                     </Badge>
                   </Group>
                   <Text fw={800} size="sm" c="white">
-                    {currentMonthInfo?.hasData ? `${currentMonthInfo.onTimeDelivery.toFixed(1)}%` : "69.1%"}
+                    {currentMonthInfo?.hasData ? `${currentMonthInfo.onTimeDelivery.toFixed(1)}%` : "0.0%"}
                   </Text>
                   <Progress
-                    value={currentMonthInfo?.hasData ? currentMonthInfo.onTimeDelivery : 69.1}
+                    value={currentMonthInfo?.onTimeDelivery ?? 0}
                     color="teal.3"
                     size="xs"
                     mt={4}
@@ -204,10 +204,10 @@ export const KrisdomingoOverallKpiWidget = () => {
                     </Badge>
                   </Group>
                   <Text fw={800} size="sm" c="white">
-                    {currentMonthInfo?.hasData ? `${currentMonthInfo.onTimePayment.toFixed(1)}%` : "92.5%"}
+                    {currentMonthInfo?.hasData ? `${currentMonthInfo.onTimePayment.toFixed(1)}%` : "0.0%"}
                   </Text>
                   <Progress
-                    value={currentMonthInfo?.hasData ? currentMonthInfo.onTimePayment : 92.5}
+                    value={currentMonthInfo?.onTimePayment ?? 0}
                     color="cyan.3"
                     size="xs"
                     mt={4}
@@ -227,10 +227,10 @@ export const KrisdomingoOverallKpiWidget = () => {
                     </Badge>
                   </Group>
                   <Text fw={800} size="sm" c="white">
-                    {currentMonthInfo?.hasData ? `${currentMonthInfo.maintenanceCompliance.toFixed(1)}%` : "58.1%"}
+                    {currentMonthInfo?.hasData ? `${currentMonthInfo.maintenanceCompliance.toFixed(1)}%` : "0.0%"}
                   </Text>
                   <Progress
-                    value={currentMonthInfo?.hasData ? currentMonthInfo.maintenanceCompliance : 58.1}
+                    value={currentMonthInfo?.maintenanceCompliance ?? 0}
                     color="orange.3"
                     size="xs"
                     mt={4}
@@ -250,10 +250,10 @@ export const KrisdomingoOverallKpiWidget = () => {
                     </Badge>
                   </Group>
                   <Text fw={800} size="sm" c="white">
-                    {currentMonthInfo?.hasData ? `${currentMonthInfo.manpowerRating.toFixed(1)} pts` : "97.2 pts"}
+                    {currentMonthInfo?.hasData ? `${currentMonthInfo.manpowerRating.toFixed(1)} pts` : "0.0 pts"}
                   </Text>
                   <Progress
-                    value={currentMonthInfo?.hasData ? currentMonthInfo.manpowerRating : 97.2}
+                    value={currentMonthInfo?.manpowerRating ?? 0}
                     color="violet.3"
                     size="xs"
                     mt={4}

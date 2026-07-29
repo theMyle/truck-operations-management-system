@@ -154,56 +154,39 @@ export const WeeklyOperationsTable = ({ data, totalKtsTrucks, totalSubconTrucks 
                 );
               })}
             </Table.Tbody>
+            <Table.Tfoot bg="blue.0" style={{ borderTop: "2px solid var(--mantine-color-blue-2)" }}>
+              <Table.Tr>
+                <Table.Td>
+                  <Group gap="xs" justify="flex-start">
+                    <Text style={{ fontSize: "11px" }} fw={800} c="gray.8">
+                      TOTAL
+                    </Text>
+                    <Text style={{ fontSize: "11px" }} fw={900} c="blue.9">
+                      {totalTrips}
+                    </Text>
+                  </Group>
+                </Table.Td>
+                <Table.Td ta="center">
+                  <Text style={{ fontSize: "11px" }} fw={900} c="blue.9">
+                    {totalKts}
+                  </Text>
+                </Table.Td>
+                <Table.Td ta="center" />
+                <Table.Td ta="center">
+                  <Text style={{ fontSize: "11px" }} fw={900} c="blue.9">
+                    {totalSubcon}
+                  </Text>
+                </Table.Td>
+                <Table.Td ta="center" />
+                <Table.Td ta="center">
+                  <Text style={{ fontSize: "11px" }} fw={800} c="green.8">
+                    {totalOnTimePct}%
+                  </Text>
+                </Table.Td>
+              </Table.Tr>
+            </Table.Tfoot>
           </Table>
         </ScrollArea>
-      </Box>
-
-      <Box mt="sm" bg="blue.0">
-        <Table
-          verticalSpacing={4}
-          horizontalSpacing="xs"
-          style={{ tableLayout: "fixed" }}
-        >
-          <Table.Tbody>
-            <Table.Tr>
-              <Table.Td w="30%">
-                <Group gap="xs" justify="flex-start">
-                  <Text style={{ fontSize: "11px" }} fw={800} c="gray.8">
-                    TOTAL
-                  </Text>
-                  <Text style={{ fontSize: "11px" }} fw={900} c="blue.9">
-                    {totalTrips}
-                  </Text>
-                </Group>
-              </Table.Td>
-              <Table.Td w="12%" ta="center">
-                <Text style={{ fontSize: "11px" }} fw={900} c="blue.9">
-                  {totalKts}
-                </Text>
-              </Table.Td>
-              <Table.Td w="16%" ta="center">
-                <Text style={{ fontSize: "11px" }} fw={800} c="blue.8">
-                  {totalKtsPct}%
-                </Text>
-              </Table.Td>
-              <Table.Td w="12%" ta="center">
-                <Text style={{ fontSize: "11px" }} fw={900} c="blue.9">
-                  {totalSubcon}
-                </Text>
-              </Table.Td>
-              <Table.Td w="16%" ta="center">
-                <Text style={{ fontSize: "11px" }} fw={800} c="blue.8">
-                  {totalSubconPct}%
-                </Text>
-              </Table.Td>
-              <Table.Td w="14%" ta="center">
-                <Text style={{ fontSize: "11px" }} fw={800} c="green.8">
-                  {totalOnTimePct}%
-                </Text>
-              </Table.Td>
-            </Table.Tr>
-          </Table.Tbody>
-        </Table>
       </Box>
     </Paper>
   );

@@ -112,6 +112,7 @@ export const booking = pgTable("booking", {
 export const updateTripMonitoringSchema = z.object({
   id: z.string().uuid(),
   pickupDate: z.string(),
+  pickupTime: z.string().optional(),
   arrivalPickup: z.string().optional(),
   bookingDRNo: z.string().optional().default(""),
   loadingStart: z.string().optional(),

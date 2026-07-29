@@ -15,16 +15,21 @@ export interface MonthlyKpiData {
   maintenanceCompliance: number;
   manpowerRating: number;
   overallScore: number;
-  overallRating: "Excellent" | "Good" | "Needs Improvement" | "Critical";
+  overallRating: "Excellent" | "Satisfactory" | "Needs Improvement" | "Poor/Critical";
   hasData: boolean;
 }
 
 export interface KpiReportSummary {
   year: number;
   currentMonthScore: number;
-  currentMonthRating: "Excellent" | "Good" | "Needs Improvement" | "Critical";
+  currentMonthRating: "Excellent" | "Satisfactory" | "Needs Improvement" | "Poor/Critical";
   fullYearAvgScore: number;
-  fullYearAvgRating: "Excellent" | "Good" | "Needs Improvement" | "Critical";
+  fullYearAvgRating: "Excellent" | "Satisfactory" | "Needs Improvement" | "Poor/Critical";
+  fullYearAvgUtil: number;
+  fullYearAvgDelivery: number;
+  fullYearAvgPayment: number;
+  fullYearAvgPms: number;
+  fullYearAvgManpower: number;
   monthlyData: MonthlyKpiData[];
 }
 
@@ -33,11 +38,37 @@ const MONTH_NAMES = [
   "July", "August", "September", "October", "November", "December"
 ];
 
-export function getOverallRating(score: number): "Excellent" | "Good" | "Needs Improvement" | "Critical" {
+export function getOverallRating(score: number): "Excellent" | "Satisfactory" | "Needs Improvement" | "Poor/Critical" {
   if (score >= 90) return "Excellent";
-  if (score >= 75) return "Good";
+  if (score >= 75) return "Satisfactory";
   if (score >= 60) return "Needs Improvement";
-  return "Critical";
+  return "Poor/Critical";
+}
+
+function parseScheduledDateTime(dateStr?: string, timeStr?: string): Date | null {
+  if (!dateStr || !timeStr) return null;
+  const t = timeStr.trim();
+  const m12 = t.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+  if (m12) {
+    let h = parseInt(m12[1], 10);
+    const m = parseInt(m12[2], 10);
+    const period = m12[3].toUpperCase();
+    if (period === "PM" && h < 12) h += 12;
+    if (period === "AM" && h === 12) h = 0;
+    const d = new Date(dateStr);
+    d.setHours(h, m, 0, 0);
+    return d;
+  }
+  const m24 = t.match(/^(\d{1,2}):(\d{2})/);
+  if (m24) {
+    const h = parseInt(m24[1], 10);
+    const m = parseInt(m24[2], 10);
+    const d = new Date(dateStr);
+    d.setHours(h, m, 0, 0);
+    return d;
+  }
+  const fallback = new Date(`${dateStr} ${timeStr}`);
+  return isNaN(fallback.getTime()) ? null : fallback;
 }
 
 export function computeOverallScore(
@@ -147,14 +178,14 @@ export async function getKrisdomingoKpiReport(targetYear?: number): Promise<KpiR
 
     completedTrips.forEach((b) => {
       if (b.pickupDate && b.pickupTime && b.pickupArrivalTime) {
-        try {
-          const scheduled = new Date(`${b.pickupDate} ${b.pickupTime}`);
-          const actual = new Date(b.pickupArrivalTime);
-          if (!isNaN(scheduled.getTime()) && !isNaN(actual.getTime()) && actual <= scheduled) {
+        const scheduled = parseScheduledDateTime(b.pickupDate, b.pickupTime);
+        const match = String(b.pickupArrivalTime).match(/(\d{2}):(\d{2})/);
+        const actualTimeStr = match ? `${match[1]}:${match[2]}` : "";
+        if (scheduled && actualTimeStr) {
+          const actual = parseScheduledDateTime(b.pickupDate, actualTimeStr);
+          if (actual && actual <= scheduled) {
             onTimeCount++;
           }
-        } catch {
-          // Skip
         }
       }
     });
@@ -175,8 +206,20 @@ export async function getKrisdomingoKpiReport(targetYear?: number): Promise<KpiR
         } else {
           const due = new Date(b.dueDate);
           due.setHours(23, 59, 59, 999);
-          // If paid on or before due date
-          if (new Date() <= due || isPaid) {
+          const payDate = b.invoiceDate ? new Date(b.invoiceDate) : new Date();
+          // Count as on-time if paid on or before due date
+          if (payDate <= due) {
+            onTimePaidCount++;
+          }
+        }
+      } else {
+        // Pending SOA invoice: if not past due date, it is in good standing / on-time
+        if (!b.dueDate) {
+          onTimePaidCount++;
+        } else {
+          const due = new Date(b.dueDate);
+          due.setHours(23, 59, 59, 999);
+          if (new Date() <= due) {
             onTimePaidCount++;
           }
         }
@@ -237,6 +280,11 @@ export async function getKrisdomingoKpiReport(targetYear?: number): Promise<KpiR
     currentMonthRating: currentMonthData.hasData ? currentMonthData.overallRating : getOverallRating(fullYearAvgScore),
     fullYearAvgScore,
     fullYearAvgRating: getOverallRating(fullYearAvgScore),
+    fullYearAvgUtil: avgUtil,
+    fullYearAvgDelivery: avgDelivery,
+    fullYearAvgPayment: avgPayment,
+    fullYearAvgPms: avgPms,
+    fullYearAvgManpower: avgManpower,
     monthlyData: Object.values(monthlyMap),
   };
 }

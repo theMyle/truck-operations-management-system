@@ -18,13 +18,7 @@ import {
 import {
   IconChartBar,
   IconCalculator,
-  IconTruck,
-  IconClockHour4,
-  IconCreditCard,
-  IconTools,
-  IconUsers,
-  IconCheck,
-  IconAlertTriangle,
+
 } from "@tabler/icons-react";
 import type { KpiReportSummary, MonthlyKpiData } from "@/lib/repositories/queries/kpi";
 
@@ -47,11 +41,11 @@ export const KrisdomingoKpiModal = ({
     switch (rating) {
       case "Excellent":
         return "teal";
-      case "Good":
+      case "Satisfactory":
         return "blue";
       case "Needs Improvement":
         return "orange";
-      case "Critical":
+      case "Poor/Critical":
         return "red";
       default:
         return "gray";
@@ -354,7 +348,7 @@ export const KrisdomingoKpiModal = ({
                   </Group>
                   <Group justify="space-between">
                     <Text size="11px" fw={700}>75% – 89%</Text>
-                    <Badge color="blue" variant="filled" size="sm">Good</Badge>
+                    <Badge color="blue" variant="filled" size="sm">Satisfactory</Badge>
                   </Group>
                   <Group justify="space-between">
                     <Text size="11px" fw={700}>60% – 74%</Text>
@@ -362,7 +356,7 @@ export const KrisdomingoKpiModal = ({
                   </Group>
                   <Group justify="space-between">
                     <Text size="11px" fw={700}>Below 60%</Text>
-                    <Badge color="red" variant="filled" size="sm">Critical</Badge>
+                    <Badge color="red" variant="filled" size="sm">Poor/Critical</Badge>
                   </Group>
                 </Stack>
               </Paper>
