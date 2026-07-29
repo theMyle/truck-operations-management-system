@@ -376,13 +376,21 @@ export async function updateTripDetails(data: UpdateTripMonitoringInput) {
   // DB uses timestamp, form gives "HH:mm" — combine with pickup date
   const toTs = (time?: string): Date | null => {
     if (!time || !data.pickupDate) return null;
-    const parts = time.trim().split(":");
+    const timeClean = time.trim();
+    if (!timeClean) return null;
+    const parts = timeClean.split(":");
     if (parts.length < 2) return null;
     const hh = parseInt(parts[0], 10);
     const mm = parseInt(parts[1], 10);
     if (isNaN(hh) || isNaN(mm)) return null;
-    const d = new Date(`${data.pickupDate}T00:00:00`);
-    d.setHours(hh, mm, 0, 0);
+
+    const dateParts = data.pickupDate.trim().split("-");
+    if (dateParts.length < 3) return null;
+    const year = parseInt(dateParts[0], 10);
+    const month = parseInt(dateParts[1], 10) - 1;
+    const day = parseInt(dateParts[2], 10);
+
+    const d = new Date(year, month, day, hh, mm, 0, 0);
     return isNaN(d.getTime()) ? null : d;
   };
 
