@@ -152,19 +152,21 @@ export const updateTripMonitoringAction = actionClient
       ""
     ).trim();
 
-    if (currentBooking.bookingDRNo) {
-      parsedInput.bookingDRNo = currentBooking.bookingDRNo;
-    } else if (!effectiveBookingDRNo) {
-      if (isSubcon) {
-        throw new Error(
-          "Booking / DR# is required for Subcon trucks before proceeding.",
-        );
+    if (!parsedInput.bookingDRNo) {
+      if (currentBooking.bookingDRNo) {
+        parsedInput.bookingDRNo = currentBooking.bookingDRNo;
       } else {
-        const yr = currentBooking.pickupDate
-          ? new Date(currentBooking.pickupDate).getFullYear()
-          : new Date().getFullYear();
-        const autoDrNo = await generateKtsRentalBookingNo(db, yr);
-        parsedInput.bookingDRNo = autoDrNo;
+        if (isSubcon) {
+          throw new Error(
+            "Booking / DR# is required for Subcon trucks before proceeding.",
+          );
+        } else {
+          const yr = currentBooking.pickupDate
+            ? new Date(currentBooking.pickupDate).getFullYear()
+            : new Date().getFullYear();
+          const autoDrNo = await generateKtsRentalBookingNo(db, yr);
+          parsedInput.bookingDRNo = autoDrNo;
+        }
       }
     }
 

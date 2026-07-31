@@ -207,12 +207,14 @@ export const makeBookingRepository = (database = db) => {
     ): Promise<void> {
       const existingBooking = await database.query.booking.findFirst({
         where: eq(booking.id, data.id),
-        columns: { plateNumber: true },
+        columns: { plateNumber: true, pickupDate: true },
       });
 
+      const effectiveDate = data.pickupDate || existingBooking?.pickupDate;
+
       const toTs = (time?: string): Date | null => {
-        if (!time || !data.pickupDate) return null;
-        const d = new Date(`${data.pickupDate}T${time}:00Z`);
+        if (!time || !effectiveDate) return null;
+        const d = new Date(`${effectiveDate}T${time}:00Z`);
         return isNaN(d.getTime()) ? null : d;
       };
 
