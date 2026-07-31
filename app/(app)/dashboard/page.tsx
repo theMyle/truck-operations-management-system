@@ -15,7 +15,7 @@ import { booking } from "@/lib/db/schema/booking";
 import { Truck } from "@/lib/db/schema";
 import { and, eq, ne, or, isNull } from "drizzle-orm";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 30;
 
 function getWeekDates(date: Date) {
   const current = new Date(date);

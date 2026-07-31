@@ -1,5 +1,5 @@
 import { DashboardModuleSkeleton } from "@/components/ui/ModuleSkeletons";
 
-export default function DashboardLoading() {
+export default function Loading() {
   return <DashboardModuleSkeleton />;
 }
