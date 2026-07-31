@@ -76,10 +76,7 @@ export default function BookingRecordsPage() {
 
   useEffect(() => {
     async function loadBookings() {
-      const res = await getAllBookingAction({});
-      console.log(res);
-
-      const [bookingsRes, clientsRes] = await Promise.all([
+      const [res, clientsRes] = await Promise.all([
         getAllBookingAction({}),
         getAllClientsAction(),
       ]);
