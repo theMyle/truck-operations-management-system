@@ -348,6 +348,7 @@ export default function DispatchPage() {
       icon: <IconCheck size={16} />,
     });
     form.reset();
+    setEditingRecord(null);
     setIsSubmitting(false);
     setReviewOpened(false);
   };
