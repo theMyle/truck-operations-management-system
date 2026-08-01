@@ -207,7 +207,17 @@ export const makeBookingRepository = (database = db) => {
     ): Promise<void> {
       const existingBooking = await database.query.booking.findFirst({
         where: eq(booking.id, data.id),
-        columns: { plateNumber: true, pickupDate: true },
+        columns: {
+          plateNumber: true,
+          pickupDate: true,
+          pickupArrivalTime: true,
+          loadingStartTime: true,
+          loadingEndTime: true,
+          pickupDepartureTime: true,
+          finishedDeliveryTime: true,
+          tripRemarks: true,
+          PODLink: true,
+        },
       });
 
       const effectiveDate = data.pickupDate || existingBooking?.pickupDate;
@@ -221,14 +231,35 @@ export const makeBookingRepository = (database = db) => {
       await database
         .update(booking)
         .set({
-          pickupArrivalTime: toTs(data.arrivalPickup),
-          loadingStartTime: toTs(data.loadingStart),
-          loadingEndTime: toTs(data.loadingEnd),
-          pickupDepartureTime: toTs(data.departurePickup),
-          finishedDeliveryTime: toTs(data.finishDelivery),
+          pickupArrivalTime:
+            data.arrivalPickup !== undefined
+              ? toTs(data.arrivalPickup)
+              : existingBooking?.pickupArrivalTime,
+          loadingStartTime:
+            data.loadingStart !== undefined
+              ? toTs(data.loadingStart)
+              : existingBooking?.loadingStartTime,
+          loadingEndTime:
+            data.loadingEnd !== undefined
+              ? toTs(data.loadingEnd)
+              : existingBooking?.loadingEndTime,
+          pickupDepartureTime:
+            data.departurePickup !== undefined
+              ? toTs(data.departurePickup)
+              : existingBooking?.pickupDepartureTime,
+          finishedDeliveryTime:
+            data.finishDelivery !== undefined
+              ? toTs(data.finishDelivery)
+              : existingBooking?.finishedDeliveryTime,
           deliveryStatus: data.deliveryStatus,
-          tripRemarks: data.tripRemarks ?? null,
-          PODLink: data.PODLink ?? null,
+          tripRemarks:
+            data.tripRemarks !== undefined
+              ? data.tripRemarks
+              : (existingBooking?.tripRemarks ?? null),
+          PODLink:
+            data.PODLink !== undefined
+              ? data.PODLink
+              : (existingBooking?.PODLink ?? null),
           bookingDRNo: data.bookingDRNo || undefined,
         })
         .where(eq(booking.id, data.id));
