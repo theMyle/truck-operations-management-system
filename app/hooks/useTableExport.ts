@@ -71,21 +71,25 @@ export function useTableExport(
         return row;
       }),
       startY: 24,
-      styles: { 
-        fontSize: 7.5, 
-        cellPadding: 1.5, 
-        valign: "middle", 
-        overflow: "linebreak" 
+      styles: {
+        fontSize: 7.5,
+        cellPadding: 1.5,
+        valign: "middle",
+        overflow: "linebreak"
       },
       columnStyles: {
-        displayBookingNo: { cellWidth: 8 },
+        displayBookingNo: { cellWidth: 20 },
         tripRate: { cellWidth: 10 },
         date: { cellWidth: 16 },
         status: { cellWidth: 12 },
         unit: { cellWidth: 8 },
-        plateNo: { cellWidth: 14 },
-        bookingDr: { cellWidth: 16 },
+        plateNo: { cellWidth: 20 },
+        bookingDr: { cellWidth: 22 },
+        bookingDRNo: { cellWidth: 22 },
         bookedBy: { cellWidth: 10 },
+        driverName: { cellWidth: 26 },
+        driver: { cellWidth: 26 },
+        helper: { cellWidth: 26 },
       },
       headStyles: {
         fillColor: [37, 99, 235],
