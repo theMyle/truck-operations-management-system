@@ -3,6 +3,7 @@
 import { useCallback } from "react";
 import { DispatchRecord } from "@/app/(app)/constant";
 import { formatTime12Hour, toTitleCase } from "@/lib/utils/stringFormat";
+import { getDepartureInGarageTime } from "./useTablePrint";
 
 export interface ExportColumn {
   key: string;
@@ -19,6 +20,9 @@ const TIME_KEYS = [
 
 function getFormattedValue(record: DispatchRecord, colKey: string): string {
   let val = record[colKey as keyof DispatchRecord];
+  if (colKey === "pickUpTime") {
+    return getDepartureInGarageTime(String(val ?? ""));
+  }
   if (colKey === "bookedBy") {
     return toTitleCase(typeof val === "string" ? val : String(val ?? ""));
   }
@@ -55,7 +59,10 @@ export function useTableExport(
     const pdfColumns = columns.filter((col) => !TIME_KEYS.includes(col.key));
 
     autoTable(doc, {
-      columns: pdfColumns.map((c) => ({ header: c.label, dataKey: c.key })),
+      columns: pdfColumns.map((c) => ({
+        header: c.key === "pickUpTime" ? "Departure in Garage" : c.label,
+        dataKey: c.key,
+      })),
       body: records.map((r) => {
         const row: Record<string, string> = {};
         pdfColumns.forEach((col) => {
@@ -117,7 +124,7 @@ export function useTableExport(
     const exportRows = records.map((r) =>
       columns.map((col) => getFormattedValue(r, col.key))
     );
-    const headers = columns.map((c) => c.label);
+    const headers = columns.map((c) => (c.key === "pickUpTime" ? "Departure in Garage" : c.label));
 
     // ── Build worksheet from array of arrays so we can insert metadata rows ──
     const metaData: (string | number)[][] = [
@@ -218,7 +225,7 @@ export function useTableExport(
           new Paragraph({
             children: [
               new TextRun({
-                text: col.label,
+                text: col.key === "pickUpTime" ? "Departure in Garage" : col.label,
                 bold: true,
                 size: 18,
                 color: "FFFFFF",
@@ -365,7 +372,7 @@ export function useTableExport(
     const hrow = document.createElement("tr");
     jpgColumns.forEach((col) => {
       const th = document.createElement("th");
-      th.textContent = col.label;
+      th.textContent = col.key === "pickUpTime" ? "Departure in Garage" : col.label;
       th.style.cssText =
         "background:#2563eb;color:#fff;padding:10px 14px;text-align:left;font-weight:700;white-space:nowrap;font-size:15px;";
       hrow.appendChild(th);

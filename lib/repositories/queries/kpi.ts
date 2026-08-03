@@ -228,7 +228,7 @@ export async function getKrisdomingoKpiReport(targetYear?: number): Promise<KpiR
 
     const onTimePaymentPercentage = billedInvoices.length > 0
       ? Number(((onTimePaidCount / billedInvoices.length) * 100).toFixed(1))
-      : 0;
+      : 100;
 
     // Maintenance Compliance % (Uses PMS healthy ratio)
     const pmsCompliancePercentage = hasData ? currentPmsCompliance : 0;
