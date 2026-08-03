@@ -10,8 +10,13 @@ export function getWeekOfMonth(date: Date): number {
 
 /**
  * Returns the number of active operating days in a given month.
- * If operationsStartDate is provided, returns partial days for start month,
- * 0 for months before start month, or full days otherwise.
+ * - For months before operationsStartDate: 0 (company wasn't operating yet).
+ * - For the operations-start month: partial days from the start date to month end.
+ * - For the current, still-in-progress month: partial days from month start (or
+ *   operations start, if that's later) up to and including today — NOT the full
+ *   month, since the remaining days haven't happened yet and would otherwise
+ *   understate utilization/capacity metrics that are computed against this value.
+ * - For any other (fully completed, past) month: the full number of days in that month.
  */
 export function getActiveDaysInMonth(
   year: number,
@@ -19,14 +24,20 @@ export function getActiveDaysInMonth(
   operationsStartDate?: string | null // "YYYY-MM-DD"
 ): number {
   const daysInFullMonth = new Date(year, month, 0).getDate();
-  if (!operationsStartDate) return daysInFullMonth;
-
   const monthPrefix = `${year}-${String(month).padStart(2, "0")}`;
-  const startYearMonth = operationsStartDate.slice(0, 7);
 
-  if (monthPrefix < startYearMonth) return 0;
-  if (monthPrefix === startYearMonth) {
-    return daysInFullMonth - Number(operationsStartDate.slice(8, 10)) + 1;
+  let startDay = 1;
+  if (operationsStartDate) {
+    const startYearMonth = operationsStartDate.slice(0, 7);
+    if (monthPrefix < startYearMonth) return 0;
+    if (monthPrefix === startYearMonth) {
+      startDay = Number(operationsStartDate.slice(8, 10));
+    }
   }
-  return daysInFullMonth;
+
+  const today = new Date();
+  const todayYearMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`;
+  const endDay = monthPrefix === todayYearMonth ? today.getDate() : daysInFullMonth;
+
+  return Math.max(0, endDay - startDay + 1);
 }
