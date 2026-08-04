@@ -46,39 +46,41 @@ export async function getWeeklyOperations(
   startDateStr: string,
   endDateStr: string,
 ) {
-  const result = await db
-    .select({
-      pickupDate: booking.pickupDate,
-      isSubcon: trucks.isSubcon,
-      tripsCount: sql<number>`count(*)::int`,
-      trucksCount: sql<number>`count(distinct ${booking.plateNumber})::int`,
-    })
-    .from(booking)
-    .innerJoin(trucks, eq(booking.plateNumber, trucks.plateNumber))
-    .where(
-      and(
-        gte(booking.pickupDate, startDateStr),
-        lte(booking.pickupDate, endDateStr),
-      ),
-    )
-    .groupBy(booking.pickupDate, trucks.isSubcon);
-
-  const onTimeResult = await db
-    .select({
-      pickupDate: booking.pickupDate,
-      pickupTime: booking.pickupTime,
-      pickupArrivalTime: booking.pickupArrivalTime,
-      deliveryStatus: booking.deliveryStatus,
-    })
-    .from(booking)
-    .where(
-      and(
-        gte(booking.pickupDate, startDateStr),
-        lte(booking.pickupDate, endDateStr),
-        eq(booking.deliveryStatus, "Completed"),
-        sql`${booking.pickupArrivalTime} IS NOT NULL`
+  const [result, onTimeResult] = await Promise.all([
+    db
+      .select({
+        pickupDate: booking.pickupDate,
+        isSubcon: trucks.isSubcon,
+        tripsCount: sql<number>`count(*)::int`,
+        trucksCount: sql<number>`count(distinct ${booking.plateNumber})::int`,
+      })
+      .from(booking)
+      .innerJoin(trucks, eq(booking.plateNumber, trucks.plateNumber))
+      .where(
+        and(
+          gte(booking.pickupDate, startDateStr),
+          lte(booking.pickupDate, endDateStr),
+        ),
       )
-    );
+      .groupBy(booking.pickupDate, trucks.isSubcon),
+
+    db
+      .select({
+        pickupDate: booking.pickupDate,
+        pickupTime: booking.pickupTime,
+        pickupArrivalTime: booking.pickupArrivalTime,
+        deliveryStatus: booking.deliveryStatus,
+      })
+      .from(booking)
+      .where(
+        and(
+          gte(booking.pickupDate, startDateStr),
+          lte(booking.pickupDate, endDateStr),
+          eq(booking.deliveryStatus, "Completed"),
+          sql`${booking.pickupArrivalTime} IS NOT NULL`
+        )
+      ),
+  ]);
 
   // Organize by pickupDate
   const byDate: Record<
@@ -145,12 +147,15 @@ export async function getWeeklyOperations(
   return byDate;
 }
 
-export async function getMonthlyOperations(year: number) {
+export async function getMonthlyOperations(
+  year: number,
+  operationsStartDate?: string | null
+) {
   const yearStr = year.toString();
   const startDateStr = `${yearStr}-01-01`;
   const endDateStr = `${yearStr}-12-31`;
 
-  const [dailyResult, onTimeResult, operationsStartDate] = await Promise.all([
+  const [dailyResult, onTimeResult, resolvedStartDate] = await Promise.all([
     db
       .select({
         pickupDate: booking.pickupDate,
@@ -185,7 +190,9 @@ export async function getMonthlyOperations(year: number) {
         )
       ),
 
-    getOperationsStartDate(),
+    operationsStartDate !== undefined
+      ? Promise.resolve(operationsStartDate)
+      : getOperationsStartDate(),
   ]);
 
   const byMonth: Record<
@@ -257,7 +264,7 @@ export async function getMonthlyOperations(year: number) {
 
   // Calculate activeDays for each month using shared helper
   for (let m = 1; m <= 12; m++) {
-    byMonth[m].activeDays = getActiveDaysInMonth(year, m, operationsStartDate);
+    byMonth[m].activeDays = getActiveDaysInMonth(year, m, resolvedStartDate);
   }
 
   return byMonth;

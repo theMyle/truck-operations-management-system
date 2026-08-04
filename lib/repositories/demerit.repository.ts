@@ -1,5 +1,5 @@
 import { db } from "@/lib/db";
-import { violationTypes, demeritRecords } from "@/lib/db/schema";
+import { violationTypes, demeritRecords, drivers, helpers } from "@/lib/db/schema";
 import { eq, and, gte, lte, desc, sql, asc } from "drizzle-orm";
 
 // ── Violation Types (Catalog) ──
@@ -134,40 +134,38 @@ export const demeritRepository = {
         ? `${year + 1}-01-01`
         : `${year}-${String(month + 1).padStart(2, "0")}-01`;
 
-    // Get all demerit records for the month
-    const records = await db
-      .select({
-        personId: demeritRecords.personId,
-        personType: demeritRecords.personType,
-        personName: demeritRecords.personName,
-        totalDemerits: sql<number>`sum(${demeritRecords.points})::int`,
-      })
-      .from(demeritRecords)
-      .where(
-        and(
-          gte(demeritRecords.incidentDate, startDate),
-          lte(demeritRecords.incidentDate, endDate)
+    // Get all demerit records for the month alongside drivers and helpers
+    const [records, allDrivers, allHelpers] = await Promise.all([
+      db
+        .select({
+          personId: demeritRecords.personId,
+          personType: demeritRecords.personType,
+          personName: demeritRecords.personName,
+          totalDemerits: sql<number>`sum(${demeritRecords.points})::int`,
+        })
+        .from(demeritRecords)
+        .where(
+          and(
+            gte(demeritRecords.incidentDate, startDate),
+            lte(demeritRecords.incidentDate, endDate)
+          )
         )
-      )
-      .groupBy(
-        demeritRecords.personId,
-        demeritRecords.personType,
-        demeritRecords.personName
-      );
+        .groupBy(
+          demeritRecords.personId,
+          demeritRecords.personType,
+          demeritRecords.personName
+        ),
 
-    // Build scoreboard: include all active drivers + helpers, even those with 0 demerits
-    const { drivers } = await import("@/lib/db/schema");
-    const { helpers } = await import("@/lib/db/schema");
+      db
+        .select({ id: drivers.id, name: drivers.driverName })
+        .from(drivers)
+        .where(eq(drivers.isActive, true)),
 
-    const allDrivers = await db
-      .select({ id: drivers.id, name: drivers.driverName })
-      .from(drivers)
-      .where(eq(drivers.isActive, true));
-
-    const allHelpers = await db
-      .select({ id: helpers.id, name: helpers.helperName })
-      .from(helpers)
-      .where(eq(helpers.isActive, true));
+      db
+        .select({ id: helpers.id, name: helpers.helperName })
+        .from(helpers)
+        .where(eq(helpers.isActive, true)),
+    ]);
 
     const demeritMap = new Map(
       records.map((r) => [r.personId, r.totalDemerits])

@@ -46,6 +46,8 @@ export default async function DashboardPage() {
   const weekDatesStr = getWeekDates(today);
   const currentYear = today.getFullYear();
 
+  const operationsStartDate = await getOperationsStartDate();
+
   const [
     fleetCounts,
     truckList,
@@ -54,13 +56,12 @@ export default async function DashboardPage() {
     monthlyData,
     onTimeDeliveryStats,
     todayBookings,
-    operationsStartDate,
   ] = await Promise.all([
     getFleetStatusCounts(),
     getTruckList(),
     getDailyOperations(todayStr),
     getWeeklyOperations(weekDatesStr[0], weekDatesStr[6]),
-    getMonthlyOperations(currentYear),
+    getMonthlyOperations(currentYear, operationsStartDate),
     getOnTimeDeliveryStats(),
     db
       .select({ plateNumber: booking.plateNumber })
@@ -74,7 +75,6 @@ export default async function DashboardPage() {
           )
         )
       ),
-    getOperationsStartDate(),
   ]);
 
   const activePlatesToday = new Set(

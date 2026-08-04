@@ -8,6 +8,7 @@ import {
   integer,
   serial,
   boolean,
+  index,
 } from "drizzle-orm/pg-core";
 import { clients } from "./clients";
 import { trucks } from "./trucks";
@@ -107,7 +108,13 @@ export const booking = pgTable("booking", {
   invoiceDate: date("invoiceDate", { mode: "string" }),
   dueDate: date("dueDate", { mode: "string" }),
   amountPaid: decimal("amountPaid", { precision: 10, scale: 2 }).default("0.00").notNull(),
-});
+}, (table) => [
+  index("booking_pickup_date_idx").on(table.pickupDate),
+  index("booking_delivery_status_idx").on(table.deliveryStatus),
+  index("booking_plate_number_idx").on(table.plateNumber),
+  index("booking_client_name_idx").on(table.clientName),
+  index("booking_billing_status_idx").on(table.billingStatus),
+]);
 
 export const updateTripMonitoringSchema = z.object({
   id: z.string().uuid(),
