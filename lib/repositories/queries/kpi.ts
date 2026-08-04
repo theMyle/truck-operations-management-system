@@ -147,119 +147,124 @@ export async function getKrisdomingoKpiReport(targetYear?: number): Promise<KpiR
     ),
   });
 
-  const monthlyMap: Record<number, MonthlyKpiData> = {};
+  const monthEntries = await Promise.all(
+    Array.from({ length: 12 }, (_, i) => i + 1).map(async (m) => {
+      const monthStr = String(m).padStart(2, "0");
+      const monthPrefix = `${year}-${monthStr}`;
+      const mBookings = yearBookings.filter((b) => {
+        if (!b.pickupDate) return false;
+        return b.pickupDate.startsWith(monthPrefix);
+      });
 
-  for (let m = 1; m <= 12; m++) {
-    const monthStr = String(m).padStart(2, "0");
-    const monthPrefix = `${year}-${monthStr}`;
-    const mBookings = yearBookings.filter((b) => {
-      if (!b.pickupDate) return false;
-      return b.pickupDate.startsWith(monthPrefix);
-    });
+      const hasData = mBookings.length > 0;
+      const daysInMonth = getActiveDaysInMonth(year, m, operationsStartDate);
 
-    const hasData = mBookings.length > 0;
-    const daysInMonth = getActiveDaysInMonth(year, m, operationsStartDate);
+      // Fleet Utilization % (Krisdomingo daily truck-days ÷ Total KTS Fleet capacity * 100)
+      let ktsMonthTruckDays = 0;
+      ktsDailyMap.forEach((count, dateStr) => {
+        if (dateStr.startsWith(monthPrefix)) {
+          ktsMonthTruckDays += count;
+        }
+      });
 
-    // Fleet Utilization % (Krisdomingo daily truck-days ÷ Total KTS Fleet capacity * 100)
-    let ktsMonthTruckDays = 0;
-    ktsDailyMap.forEach((count, dateStr) => {
-      if (dateStr.startsWith(monthPrefix)) {
-        ktsMonthTruckDays += count;
-      }
-    });
+      const totalCapacityDays = totalKtsTruckCount * daysInMonth;
+      const rawUtil = totalCapacityDays > 0 ? (ktsMonthTruckDays / totalCapacityDays) * 100 : 0;
+      const fleetUtilPercentage = hasData ? Number(Math.min(100, rawUtil).toFixed(1)) : 0;
 
-    const totalCapacityDays = totalKtsTruckCount * daysInMonth;
-    const rawUtil = totalCapacityDays > 0 ? (ktsMonthTruckDays / totalCapacityDays) * 100 : 0;
-    const fleetUtilPercentage = hasData ? Number(Math.min(100, rawUtil).toFixed(1)) : 0;
+      // On-Time Delivery %
+      const completedTrips = mBookings.filter((b) => b.deliveryStatus === "Completed" && b.pickupArrivalTime);
+      let onTimeCount = 0;
 
-    // On-Time Delivery %
-    const completedTrips = mBookings.filter((b) => b.deliveryStatus === "Completed" && b.pickupArrivalTime);
-    let onTimeCount = 0;
-
-    completedTrips.forEach((b) => {
-      if (b.pickupDate && b.pickupTime && b.pickupArrivalTime) {
-        const scheduled = parseScheduledDateTime(b.pickupDate, b.pickupTime);
-        const match = String(b.pickupArrivalTime).match(/(\d{2}):(\d{2})/);
-        const actualTimeStr = match ? `${match[1]}:${match[2]}` : "";
-        if (scheduled && actualTimeStr) {
-          const actual = parseScheduledDateTime(b.pickupDate, actualTimeStr);
-          if (actual && actual <= scheduled) {
-            onTimeCount++;
+      completedTrips.forEach((b) => {
+        if (b.pickupDate && b.pickupTime && b.pickupArrivalTime) {
+          const scheduled = parseScheduledDateTime(b.pickupDate, b.pickupTime);
+          const match = String(b.pickupArrivalTime).match(/(\d{2}):(\d{2})/);
+          const actualTimeStr = match ? `${match[1]}:${match[2]}` : "";
+          if (scheduled && actualTimeStr) {
+            const actual = parseScheduledDateTime(b.pickupDate, actualTimeStr);
+            if (actual && actual <= scheduled) {
+              onTimeCount++;
+            }
           }
         }
-      }
-    });
+      });
 
-    const onTimeDeliveryPercentage = completedTrips.length > 0
-      ? Number(((onTimeCount / completedTrips.length) * 100).toFixed(1))
-      : 0;
+      const onTimeDeliveryPercentage = completedTrips.length > 0
+        ? Number(((onTimeCount / completedTrips.length) * 100).toFixed(1))
+        : 0;
 
-    // On-Time Payment % (Paid on or before due date)
-    const billedInvoices = mBookings.filter((b) => b.soaNumber && b.soaNumber.trim().length > 0);
-    let onTimePaidCount = 0;
+      // On-Time Payment % (Paid on or before due date)
+      const billedInvoices = mBookings.filter((b) => b.soaNumber && b.soaNumber.trim().length > 0);
+      let onTimePaidCount = 0;
 
-    billedInvoices.forEach((b) => {
-      const isPaid = (b.billingStatus || "").toLowerCase() === "paid" || Number(b.amountPaid) >= Number(b.clientRate);
-      if (isPaid) {
-        if (!b.dueDate) {
-          onTimePaidCount++;
-        } else {
-          const due = new Date(b.dueDate);
-          due.setHours(23, 59, 59, 999);
-          const payDate = b.invoiceDate ? new Date(b.invoiceDate) : new Date();
-          // Count as on-time if paid on or before due date
-          if (payDate <= due) {
+      billedInvoices.forEach((b) => {
+        const isPaid = (b.billingStatus || "").toLowerCase() === "paid" || Number(b.amountPaid) >= Number(b.clientRate);
+        if (isPaid) {
+          if (!b.dueDate) {
             onTimePaidCount++;
+          } else {
+            const due = new Date(b.dueDate);
+            due.setHours(23, 59, 59, 999);
+            const payDate = b.invoiceDate ? new Date(b.invoiceDate) : new Date();
+            // Count as on-time if paid on or before due date
+            if (payDate <= due) {
+              onTimePaidCount++;
+            }
           }
-        }
-      } else {
-        // Pending SOA invoice: if not past due date, it is in good standing / on-time
-        if (!b.dueDate) {
-          onTimePaidCount++;
         } else {
-          const due = new Date(b.dueDate);
-          due.setHours(23, 59, 59, 999);
-          if (new Date() <= due) {
+          // Pending SOA invoice: if not past due date, it is in good standing / on-time
+          if (!b.dueDate) {
             onTimePaidCount++;
+          } else {
+            const due = new Date(b.dueDate);
+            due.setHours(23, 59, 59, 999);
+            if (new Date() <= due) {
+              onTimePaidCount++;
+            }
           }
         }
-      }
-    });
+      });
 
-    const onTimePaymentPercentage = billedInvoices.length > 0
-      ? Number(((onTimePaidCount / billedInvoices.length) * 100).toFixed(1))
-      : 100;
+      const onTimePaymentPercentage = billedInvoices.length > 0
+        ? Number(((onTimePaidCount / billedInvoices.length) * 100).toFixed(1))
+        : 100;
 
-    // Maintenance Compliance % (Uses PMS healthy ratio)
-    const pmsCompliancePercentage = hasData ? currentPmsCompliance : 0;
+      // Maintenance Compliance % (Uses PMS healthy ratio)
+      const pmsCompliancePercentage = hasData ? currentPmsCompliance : 0;
 
-    // Manpower Rating Score (pts out of 100 from live demerit DB)
-    const demeritStats = await demeritRepository.getTeamAverageScore(year, m);
-    const manpowerPts = hasData ? demeritStats.average : 0;
+      // Manpower Rating Score (pts out of 100 from live demerit DB)
+      const demeritStats = await demeritRepository.getTeamAverageScore(year, m);
+      const manpowerPts = hasData ? demeritStats.average : 0;
 
-    const overallScore = hasData
-      ? computeOverallScore(
-        fleetUtilPercentage,
-        onTimeDeliveryPercentage,
-        onTimePaymentPercentage,
-        pmsCompliancePercentage,
-        manpowerPts
-      )
-      : 0;
+      const overallScore = hasData
+        ? computeOverallScore(
+          fleetUtilPercentage,
+          onTimeDeliveryPercentage,
+          onTimePaymentPercentage,
+          pmsCompliancePercentage,
+          manpowerPts
+        )
+        : 0;
 
-    monthlyMap[m] = {
-      month: MONTH_NAMES[m - 1],
-      monthNum: m,
-      fleetUtilization: fleetUtilPercentage,
-      onTimeDelivery: onTimeDeliveryPercentage,
-      onTimePayment: onTimePaymentPercentage,
-      maintenanceCompliance: pmsCompliancePercentage,
-      manpowerRating: manpowerPts,
-      overallScore,
-      overallRating: getOverallRating(overallScore),
-      hasData,
-    };
-  }
+      return [
+        m,
+        {
+          month: MONTH_NAMES[m - 1],
+          monthNum: m,
+          fleetUtilization: fleetUtilPercentage,
+          onTimeDelivery: onTimeDeliveryPercentage,
+          onTimePayment: onTimePaymentPercentage,
+          maintenanceCompliance: pmsCompliancePercentage,
+          manpowerRating: manpowerPts,
+          overallScore,
+          overallRating: getOverallRating(overallScore),
+          hasData,
+        },
+      ] as const;
+    })
+  );
+
+  const monthlyMap: Record<number, MonthlyKpiData> = Object.fromEntries(monthEntries);
 
   // Calculate Full Year Average for months with data
   const monthsWithData = Object.values(monthlyMap).filter((m) => m.hasData);
