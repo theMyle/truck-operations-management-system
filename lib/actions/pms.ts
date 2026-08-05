@@ -51,8 +51,8 @@ export const getPmsHistoryAction = actionClient
 
 export const getPmsLogsByDateRangeAction = actionClient
   .schema(z.object({
-    startDate: z.string().min(1, "Start date is required"),
-    endDate: z.string().min(1, "End date is required"),
+    startDate: z.string().optional(),
+    endDate: z.string().optional(),
   }))
   .action(async ({ parsedInput }) => {
     try {

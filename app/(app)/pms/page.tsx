@@ -80,7 +80,6 @@ export default function PmsPage() {
   const [startDate, setStartDate] = useState<string>("");
   const [endDate, setEndDate] = useState<string>("");
   const [dateModalOpen, setDateModalOpen] = useState(false);
-  const { exporting, handleExportPdf, handleExportXlsx } = usePmsExport(startDate, endDate);
 
   // Reset page when filters change
   useEffect(() => {
@@ -183,6 +182,8 @@ export default function PmsPage() {
       return matchSearch && matchStatus;
     });
   }, [fleet, search, statusFilter]);
+
+  const { exporting, handleExportPdf, handleExportXlsx } = usePmsExport(startDate, endDate, filteredFleet);
 
   const pagedFleet = useMemo(() => {
     return filteredFleet.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
@@ -356,28 +357,38 @@ export default function PmsPage() {
               Overdue: {stats.overdue}
             </Badge>
 
-            <Button
-              size="xs"
-              variant="light"
-              color="red"
-              leftSection={<IconFileTypePdf size={14} />}
-              onClick={handleExportPdf}
-              loading={exporting}
-              disabled={!startDate || !endDate}
+            <Tooltip
+              label={startDate && endDate ? `Export logs for ${startDate} to ${endDate}` : "Export current fleet PMS status report"}
+              position="top"
+              withArrow
             >
-              Export PDF
-            </Button>
-            <Button
-              size="xs"
-              variant="light"
-              color="green"
-              leftSection={<IconFileSpreadsheet size={14} />}
-              onClick={handleExportXlsx}
-              loading={exporting}
-              disabled={!startDate || !endDate}
+              <Button
+                size="xs"
+                variant="light"
+                color="red"
+                leftSection={<IconFileTypePdf size={14} />}
+                onClick={handleExportPdf}
+                loading={exporting}
+              >
+                Export PDF
+              </Button>
+            </Tooltip>
+            <Tooltip
+              label={startDate && endDate ? `Export logs for ${startDate} to ${endDate}` : "Export current fleet PMS status report"}
+              position="top"
+              withArrow
             >
-              Export XLSX
-            </Button>
+              <Button
+                size="xs"
+                variant="light"
+                color="green"
+                leftSection={<IconFileSpreadsheet size={14} />}
+                onClick={handleExportXlsx}
+                loading={exporting}
+              >
+                Export XLSX
+              </Button>
+            </Tooltip>
           </Group>
         </Group>
       </Paper>
