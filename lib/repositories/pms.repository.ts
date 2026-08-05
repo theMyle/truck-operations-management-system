@@ -164,8 +164,34 @@ export const pmsRepository = {
     });
   },
 
-  getPmsLogsByDateRange: async (startDate: string, endDate: string) => {
-    const results = await db
+  getPmsLogsByDateRange: async (startDate?: string, endDate?: string) => {
+    if (startDate && endDate) {
+      return await db
+        .select({
+          id: pmsLogs.id,
+          plateNumber: pmsLogs.plateNumber,
+          pmsDate: pmsLogs.pmsDate,
+          pmsOdo: pmsLogs.pmsOdo,
+          serviceType: pmsLogs.serviceType,
+          cost: pmsLogs.cost,
+          performedBy: pmsLogs.performedBy,
+          remarks: pmsLogs.remarks,
+          fleetType: trucks.fleetType,
+          unitType: trucks.unitType,
+          isSubcon: trucks.isSubcon,
+        })
+        .from(pmsLogs)
+        .innerJoin(trucks, eq(pmsLogs.plateNumber, trucks.plateNumber))
+        .where(
+          and(
+            gte(pmsLogs.pmsDate, startDate),
+            lte(pmsLogs.pmsDate, endDate)
+          )
+        )
+        .orderBy(desc(pmsLogs.pmsDate));
+    }
+
+    return await db
       .select({
         id: pmsLogs.id,
         plateNumber: pmsLogs.plateNumber,
@@ -181,15 +207,7 @@ export const pmsRepository = {
       })
       .from(pmsLogs)
       .innerJoin(trucks, eq(pmsLogs.plateNumber, trucks.plateNumber))
-      .where(
-        and(
-          gte(pmsLogs.pmsDate, startDate),
-          lte(pmsLogs.pmsDate, endDate)
-        )
-      )
       .orderBy(desc(pmsLogs.pmsDate));
-
-    return results;
   },
 
   updatePmsLog: async (
