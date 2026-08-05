@@ -330,16 +330,21 @@ export async function getOnTimeDeliveryStats(targetYear?: number, targetMonth?: 
 
       totalDeliveries++;
 
-      const match = String(row.pickupArrivalTime).match(/(\d{1,2}):(\d{2})/);
-      let actual: Date | null = null;
-      if (match) {
-        const h = parseInt(match[1], 10);
-        const m = parseInt(match[2], 10);
-        actual = new Date(row.pickupDate);
-        actual.setHours(h, m, 0, 0);
+      let arrivalH = 0;
+      let arrivalM = 0;
+      if (row.pickupArrivalTime instanceof Date) {
+        arrivalH = row.pickupArrivalTime.getUTCHours();
+        arrivalM = row.pickupArrivalTime.getUTCMinutes();
       } else {
-        actual = new Date(`${row.pickupDate} ${row.pickupArrivalTime}`);
+        const match = String(row.pickupArrivalTime).match(/(\d{1,2}):(\d{2})/);
+        if (match) {
+          arrivalH = parseInt(match[1], 10);
+          arrivalM = parseInt(match[2], 10);
+        }
       }
+
+      const actual = new Date(row.pickupDate);
+      actual.setHours(arrivalH, arrivalM, 0, 0);
 
       if (actual && actual <= scheduledTime) {
         onTimeDeliveries++;
