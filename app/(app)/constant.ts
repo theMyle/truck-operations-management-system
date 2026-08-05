@@ -41,6 +41,7 @@ export interface DispatchRecord {
   podRequired?: boolean;
   isSubcon?: boolean;
   lastRecordedOdoEnd?: number;
+  excessDropRate?: string | number | null;
 }
 
 export const MOCK_RECORDS: DispatchRecord[] = [

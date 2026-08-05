@@ -320,12 +320,14 @@ const UpdateBillingTripRateSchema = z.object({
   truckerRate: z.string().optional(),
   bookingDRNo: z.string().optional(),
   tripRemarks: z.string().optional(),
+  numberOfDrops: z.number().min(0).optional(),
+  excessDropRate: z.string().optional(),
 });
 
 export const updateBillingTripRateAction = actionClient
   .schema(UpdateBillingTripRateSchema)
   .action(async ({ parsedInput }) => {
-    const { bookingId, clientRate, truckerRate, bookingDRNo, tripRemarks } = parsedInput;
+    const { bookingId, clientRate, truckerRate, bookingDRNo, tripRemarks, numberOfDrops, excessDropRate } = parsedInput;
 
     const current = await db.query.booking.findFirst({
       where: (b, { eq }) => eq(b.id, bookingId),
@@ -339,6 +341,8 @@ export const updateBillingTripRateAction = actionClient
     if (truckerRate !== undefined) updateData.truckerRate = truckerRate;
     if (bookingDRNo !== undefined) updateData.bookingDRNo = bookingDRNo;
     if (tripRemarks !== undefined) updateData.tripRemarks = tripRemarks;
+    if (numberOfDrops !== undefined) updateData.numberOfDrops = numberOfDrops;
+    if (excessDropRate !== undefined) updateData.excessDropRate = excessDropRate;
 
     // Recalculate billing status if clientRate changed
     const newClientRate = clientRate !== undefined ? Number(clientRate) || 0 : (Number(current.clientRate) || 0);

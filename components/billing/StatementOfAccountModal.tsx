@@ -222,12 +222,17 @@ export function StatementOfAccountModal({
       const rate = targetType === "subcon"
         ? Number(r.truckerRate || r.tripRate || 0)
         : Number(r.tripRate || 0);
-      baseTotal += rate;
       // Optional excess drop calculation
-      const drops = r.noOfDrops || (r.rawDrops ? r.rawDrops.length : 1);
-      if (drops > 1) {
-        excessDropTotal += (drops - 1) * 300; // 300 per excess drop standard
+      let excess = 0;
+      if (r.excessDropRate !== undefined && r.excessDropRate !== null && r.excessDropRate !== "") {
+        excess = Number(r.excessDropRate) || 0;
+      } else {
+        const drops = r.noOfDrops || (r.rawDrops ? r.rawDrops.length : 1);
+        if (drops > 1) {
+          excess = (drops - 1) * 300;
+        }
       }
+      excessDropTotal += excess;
     });
 
     const netOfVat = baseTotal + excessDropTotal;
@@ -426,8 +431,13 @@ export function StatementOfAccountModal({
         const rate = targetType === "subcon"
           ? Number(r.truckerRate || r.tripRate || 0)
           : Number(r.tripRate || 0);
-        const drops = r.noOfDrops || (r.rawDrops ? r.rawDrops.length : 1);
-        const excess = drops > 1 ? (drops - 1) * 300 : 0;
+        let excess = 0;
+        if (r.excessDropRate !== undefined && r.excessDropRate !== null && r.excessDropRate !== "") {
+          excess = Number(r.excessDropRate) || 0;
+        } else {
+          const drops = r.noOfDrops || (r.rawDrops ? r.rawDrops.length : 1);
+          excess = drops > 1 ? (drops - 1) * 300 : 0;
+        }
         const total = rate + excess;
 
         totalBase += rate;

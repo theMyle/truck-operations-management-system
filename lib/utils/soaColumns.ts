@@ -89,6 +89,9 @@ export const SOA_AVAILABLE_COLUMNS: SoaColumnDefinition[] = [
     align: "right",
     isCurrency: true,
     getValue: (r) => {
+      if (r.excessDropRate !== undefined && r.excessDropRate !== null && r.excessDropRate !== "") {
+        return Number(r.excessDropRate || 0);
+      }
       const drops = r.noOfDrops || (r.rawDrops ? r.rawDrops.length : 1);
       return drops > 1 ? (drops - 1) * 300 : 0;
     },

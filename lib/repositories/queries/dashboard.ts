@@ -270,8 +270,19 @@ export async function getMonthlyOperations(
   return byMonth;
 }
 
-export async function getOnTimeDeliveryStats() {
-  const result = await db
+export async function getOnTimeDeliveryStats(targetYear?: number, targetMonth?: number) {
+  const now = new Date();
+  const year = targetYear || now.getFullYear();
+  const month = targetMonth || (now.getMonth() + 1);
+
+  const yearStr = year.toString();
+  const monthStr = String(month).padStart(2, "0");
+  const monthPrefix = `${yearStr}-${monthStr}`;
+  const startDateStr = `${monthPrefix}-01`;
+  const endDateStr = `${monthPrefix}-31`;
+
+  // 1. Fetch completed trips for current month
+  let result = await db
     .select({
       pickupDate: booking.pickupDate,
       pickupTime: booking.pickupTime,
@@ -280,10 +291,32 @@ export async function getOnTimeDeliveryStats() {
     .from(booking)
     .where(
       and(
+        gte(booking.pickupDate, startDateStr),
+        lte(booking.pickupDate, endDateStr),
         eq(booking.deliveryStatus, "Completed"),
         sql`${booking.pickupArrivalTime} IS NOT NULL`
       )
     );
+
+  // Fallback: If current month has no completed trips yet, fetch from most recent active month
+  if (result.length === 0) {
+    result = await db
+      .select({
+        pickupDate: booking.pickupDate,
+        pickupTime: booking.pickupTime,
+        pickupArrivalTime: booking.pickupArrivalTime,
+      })
+      .from(booking)
+      .where(
+        and(
+          lte(booking.pickupDate, `${yearStr}-12-31`),
+          eq(booking.deliveryStatus, "Completed"),
+          sql`${booking.pickupArrivalTime} IS NOT NULL`
+        )
+      )
+      .orderBy(sql`${booking.pickupDate} DESC`)
+      .limit(100);
+  }
 
   let totalDeliveries = 0;
   let onTimeDeliveries = 0;
@@ -292,18 +325,23 @@ export async function getOnTimeDeliveryStats() {
     if (!row.pickupArrivalTime || !row.pickupDate || !row.pickupTime) continue;
 
     try {
-      // Parse Scheduled Time
-      // pickupDate format: YYYY-MM-DD
-      // pickupTime format: "08:00 AM"
-      const dateStr = `${row.pickupDate} ${row.pickupTime}`;
-      const scheduledTime = new Date(dateStr);
-      
-      // If parsing fails (e.g. pickupTime is "TBA"), we skip comparing
-      if (isNaN(scheduledTime.getTime())) continue;
+      const scheduledTime = parseScheduledDateTime(row.pickupDate, row.pickupTime);
+      if (!scheduledTime) continue;
 
       totalDeliveries++;
 
-      if (row.pickupArrivalTime <= scheduledTime) {
+      const match = String(row.pickupArrivalTime).match(/(\d{1,2}):(\d{2})/);
+      let actual: Date | null = null;
+      if (match) {
+        const h = parseInt(match[1], 10);
+        const m = parseInt(match[2], 10);
+        actual = new Date(row.pickupDate);
+        actual.setHours(h, m, 0, 0);
+      } else {
+        actual = new Date(`${row.pickupDate} ${row.pickupArrivalTime}`);
+      }
+
+      if (actual && actual <= scheduledTime) {
         onTimeDeliveries++;
       }
     } catch (e) {

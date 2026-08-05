@@ -74,6 +74,7 @@ import { formatTime12Hour } from "@/lib/utils/stringFormat";
 
 export type BillingRecord = DispatchRecord & {
   tripRate?: string | number;
+  excessDropRate?: string | number | null;
   podFile?: string | null;
   podFileUrl?: string | null;
   podFileType?: string | null;

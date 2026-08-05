@@ -35,6 +35,8 @@ export function EditBillingTripModal({
   const [bookingDr, setBookingDr] = useState("");
   const [clientRate, setClientRate] = useState("");
   const [truckerRate, setTruckerRate] = useState("");
+  const [noOfDrops, setNoOfDrops] = useState<number>(1);
+  const [excessDropRate, setExcessDropRate] = useState("0.00");
   const [soaNumber, setSoaNumber] = useState("");
   const [invoiceDate, setInvoiceDate] = useState("");
   const [dueDate, setDueDate] = useState("");
@@ -48,6 +50,13 @@ export function EditBillingTripModal({
       setBookingDr(record.bookingDr || record.bookingDRNo || "");
       setClientRate(record.tripRate !== undefined && record.tripRate !== null ? String(record.tripRate) : "0.00");
       setTruckerRate(record.truckerRate !== undefined && record.truckerRate !== null ? String(record.truckerRate) : "0.00");
+      const dropsVal = Number(record.noOfDrops || (record as any).numberOfDrops || 1);
+      setNoOfDrops(dropsVal);
+      if (record.excessDropRate !== undefined && record.excessDropRate !== null && record.excessDropRate !== "") {
+        setExcessDropRate(String(record.excessDropRate));
+      } else {
+        setExcessDropRate(String(Math.max(0, dropsVal - 1) * 300));
+      }
       setSoaNumber(record.soaNumber || "");
       setInvoiceDate(record.invoiceDate || "");
       setDueDate(record.dueDate || "");
@@ -67,13 +76,15 @@ export function EditBillingTripModal({
     setSaving(true);
 
     try {
-      // 1. Update trip rates and DR #
+      // 1. Update trip rates, DR #, No. of Drops, and Excess Drop Charge
       await updateBillingTripRateAction({
         bookingId: String(record.id),
         clientRate: String(clientRate),
         truckerRate: String(truckerRate),
         bookingDRNo: bookingDr,
         tripRemarks: remarks,
+        numberOfDrops: noOfDrops,
+        excessDropRate: String(excessDropRate),
       });
 
       // 2. Update SOA metadata & billing status
@@ -97,6 +108,8 @@ export function EditBillingTripModal({
         bookingDRNo: bookingDr,
         tripRate: clientRate,
         truckerRate: truckerRate,
+        noOfDrops: noOfDrops,
+        excessDropRate: excessDropRate,
         soaNumber,
         invoiceDate,
         dueDate,
@@ -148,7 +161,7 @@ export function EditBillingTripModal({
             Trip Encoding Inputs
           </Text>
 
-          <SimpleGrid cols={2} spacing="sm">
+          <SimpleGrid cols={4} spacing="xs">
             <TextInput
               label="Booking / DR #"
               size="xs"
@@ -161,6 +174,25 @@ export function EditBillingTripModal({
               size="xs"
               value={clientRate}
               onChange={(e) => setClientRate(e.currentTarget.value)}
+            />
+            <NumberInput
+              label="No. of Drops"
+              size="xs"
+              min={1}
+              value={noOfDrops}
+              onChange={(val) => {
+                const newDrops = Number(val) || 1;
+                setNoOfDrops(newDrops);
+                setExcessDropRate(String(Math.max(0, newDrops - 1) * 300));
+              }}
+            />
+            <TextInput
+              label="Excess Drop Charge (₱)"
+              type="number"
+              size="xs"
+              placeholder="0.00"
+              value={excessDropRate}
+              onChange={(e) => setExcessDropRate(e.currentTarget.value)}
             />
           </SimpleGrid>
 

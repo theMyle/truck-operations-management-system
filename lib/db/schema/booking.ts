@@ -108,6 +108,7 @@ export const booking = pgTable("booking", {
   invoiceDate: date("invoiceDate", { mode: "string" }),
   dueDate: date("dueDate", { mode: "string" }),
   amountPaid: decimal("amountPaid", { precision: 10, scale: 2 }).default("0.00").notNull(),
+  excessDropRate: decimal("excessDropRate", { precision: 10, scale: 2 }),
 }, (table) => [
   index("booking_pickup_date_idx").on(table.pickupDate),
   index("booking_delivery_status_idx").on(table.deliveryStatus),
