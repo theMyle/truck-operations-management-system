@@ -464,7 +464,7 @@ export function TripSummaryModal({
                 {booking.expenses.map((e, idx) => (
                   <ReviewRow
                     key={e.id}
-                    label={`${idx + 1}. ${EXPENSE_CATEGORIES.find((c) => c.value === e.expenseType)?.label || "—"}`}
+                    label={`${idx + 1}. ${EXPENSE_CATEGORIES.find((c) => c.value === e.expenseType)?.label || (e.expenseType ? e.expenseType.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase()) : "—")}`}
                     value={`₱${(Number(e.amount) || 0).toLocaleString("en-PH", { minimumFractionDigits: 2 })}`}
                   />
                 ))}

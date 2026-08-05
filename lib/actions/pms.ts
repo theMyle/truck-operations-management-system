@@ -89,3 +89,24 @@ export const updatePmsLogAction = actionClient
       return { success: false, error: err?.message || "Failed to update PMS entry" };
     }
   });
+
+const UpdateTruckOdoSchema = z.object({
+  plateNumber: z.string().min(1, "Plate number is required"),
+  lastPmsOdo: z.number().min(0).optional(),
+  lastPmsDate: z.string().nullable().optional(),
+  pmsIntervalKm: z.number().min(100).optional(),
+  latestTripOdoOverride: z.number().min(0).optional(),
+});
+
+export const updateTruckOdoBaselineAction = actionClient
+  .schema(UpdateTruckOdoSchema)
+  .action(async ({ parsedInput }) => {
+    try {
+      await pmsRepository.updateTruckOdoBaseline(parsedInput);
+      revalidatePath("/pms");
+      revalidatePath("/dashboard");
+      return { success: true };
+    } catch (err: any) {
+      return { success: false, error: err?.message || "Failed to update truck odometer details" };
+    }
+  });

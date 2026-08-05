@@ -168,7 +168,7 @@ export function ExpensesSummary({ formValues }: ExpensesSummaryProps) {
                 color={CATEGORY_COLORS[cat] || "gray"}
                 styles={{ label: { fontSize: "9px" } }}
               >
-                {EXPENSE_CATEGORIES.find((c) => c.value === cat)?.label || cat}
+                {EXPENSE_CATEGORIES.find((c) => c.value === cat)?.label || cat.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase())}
               </Badge>
               <Text style={{ fontSize: "11px" }} fw={600} c="gray.7">
                 — ₱{amt.toLocaleString("en-PH", { minimumFractionDigits: 2 })}

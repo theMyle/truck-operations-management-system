@@ -14,6 +14,7 @@ import {
   Select,
   TextInput,
   Box,
+  Modal,
 } from "@mantine/core";
 import {
   IconTrash,
@@ -21,9 +22,11 @@ import {
   IconRefresh,
   IconTrendingUp,
   IconTrendingDown,
+  IconCheck,
 } from "@tabler/icons-react";
+import { notifications } from "@mantine/notifications";
 import { UseFormReturnType } from "@mantine/form";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { NewTripDetailsFormData } from "./TripDetailsModal";
 
 interface NewExpensesTabProps {
@@ -63,6 +66,71 @@ export function NewExpensesTab({
   driverName,
   helperName,
 }: NewExpensesTabProps) {
+  const [customCategories, setCustomCategories] = useState<{ value: string; label: string }[]>(EXPENSE_CATEGORIES);
+  const [addTypeModalOpen, setAddTypeModalOpen] = useState(false);
+  const [newTypeName, setNewTypeName] = useState("");
+  const [targetExpenseIndex, setTargetExpenseIndex] = useState<number | null>(null);
+
+  // Load custom expense types from localStorage AND existing form expenses on client mount
+  useEffect(() => {
+    const merged = [...EXPENSE_CATEGORIES];
+
+    // 1. Load from localStorage
+    try {
+      const saved = localStorage.getItem("kts_custom_expense_categories");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        parsed.forEach((item: { value: string; label: string }) => {
+          if (!merged.some((m) => m.value === item.value)) {
+            merged.push(item);
+          }
+        });
+      }
+    } catch (e) {}
+
+    // 2. Load from existing trip expenses (DB)
+    if (form.values.expenses && form.values.expenses.length > 0) {
+      form.values.expenses.forEach((e) => {
+        if (e.expenseCategory && !merged.some((m) => m.value === e.expenseCategory)) {
+          const label = e.expenseCategory.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase());
+          merged.push({ value: e.expenseCategory, label });
+        }
+      });
+    }
+
+    setCustomCategories(merged);
+  }, [form.values.expenses]);
+
+  const handleAddNewType = () => {
+    if (!newTypeName.trim()) return;
+    const label = newTypeName.trim();
+    const value = label.toLowerCase().replace(/[^a-z0-9]+/g, "_");
+
+    const updated = customCategories.some((c) => c.value === value)
+      ? customCategories
+      : [...customCategories, { value, label }];
+
+    setCustomCategories(updated);
+
+    try {
+      const customOnly = updated.filter((c) => !EXPENSE_CATEGORIES.some((e) => e.value === c.value));
+      localStorage.setItem("kts_custom_expense_categories", JSON.stringify(customOnly));
+    } catch (e) { }
+
+    if (targetExpenseIndex !== null) {
+      form.setFieldValue(`expenses.${targetExpenseIndex}.expenseCategory`, value);
+    }
+
+    notifications.show({
+      title: "Expense Type Added",
+      message: `Added "${label}" to expense options.`,
+      color: "green",
+      icon: <IconCheck size={16} />,
+    });
+
+    setNewTypeName("");
+    setAddTypeModalOpen(false);
+  };
   const helpersList = useMemo(() => {
     if (!helperName || helperName === "No Helper") return [];
     return helperName.split(",").map((h) => h.trim()).filter(Boolean);
@@ -272,17 +340,35 @@ export function NewExpensesTab({
                 cols={isCashAdvance ? 3 : 2}
                 spacing="sm"
               >
-                <Select
-                  label="Expense"
-                  placeholder="Select type"
-                  data={EXPENSE_CATEGORIES}
-                  size="xs"
-                  {...form.getInputProps(`expenses.${idx}.expenseCategory`)}
-                  onChange={(val) => {
-                    form.setFieldValue(`expenses.${idx}.expenseCategory`, val || "");
-                    form.setFieldValue(`expenses.${idx}.assignedTo`, "");
-                  }}
-                />
+                <Stack gap={2}>
+                  <Group justify="space-between" wrap="nowrap">
+                    <Text style={{ fontSize: "11px", fontWeight: 600 }}>Expense Type</Text>
+                    <Button
+                      variant="subtle"
+                      size="compact-xs"
+                      color="blue"
+                      leftSection={<IconPlus size={10} />}
+                      styles={{ label: { fontSize: "9px", fontWeight: 700 } }}
+                      onClick={() => {
+                        setTargetExpenseIndex(idx);
+                        setAddTypeModalOpen(true);
+                      }}
+                    >
+                      Add Type
+                    </Button>
+                  </Group>
+                  <Select
+                    placeholder="Select type"
+                    data={customCategories}
+                    size="xs"
+                    searchable
+                    {...form.getInputProps(`expenses.${idx}.expenseCategory`)}
+                    onChange={(val) => {
+                      form.setFieldValue(`expenses.${idx}.expenseCategory`, val || "");
+                      form.setFieldValue(`expenses.${idx}.assignedTo`, "");
+                    }}
+                  />
+                </Stack>
 
                 {isCashAdvance && (
                   <Select
@@ -380,6 +466,50 @@ export function NewExpensesTab({
           </Button>
         </Group>
       </Group>
+
+      {/* Dynamic Add Expense Type Modal */}
+      <Modal
+        opened={addTypeModalOpen}
+        onClose={() => setAddTypeModalOpen(false)}
+        title={
+          <Group gap={6}>
+            <IconPlus size={16} color="var(--mantine-color-blue-6)" />
+            <Text fw={700} style={{ fontSize: "13px" }}>
+              Add Custom Expense Type
+            </Text>
+          </Group>
+        }
+        size="sm"
+        radius="md"
+        centered
+      >
+        <Stack gap="sm">
+          <Text size="xs" c="dimmed">
+            Enter a new expense type (e.g., <em>Parking Fee</em>, <em>Port Charges</em>, <em>Tire Repair</em>). It will be dynamically saved to your expense options.
+          </Text>
+
+          <TextInput
+            label="Expense Type Name"
+            placeholder="e.g. Parking Fee"
+            size="xs"
+            value={newTypeName}
+            onChange={(e) => setNewTypeName(e.currentTarget.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") handleAddNewType();
+            }}
+            autoFocus
+          />
+
+          <Group justify="flex-end" mt="xs">
+            <Button size="xs" variant="light" color="gray" onClick={() => setAddTypeModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button size="xs" color="blue" onClick={handleAddNewType}>
+              Add Expense Type
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
     </Stack>
   );
 }

@@ -122,6 +122,48 @@ export const pmsRepository = {
     });
   },
 
+  updateTruckOdoBaseline: async (data: {
+    plateNumber: string;
+    lastPmsOdo?: number;
+    lastPmsDate?: string | null;
+    pmsIntervalKm?: number;
+    latestTripOdoOverride?: number;
+  }) => {
+    return await db.transaction(async (tx) => {
+      const updateTruckData: Record<string, any> = { updatedAt: new Date() };
+
+      if (data.lastPmsOdo !== undefined) updateTruckData.lastPmsOdo = data.lastPmsOdo;
+      if (data.lastPmsDate !== undefined) updateTruckData.lastPmsDate = data.lastPmsDate;
+      if (data.pmsIntervalKm !== undefined) updateTruckData.pmsIntervalKm = data.pmsIntervalKm;
+
+      // 1. Update truck table baseline
+      await tx
+        .update(trucks)
+        .set(updateTruckData)
+        .where(eq(trucks.plateNumber, data.plateNumber));
+
+      // 2. If user provides a latest trip odometer override, update the latest tripOdoDetails for this truck
+      if (data.latestTripOdoOverride !== undefined && data.latestTripOdoOverride >= 0) {
+        const latestTrip = await tx
+          .select({ id: tripOdoDetails.id })
+          .from(tripOdoDetails)
+          .innerJoin(booking, eq(tripOdoDetails.bookingId, booking.id))
+          .where(eq(booking.plateNumber, data.plateNumber))
+          .orderBy(desc(booking.pickupDate), desc(tripOdoDetails.odoEnd))
+          .limit(1);
+
+        if (latestTrip.length > 0) {
+          await tx
+            .update(tripOdoDetails)
+            .set({ odoEnd: data.latestTripOdoOverride })
+            .where(eq(tripOdoDetails.id, latestTrip[0].id));
+        }
+      }
+
+      return { success: true };
+    });
+  },
+
   getPmsLogsByDateRange: async (startDate: string, endDate: string) => {
     const results = await db
       .select({

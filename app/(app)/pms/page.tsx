@@ -22,6 +22,7 @@ import {
   Pagination,
   ScrollArea,
   Menu,
+  Tooltip,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import {
@@ -44,6 +45,7 @@ import {
   getPmsHistoryAction,
   getPmsLogsByDateRangeAction,
   updatePmsLogAction,
+  updateTruckOdoBaselineAction,
 } from "@/lib/actions/pms";
 import type { TruckPmsStatus } from "@/lib/repositories/pms.repository";
 
@@ -102,6 +104,54 @@ export default function PmsPage() {
   const [historyTruckPlate, setHistoryTruckPlate] = useState<string>("");
   const [pmsHistory, setPmsHistory] = useState<any[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
+
+  // Edit Odometer / Baseline Modal State
+  const [editOdoModalOpen, setEditOdoModalOpen] = useState(false);
+  const [editOdoTruck, setEditOdoTruck] = useState<TruckPmsStatus | null>(null);
+  const [editLastPmsOdo, setEditLastPmsOdo] = useState<number>(0);
+  const [editLastPmsDate, setEditLastPmsDate] = useState<string>("");
+  const [editIntervalKm, setEditIntervalKm] = useState<number>(5000);
+  const [editCurrentOdoOverride, setEditCurrentOdoOverride] = useState<number>(0);
+  const [savingOdo, setSavingOdo] = useState(false);
+
+  const handleOpenEditOdoModal = (truck: TruckPmsStatus) => {
+    setEditOdoTruck(truck);
+    setEditLastPmsOdo(truck.lastPmsOdo || 0);
+    setEditLastPmsDate(truck.lastPmsDate || "");
+    setEditIntervalKm(truck.pmsIntervalKm || 5000);
+    setEditCurrentOdoOverride(truck.currentOdo || 0);
+    setEditOdoModalOpen(true);
+  };
+
+  const handleSaveEditOdo = async () => {
+    if (!editOdoTruck) return;
+    setSavingOdo(true);
+
+    const res = await updateTruckOdoBaselineAction({
+      plateNumber: editOdoTruck.plateNumber,
+      lastPmsOdo: editLastPmsOdo,
+      lastPmsDate: editLastPmsDate || null,
+      pmsIntervalKm: editIntervalKm,
+      latestTripOdoOverride: editCurrentOdoOverride,
+    });
+
+    if (res?.data?.success) {
+      notifications.show({
+        title: "Odometer & PMS Baseline Updated",
+        message: `Successfully updated odometer reading for ${editOdoTruck.plateNumber}.`,
+        color: "green",
+      });
+      setEditOdoModalOpen(false);
+      fetchFleetStatus();
+    } else {
+      notifications.show({
+        title: "Error Updating Odometer",
+        message: res?.data?.error || "Failed to update odometer record.",
+        color: "red",
+      });
+    }
+    setSavingOdo(false);
+  };
 
   const fetchFleetStatus = async () => {
     setLoading(true);
@@ -440,13 +490,25 @@ export default function PmsPage() {
                           >
                             Log PMS
                           </Button>
-                          <ActionIcon
-                            size="xs"
-                            variant="default"
-                            onClick={() => handleOpenHistory(t.plateNumber)}
-                          >
-                            <IconHistory size={12} />
-                          </ActionIcon>
+                          <Tooltip label="Edit Odometer / PMS Baseline" withArrow position="top">
+                            <ActionIcon
+                              size="xs"
+                              color="orange"
+                              variant="light"
+                              onClick={() => handleOpenEditOdoModal(t)}
+                            >
+                              <IconPencil size={12} />
+                            </ActionIcon>
+                          </Tooltip>
+                          <Tooltip label="View PMS History" withArrow position="top">
+                            <ActionIcon
+                              size="xs"
+                              variant="default"
+                              onClick={() => handleOpenHistory(t.plateNumber)}
+                            >
+                              <IconHistory size={12} />
+                            </ActionIcon>
+                          </Tooltip>
                         </Group>
                       </Table.Td>
                     </Table.Tr>
@@ -622,6 +684,84 @@ export default function PmsPage() {
           )}
         </Stack>
       </Drawer>
+
+      {/* Edit Odometer & PMS Baseline Modal */}
+      <Modal
+        opened={editOdoModalOpen}
+        onClose={() => setEditOdoModalOpen(false)}
+        title={
+          <Group gap={6}>
+            <IconPencil size={18} color="var(--mantine-color-orange-6)" />
+            <Text fw={700} style={{ fontSize: "14px" }}>
+              Edit Odometer & PMS Baseline — {editOdoTruck?.plateNumber}
+            </Text>
+          </Group>
+        }
+        size="md"
+        radius="md"
+        centered
+      >
+        {editOdoTruck && (
+          <Stack gap="sm">
+            <Paper withBorder p="xs" bg="gray.0" radius="sm">
+              <Group justify="space-between">
+                <Text size="xs"><strong>Truck:</strong> {editOdoTruck.plateNumber}</Text>
+                <Text size="xs"><strong>Fleet:</strong> {editOdoTruck.fleetType || "Standard"}</Text>
+                <Badge color={editOdoTruck.pmsStatus === "overdue" ? "red" : editOdoTruck.pmsStatus === "due_soon" ? "orange" : "teal"} size="xs">
+                  {editOdoTruck.pmsStatus.toUpperCase()}
+                </Badge>
+              </Group>
+            </Paper>
+
+            <NumberInput
+              label="Last PMS Odometer (km)"
+              description="Base odometer when the truck last underwent PMS service"
+              placeholder="e.g. 104470"
+              size="xs"
+              min={0}
+              value={editLastPmsOdo}
+              onChange={(val) => setEditLastPmsOdo(Number(val) || 0)}
+            />
+
+            <TextInput
+              label="Last PMS Date"
+              type="date"
+              size="xs"
+              value={editLastPmsDate}
+              onChange={(e) => setEditLastPmsDate(e.currentTarget.value)}
+            />
+
+            <NumberInput
+              label="PMS Service Interval (km)"
+              description="Standard mileage interval before PMS is due (Default: 5,000 km)"
+              placeholder="5000"
+              size="xs"
+              min={500}
+              value={editIntervalKm}
+              onChange={(val) => setEditIntervalKm(Number(val) || 5000)}
+            />
+
+            <NumberInput
+              label="Latest Trip Odometer Reading (km)"
+              description="Current odometer calculated from latest trip. Fix here if dispatch typed an erroneous odo."
+              placeholder="e.g. 105063"
+              size="xs"
+              min={0}
+              value={editCurrentOdoOverride}
+              onChange={(val) => setEditCurrentOdoOverride(Number(val) || 0)}
+            />
+
+            <Group justify="flex-end" mt="md">
+              <Button size="xs" variant="light" color="gray" onClick={() => setEditOdoModalOpen(false)}>
+                Cancel
+              </Button>
+              <Button size="xs" color="orange" onClick={handleSaveEditOdo} loading={savingOdo}>
+                Save Odometer Changes
+              </Button>
+            </Group>
+          </Stack>
+        )}
+      </Modal>
     </Stack>
   );
 }
