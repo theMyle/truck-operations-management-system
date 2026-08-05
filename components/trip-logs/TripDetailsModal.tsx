@@ -238,6 +238,7 @@ export function TripDetailsModal({
             deliveryStatus: record.status,
             PODLink: record.podFileUrl || null,
             tripRemarks: record.tripRemarks || "",
+            excessDropRate: record.excessDropRate ? String(record.excessDropRate) : null,
             pickupArrivalTime: record.arrivalPickup ? new Date(record.arrivalPickup) : null,
             pickupDepartureTime: record.departurePickup ? new Date(record.departurePickup) : null,
             loadingStartTime: record.loadingStart ? new Date(record.loadingStart) : null,
