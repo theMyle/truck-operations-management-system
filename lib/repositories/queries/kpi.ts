@@ -178,11 +178,22 @@ export async function getKrisdomingoKpiReport(targetYear?: number): Promise<KpiR
       completedTrips.forEach((b) => {
         if (b.pickupDate && b.pickupTime && b.pickupArrivalTime) {
           const scheduled = parseScheduledDateTime(b.pickupDate, b.pickupTime);
-          const match = String(b.pickupArrivalTime).match(/(\d{2}):(\d{2})/);
-          const actualTimeStr = match ? `${match[1]}:${match[2]}` : "";
-          if (scheduled && actualTimeStr) {
-            const actual = parseScheduledDateTime(b.pickupDate, actualTimeStr);
-            if (actual && actual <= scheduled) {
+          let arrivalH = 0;
+          let arrivalM = 0;
+          if (b.pickupArrivalTime instanceof Date) {
+            arrivalH = b.pickupArrivalTime.getUTCHours();
+            arrivalM = b.pickupArrivalTime.getUTCMinutes();
+          } else {
+            const match = String(b.pickupArrivalTime).match(/(\d{1,2}):(\d{2})/);
+            if (match) {
+              arrivalH = parseInt(match[1], 10);
+              arrivalM = parseInt(match[2], 10);
+            }
+          }
+          if (scheduled) {
+            const actual = new Date(b.pickupDate);
+            actual.setHours(arrivalH, arrivalM, 0, 0);
+            if (actual <= scheduled) {
               onTimeCount++;
             }
           }
