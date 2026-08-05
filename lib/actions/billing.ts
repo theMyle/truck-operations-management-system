@@ -313,3 +313,59 @@ export const getNextSoaNumberAction = actionClient
       return { success: false, error: err?.message || "Failed to fetch next SOA number" };
     }
   });
+
+const UpdateBillingTripRateSchema = z.object({
+  bookingId: z.string().uuid(),
+  clientRate: z.string().optional(),
+  truckerRate: z.string().optional(),
+  bookingDRNo: z.string().optional(),
+  tripRemarks: z.string().optional(),
+});
+
+export const updateBillingTripRateAction = actionClient
+  .schema(UpdateBillingTripRateSchema)
+  .action(async ({ parsedInput }) => {
+    const { bookingId, clientRate, truckerRate, bookingDRNo, tripRemarks } = parsedInput;
+
+    const current = await db.query.booking.findFirst({
+      where: (b, { eq }) => eq(b.id, bookingId),
+    });
+
+    if (!current) return { success: false, error: "Booking record not found" };
+
+    const updateData: Record<string, any> = {};
+
+    if (clientRate !== undefined) updateData.clientRate = clientRate;
+    if (truckerRate !== undefined) updateData.truckerRate = truckerRate;
+    if (bookingDRNo !== undefined) updateData.bookingDRNo = bookingDRNo;
+    if (tripRemarks !== undefined) updateData.tripRemarks = tripRemarks;
+
+    // Recalculate billing status if clientRate changed
+    const newClientRate = clientRate !== undefined ? Number(clientRate) || 0 : (Number(current.clientRate) || 0);
+    const amountPaidVal = Number(current.amountPaid) || 0;
+    const effectiveSoa = current.soaNumber || "";
+
+    if (amountPaidVal >= newClientRate && newClientRate > 0) {
+      updateData.billingStatus = "paid";
+    } else if (amountPaidVal > 0 && amountPaidVal < newClientRate) {
+      updateData.billingStatus = "partially_paid";
+    } else {
+      if (current.dueDate) {
+        const due = new Date(current.dueDate);
+        const today = new Date();
+        due.setHours(0, 0, 0, 0);
+        today.setHours(0, 0, 0, 0);
+        if (today > due && amountPaidVal < newClientRate) {
+          updateData.billingStatus = "overdue";
+        } else {
+          updateData.billingStatus = effectiveSoa.trim().length > 0 ? "pending" : "unbilled";
+        }
+      } else {
+        updateData.billingStatus = effectiveSoa.trim().length > 0 ? "pending" : "unbilled";
+      }
+    }
+
+    await db.update(booking).set(updateData).where(eq(booking.id, bookingId));
+
+    return { success: true, updatedRecord: updateData };
+  });

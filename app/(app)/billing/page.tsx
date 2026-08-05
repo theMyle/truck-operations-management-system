@@ -62,7 +62,8 @@ import { DispatchRecord } from "../constant";
 import { usePodDownload, type PodRecord } from "@/app/hooks/usePodDownload";
 import { SummaryCard } from "@/components/billing/SummaryCard";
 import { StatementOfAccountModal } from "@/components/billing/StatementOfAccountModal";
-import { getBillingRecordsAction, updateBillingStatusAction } from "@/lib/actions/billing";
+import { EditBillingTripModal } from "@/components/billing/EditBillingTripModal";
+import { getBillingRecordsAction, updateBillingStatusAction, updateBillingTripRateAction } from "@/lib/actions/billing";
 import { deleteBookingAction } from "@/lib/actions/booking";
 import { getAllClientsAction } from "@/lib/actions/clients";
 import { getTruckAction } from "@/lib/actions/trucks";
@@ -317,8 +318,25 @@ export default function BillingModule() {
   const [invoiceDateInput, setInvoiceDateInput] = useState("");
   const [dueDateInput, setDueDateInput] = useState("");
   const [amountPaidInput, setAmountPaidInput] = useState("");
+  const [tripRateInput, setTripRateInput] = useState("");
+  const [truckerRateInput, setTruckerRateInput] = useState("");
   const [isSavingBilling, setIsSavingBilling] = useState(false);
   const [soaPrintOpen, setSoaPrintOpen] = useState(false);
+
+  const [editTripModalOpen, setEditTripModalOpen] = useState(false);
+  const [selectedEditTripRecord, setSelectedEditTripRecord] = useState<BillingRecord | null>(null);
+
+  const handleOpenEditTripModal = (record: BillingRecord) => {
+    setSelectedEditTripRecord(record);
+    setEditTripModalOpen(true);
+  };
+
+  const handleTripUpdatedOnPage = (updated: Partial<BillingRecord>) => {
+    if (!selectedEditTripRecord) return;
+    setRecords((prev) =>
+      prev.map((r) => (r.id === selectedEditTripRecord.id ? { ...r, ...updated } : r))
+    );
+  };
 
   // ── Batch SOA Payment Modal States ──
   const [batchPaymentModalOpen, setBatchPaymentModalOpen] = useState(false);
@@ -447,6 +465,8 @@ export default function BillingModule() {
       })()
     );
     setAmountPaidInput(record.amountPaid ?? "0.00");
+    setTripRateInput(record.tripRate !== undefined && record.tripRate !== null ? record.tripRate.toString() : "0.00");
+    setTruckerRateInput(record.truckerRate !== undefined && record.truckerRate !== null ? record.truckerRate.toString() : "0.00");
     setBillingModalOpen(true);
   };
 
@@ -454,6 +474,14 @@ export default function BillingModule() {
     if (!selectedBillingRecord) return;
     setIsSavingBilling(true);
 
+    // 1. Update trip rate / trucker rate if changed
+    await updateBillingTripRateAction({
+      bookingId: selectedBillingRecord.id.toString(),
+      clientRate: tripRateInput,
+      truckerRate: truckerRateInput,
+    });
+
+    // 2. Update metadata & status
     const result = await updateBillingStatusAction({
       bookingIds: [selectedBillingRecord.id.toString()],
       soaNumber: soaNumberInput,
@@ -470,15 +498,15 @@ export default function BillingModule() {
       });
     } else {
       notifications.show({
-        title: "Billing details updated",
-        message: "Successfully updated payment status.",
+        title: "Billing & Trip Rate updated",
+        message: "Successfully updated payment status and trip rate.",
         color: "green",
       });
       // Refresh the table locally
       setRecords((prev) =>
         prev.map((r) => {
           if (r.id === selectedBillingRecord.id) {
-            const clientRateVal = Number(r.tripRate) || 0;
+            const clientRateVal = Number(tripRateInput) || 0;
             const amountPaidVal = Number(amountPaidInput) || 0;
             let billingStatus = "unbilled";
             if (soaNumberInput && soaNumberInput.trim().length > 0) {
@@ -500,6 +528,8 @@ export default function BillingModule() {
 
             return {
               ...r,
+              tripRate: tripRateInput,
+              truckerRate: truckerRateInput,
               soaNumber: soaNumberInput,
               invoiceDate: invoiceDateInput,
               dueDate: dueDateInput,
@@ -1663,15 +1693,26 @@ export default function BillingModule() {
                             onClick={(e) => e.stopPropagation()}
                           >
                             <Group gap={4} wrap="nowrap">
-                              <Tooltip label="Update Payment / Billing" withArrow position="top" fz={10}>
+                              <Tooltip label="Edit Trip Inputs & Rates" withArrow position="top" fz={10}>
                                 <ActionIcon
                                   variant="light"
                                   color="blue"
                                   size="sm"
                                   radius="sm"
-                                  onClick={() => openBillingModal(record)}
+                                  onClick={() => handleOpenEditTripModal(record)}
                                 >
                                   <IconEdit size={12} />
+                                </ActionIcon>
+                              </Tooltip>
+                              <Tooltip label="Update Payment / SOA Details" withArrow position="top" fz={10}>
+                                <ActionIcon
+                                  variant="light"
+                                  color="teal"
+                                  size="sm"
+                                  radius="sm"
+                                  onClick={() => openBillingModal(record)}
+                                >
+                                  <IconFileInvoice size={12} />
                                 </ActionIcon>
                               </Tooltip>
                               <Tooltip label="Delete Record" withArrow position="top" fz={10}>
@@ -1892,6 +1933,26 @@ export default function BillingModule() {
                 <Text size="xs"><strong>Trip Rate:</strong> ₱{Number(selectedBillingRecord.tripRate || 0).toLocaleString()}</Text>
               </Stack>
             </Paper>
+          )}
+
+          <TextInput
+            label="Client Trip Rate (₱)"
+            type="number"
+            placeholder="0.00"
+            value={tripRateInput}
+            onChange={(e) => setTripRateInput(e.currentTarget.value)}
+            radius="md"
+          />
+
+          {selectedBillingRecord?.isSubcon && (
+            <TextInput
+              label="Trucker Rate (₱)"
+              type="number"
+              placeholder="0.00"
+              value={truckerRateInput}
+              onChange={(e) => setTruckerRateInput(e.currentTarget.value)}
+              radius="md"
+            />
           )}
 
           <TextInput
@@ -2367,6 +2428,14 @@ export default function BillingModule() {
           )}
         </Stack>
       </Modal>
+
+      {/* Dedicated Edit Trip & Billing Inputs Modal */}
+      <EditBillingTripModal
+        opened={editTripModalOpen}
+        onClose={() => setEditTripModalOpen(false)}
+        record={selectedEditTripRecord}
+        onSuccess={handleTripUpdatedOnPage}
+      />
     </Box>
   );
 }

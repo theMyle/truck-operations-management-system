@@ -19,6 +19,8 @@ import {
   SegmentedControl,
   Popover,
   Checkbox,
+  ActionIcon,
+  Tooltip,
 } from "@mantine/core";
 import {
   IconFileInvoice,
@@ -29,14 +31,17 @@ import {
   IconCropLandscape,
   IconCropPortrait,
   IconAdjustmentsHorizontal,
+  IconEdit,
+  IconX,
 } from "@tabler/icons-react";
 import { notifications } from "@mantine/notifications";
 import * as XLSX from "xlsx-js-style";
 import { BillingRecord, isSubconRecord } from "@/app/(app)/billing/page";
-import { updateBillingStatusAction, getNextSoaNumberAction } from "@/lib/actions/billing";
+import { updateBillingStatusAction, getNextSoaNumberAction, updateBillingTripRateAction } from "@/lib/actions/billing";
 import { getAllClientsAction } from "@/lib/actions/clients";
 import { generateSoaNumber } from "@/lib/utils/stringFormat";
 import { SOA_AVAILABLE_COLUMNS, DEFAULT_ENABLED_COLUMN_KEYS } from "@/lib/utils/soaColumns";
+import { EditBillingTripModal } from "./EditBillingTripModal";
 
 interface StatementOfAccountModalProps {
   opened: boolean;
@@ -68,21 +73,100 @@ export function StatementOfAccountModal({
   const [orientation, setOrientation] = useState<"portrait" | "landscape">("landscape");
   const [activeColumns, setActiveColumns] = useState<string[]>(DEFAULT_ENABLED_COLUMN_KEYS);
 
+  const [displayRecords, setDisplayRecords] = useState<BillingRecord[]>(selectedRecords);
+  const [editingRowId, setEditingRowId] = useState<string | null>(null);
+  const [editRateValue, setEditRateValue] = useState<string>("");
+  const [editDrValue, setEditDrValue] = useState<string>("");
+  const [isSavingRow, setIsSavingRow] = useState<boolean>(false);
+
+  React.useEffect(() => {
+    setDisplayRecords(selectedRecords);
+  }, [selectedRecords]);
+
+  const handleStartRowEdit = (record: BillingRecord) => {
+    setEditingRowId(String(record.id));
+    const currentRate = targetType === "subcon"
+      ? (record.truckerRate || record.tripRate || 0)
+      : (record.tripRate || 0);
+    setEditRateValue(String(currentRate));
+    setEditDrValue(String(record.bookingDr || record.bookingDRNo || ""));
+  };
+
+  const handleCancelRowEdit = () => {
+    setEditingRowId(null);
+    setEditRateValue("");
+    setEditDrValue("");
+  };
+
+  const handleSaveRowEdit = async (record: BillingRecord) => {
+    setIsSavingRow(true);
+    try {
+      const payload = targetType === "subcon"
+        ? { bookingId: String(record.id), truckerRate: editRateValue, bookingDRNo: editDrValue }
+        : { bookingId: String(record.id), clientRate: editRateValue, bookingDRNo: editDrValue };
+
+      await updateBillingTripRateAction(payload);
+
+      setDisplayRecords((prev) =>
+        prev.map((r) => {
+          if (String(r.id) === String(record.id)) {
+            return targetType === "subcon"
+              ? { ...r, truckerRate: editRateValue, bookingDr: editDrValue, bookingDRNo: editDrValue }
+              : { ...r, tripRate: editRateValue, bookingDr: editDrValue, bookingDRNo: editDrValue };
+          }
+          return r;
+        })
+      );
+
+      notifications.show({
+        title: "Trip Updated",
+        message: `Successfully updated rate for trip ${record.bookingDr || record.id}.`,
+        color: "green",
+        icon: <IconCheck size={16} />,
+      });
+
+      handleCancelRowEdit();
+    } catch {
+      notifications.show({
+        title: "Update Failed",
+        message: "Failed to update trip details.",
+        color: "red",
+      });
+    } finally {
+      setIsSavingRow(false);
+    }
+  };
+
+  const [editTripModalOpen, setEditTripModalOpen] = useState(false);
+  const [selectedEditRecord, setSelectedEditRecord] = useState<BillingRecord | null>(null);
+
+  const handleOpenEditTripModal = (record: BillingRecord) => {
+    setSelectedEditRecord(record);
+    setEditTripModalOpen(true);
+  };
+
+  const handleTripUpdated = (updated: Partial<BillingRecord>) => {
+    if (!selectedEditRecord) return;
+    setDisplayRecords((prev) =>
+      prev.map((r) => (String(r.id) === String(selectedEditRecord.id) ? { ...r, ...updated } : r))
+    );
+  };
+
   // Count KTS (Own) vs Subcon trips
   const ktsCount = useMemo(
-    () => selectedRecords.filter((r) => !isSubconRecord(r)).length,
-    [selectedRecords]
+    () => displayRecords.filter((r) => !isSubconRecord(r)).length,
+    [displayRecords]
   );
   const subconCount = useMemo(
-    () => selectedRecords.filter((r) => isSubconRecord(r)).length,
-    [selectedRecords]
+    () => displayRecords.filter((r) => isSubconRecord(r)).length,
+    [displayRecords]
   );
 
   // Derive Recipient Name based on SOA Target Type (Client vs Subcon)
   const recipientTitle = targetType === "subcon" ? "SUBCON TRUCKER" : "CLIENT";
   const clientName = targetType === "subcon"
-    ? (selectedRecords[0]?.trucker || selectedRecords[0]?.driverName || selectedRecords[0]?.driver || "SUBCON")
-    : (selectedRecords[0]?.client || selectedRecords[0]?.clientName || "CLIENT");
+    ? (displayRecords[0]?.trucker || displayRecords[0]?.driverName || displayRecords[0]?.driver || "SUBCON")
+    : (displayRecords[0]?.client || displayRecords[0]?.clientName || "CLIENT");
 
   // Auto-load client SOA configuration (Orientation, Columns, Tax preferences)
   React.useEffect(() => {
@@ -112,9 +196,9 @@ export function StatementOfAccountModal({
 
   // Auto-generate incremental SOA Number from DB when modal opens
   React.useEffect(() => {
-    if (opened && selectedRecords.length > 0 && !soaNumber) {
+    if (opened && displayRecords.length > 0 && !soaNumber) {
       // Immediate local fallback
-      const existingSoas = selectedRecords
+      const existingSoas = displayRecords
         .map((r) => r.soaNumber)
         .filter((s): s is string => typeof s === "string" && s.trim().length > 0);
       setSoaNumber(generateSoaNumber(clientName, existingSoas));
@@ -126,14 +210,14 @@ export function StatementOfAccountModal({
         }
       });
     }
-  }, [opened, selectedRecords, clientName, soaNumber]);
+  }, [opened, displayRecords, clientName, soaNumber]);
 
   /* ── Financial Calculations ── */
   const calculations = useMemo(() => {
     let baseTotal = 0;
     let excessDropTotal = 0;
 
-    selectedRecords.forEach((r) => {
+    displayRecords.forEach((r) => {
       const isSub = isSubconRecord(r);
       const rate = targetType === "subcon"
         ? Number(r.truckerRate || r.tripRate || 0)
@@ -159,7 +243,7 @@ export function StatementOfAccountModal({
       ewtAmount,
       totalDue,
     };
-  }, [selectedRecords, includeVat, includeEwt]);
+  }, [displayRecords, includeVat, includeEwt, targetType]);
 
   // Handle Save SOA to Database
   async function handleSaveSoa() {
@@ -631,10 +715,11 @@ export function StatementOfAccountModal({
             </Group>
 
             <Paper withBorder radius="sm" style={{ overflow: "hidden" }}>
-              <ScrollArea h={200}>
+              <ScrollArea h={220}>
                 <Table striped highlightOnHover>
                   <Table.Thead bg="gray.1">
                     <Table.Tr>
+                      <Table.Th style={{ fontSize: "9px", width: 60, textAlign: "center" }}>Action</Table.Th>
                       {SOA_AVAILABLE_COLUMNS.filter((col) =>
                         activeColumns.includes(col.key)
                       ).map((col) => (
@@ -645,18 +730,33 @@ export function StatementOfAccountModal({
                     </Table.Tr>
                   </Table.Thead>
                   <Table.Tbody>
-                    {selectedRecords.map((r, idx) => {
+                    {displayRecords.map((r, idx) => {
                       const activeColsList = SOA_AVAILABLE_COLUMNS.filter((col) =>
                         activeColumns.includes(col.key)
                       );
+                      const isEditing = editingRowId === String(r.id);
+
                       return (
                         <Table.Tr key={r.id}>
+                          <Table.Td style={{ textAlign: "center", padding: "4px" }}>
+                            <Tooltip label="Edit Trip & Billing Inputs" withArrow position="top">
+                              <ActionIcon
+                                size="xs"
+                                color="blue"
+                                variant="light"
+                                onClick={() => handleOpenEditTripModal(r)}
+                              >
+                                <IconEdit size={12} />
+                              </ActionIcon>
+                            </Tooltip>
+                          </Table.Td>
                           {activeColsList.map((col) => {
                             const val = col.getValue(r, targetType, idx);
                             const formatted =
                               col.isCurrency && typeof val === "number"
                                 ? `₱${val.toLocaleString("en-PH", { minimumFractionDigits: 2 })}`
                                 : val;
+
                             return (
                               <Table.Td
                                 key={col.key}
@@ -773,6 +873,13 @@ export function StatementOfAccountModal({
             </Group>
           </Group>
         </Stack>
+
+        <EditBillingTripModal
+          opened={editTripModalOpen}
+          onClose={() => setEditTripModalOpen(false)}
+          record={selectedEditRecord}
+          onSuccess={handleTripUpdated}
+        />
       </Modal>
     );
 }
