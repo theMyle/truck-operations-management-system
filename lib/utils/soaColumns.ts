@@ -1,10 +1,13 @@
+import { calculateExcessDropFee } from "./excessDrop";
+import { BillingRecord } from "@/app/(app)/billing/page";
+
 export interface SoaColumnDefinition {
   key: string;
   label: string;
   defaultEnabled: boolean;
   align?: "left" | "center" | "right";
   isCurrency?: boolean;
-  getValue: (record: any, targetType?: "client" | "subcon", index?: number) => string | number;
+  getValue: (record: BillingRecord, targetType?: "client" | "subcon", index?: number) => string | number;
 }
 
 export const SOA_AVAILABLE_COLUMNS: SoaColumnDefinition[] = [
@@ -88,13 +91,12 @@ export const SOA_AVAILABLE_COLUMNS: SoaColumnDefinition[] = [
     defaultEnabled: true,
     align: "right",
     isCurrency: true,
-    getValue: (r) => {
-      if (r.excessDropRate !== undefined && r.excessDropRate !== null && r.excessDropRate !== "") {
-        return Number(r.excessDropRate || 0);
-      }
-      const drops = r.noOfDrops || (r.rawDrops ? r.rawDrops.length : 1);
-      return drops > 1 ? (drops - 1) * 300 : 0;
-    },
+    getValue: (r, targetType) =>
+      calculateExcessDropFee(
+        r.noOfDrops || (r.rawDrops ? r.rawDrops.length : 1),
+        targetType === "subcon" || Boolean(r.isSubcon),
+        r.excessDropRate
+      ),
   },
   {
     key: "amount",
@@ -107,8 +109,11 @@ export const SOA_AVAILABLE_COLUMNS: SoaColumnDefinition[] = [
         targetType === "subcon"
           ? Number(r.truckerRate || r.tripRate || 0)
           : Number(r.tripRate || 0);
-      const drops = r.noOfDrops || (r.rawDrops ? r.rawDrops.length : 1);
-      const excess = drops > 1 ? (drops - 1) * 300 : 0;
+      const excess = calculateExcessDropFee(
+        r.noOfDrops || (r.rawDrops ? r.rawDrops.length : 1),
+        targetType === "subcon" || Boolean(r.isSubcon),
+        r.excessDropRate
+      );
       return rate + excess;
     },
   },
