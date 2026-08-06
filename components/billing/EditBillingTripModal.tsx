@@ -18,6 +18,7 @@ import { notifications } from "@mantine/notifications";
 import { IconCheck, IconEdit, IconX } from "@tabler/icons-react";
 import { BillingRecord } from "@/app/(app)/billing/page";
 import { updateBillingTripRateAction, updateBillingStatusAction } from "@/lib/actions/billing";
+import { calculateExcessDropFee } from "@/lib/utils/excessDrop";
 
 interface EditBillingTripModalProps {
   opened: boolean;
@@ -52,11 +53,8 @@ export function EditBillingTripModal({
       setTruckerRate(record.truckerRate !== undefined && record.truckerRate !== null ? String(record.truckerRate) : "0.00");
       const dropsVal = Number(record.noOfDrops || (record as any).numberOfDrops || 1);
       setNoOfDrops(dropsVal);
-      if (record.excessDropRate !== undefined && record.excessDropRate !== null && record.excessDropRate !== "") {
-        setExcessDropRate(String(record.excessDropRate));
-      } else {
-        setExcessDropRate(String(Math.max(0, dropsVal - 1) * 300));
-      }
+      const fee = calculateExcessDropFee(dropsVal, !!record.isSubcon, record.excessDropRate);
+      setExcessDropRate(String(fee));
       setSoaNumber(record.soaNumber || "");
       setInvoiceDate(record.invoiceDate || "");
       setDueDate(record.dueDate || "");
@@ -177,13 +175,15 @@ export function EditBillingTripModal({
             />
             <NumberInput
               label="No. of Drops"
+              description={noOfDrops > 3 ? `+${noOfDrops - 3} excess (${record?.isSubcon ? "₱200/drop" : "₱300/drop"})` : "3 drops included"}
               size="xs"
               min={1}
               value={noOfDrops}
               onChange={(val) => {
                 const newDrops = Number(val) || 1;
                 setNoOfDrops(newDrops);
-                setExcessDropRate(String(Math.max(0, newDrops - 1) * 300));
+                const fee = calculateExcessDropFee(newDrops, !!record?.isSubcon);
+                setExcessDropRate(String(fee));
               }}
             />
             <TextInput

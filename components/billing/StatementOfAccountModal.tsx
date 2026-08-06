@@ -42,6 +42,7 @@ import { getAllClientsAction } from "@/lib/actions/clients";
 import { generateSoaNumber } from "@/lib/utils/stringFormat";
 import { SOA_AVAILABLE_COLUMNS, DEFAULT_ENABLED_COLUMN_KEYS } from "@/lib/utils/soaColumns";
 import { EditBillingTripModal } from "./EditBillingTripModal";
+import { calculateExcessDropFee } from "@/lib/utils/excessDrop";
 
 interface StatementOfAccountModalProps {
   opened: boolean;
@@ -222,16 +223,13 @@ export function StatementOfAccountModal({
       const rate = targetType === "subcon"
         ? Number(r.truckerRate || r.tripRate || 0)
         : Number(r.tripRate || 0);
-      // Optional excess drop calculation
-      let excess = 0;
-      if (r.excessDropRate !== undefined && r.excessDropRate !== null && r.excessDropRate !== "") {
-        excess = Number(r.excessDropRate) || 0;
-      } else {
-        const drops = r.noOfDrops || (r.rawDrops ? r.rawDrops.length : 1);
-        if (drops > 1) {
-          excess = (drops - 1) * 300;
-        }
-      }
+      baseTotal += rate;
+      
+      const excess = calculateExcessDropFee(
+        r.noOfDrops || (r.rawDrops ? r.rawDrops.length : 1),
+        targetType === "subcon" || isSub,
+        r.excessDropRate
+      );
       excessDropTotal += excess;
     });
 
@@ -431,13 +429,11 @@ export function StatementOfAccountModal({
         const rate = targetType === "subcon"
           ? Number(r.truckerRate || r.tripRate || 0)
           : Number(r.tripRate || 0);
-        let excess = 0;
-        if (r.excessDropRate !== undefined && r.excessDropRate !== null && r.excessDropRate !== "") {
-          excess = Number(r.excessDropRate) || 0;
-        } else {
-          const drops = r.noOfDrops || (r.rawDrops ? r.rawDrops.length : 1);
-          excess = drops > 1 ? (drops - 1) * 300 : 0;
-        }
+        const excess = calculateExcessDropFee(
+          r.noOfDrops || (r.rawDrops ? r.rawDrops.length : 1),
+          targetType === "subcon" || isSubconRecord(r),
+          r.excessDropRate
+        );
         const total = rate + excess;
 
         totalBase += rate;
