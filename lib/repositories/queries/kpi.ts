@@ -171,8 +171,13 @@ export async function getKrisdomingoKpiReport(targetYear?: number): Promise<KpiR
       const rawUtil = totalCapacityDays > 0 ? (ktsMonthTruckDays / totalCapacityDays) * 100 : 0;
       const fleetUtilPercentage = hasData ? Number(Math.min(100, rawUtil).toFixed(1)) : 0;
 
-      // On-Time Delivery %
-      const completedTrips = mBookings.filter((b) => b.deliveryStatus === "Completed" && b.pickupArrivalTime);
+      // On-Time Delivery % (exclude today for current month to avoid ongoing trips dragging score)
+      const todayStr = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Manila" }).format(today);
+      const completedTrips = mBookings.filter((b) =>
+        b.deliveryStatus === "Completed" &&
+        b.pickupArrivalTime &&
+        !(m === currentMonthNum && year === today.getFullYear() && b.pickupDate === todayStr)
+      );
       let onTimeCount = 0;
 
       completedTrips.forEach((b) => {
