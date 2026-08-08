@@ -270,7 +270,11 @@ export async function getMonthlyOperations(
   return byMonth;
 }
 
-export async function getOnTimeDeliveryStats(targetYear?: number, targetMonth?: number) {
+export async function getOnTimeDeliveryStats(
+  targetYear?: number,
+  targetMonth?: number,
+  includeToday: boolean = false
+) {
   const now = new Date();
   const year = targetYear || now.getFullYear();
   const month = targetMonth || (now.getMonth() + 1);
@@ -279,9 +283,25 @@ export async function getOnTimeDeliveryStats(targetYear?: number, targetMonth?: 
   const monthStr = String(month).padStart(2, "0");
   const monthPrefix = `${yearStr}-${monthStr}`;
   const startDateStr = `${monthPrefix}-01`;
-  const endDateStr = `${monthPrefix}-31`;
 
-  // 1. Fetch completed trips for current month
+  // Calculate local date in Asia/Manila timezone
+  const todayStr = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Manila" }).format(now);
+  const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+  const yesterdayStr = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Manila" }).format(yesterday);
+
+  let endDateStr = `${monthPrefix}-31`;
+  if (!includeToday) {
+    if (year === now.getFullYear() && month === (now.getMonth() + 1)) {
+      endDateStr = yesterdayStr;
+    }
+  }
+
+  // If yesterday is before the 1st of the month (e.g. on Aug 1st), fallback to today
+  if (endDateStr < startDateStr) {
+    endDateStr = `${monthPrefix}-31`;
+  }
+
+  // 1. Fetch completed trips for date range
   let result = await db
     .select({
       pickupDate: booking.pickupDate,
@@ -297,6 +317,25 @@ export async function getOnTimeDeliveryStats(targetYear?: number, targetMonth?: 
         sql`${booking.pickupArrivalTime} IS NOT NULL`
       )
     );
+
+  // Fallback: If no completed trips found up to yesterday, fetch all available
+  if (result.length === 0) {
+    result = await db
+      .select({
+        pickupDate: booking.pickupDate,
+        pickupTime: booking.pickupTime,
+        pickupArrivalTime: booking.pickupArrivalTime,
+      })
+      .from(booking)
+      .where(
+        and(
+          gte(booking.pickupDate, startDateStr),
+          lte(booking.pickupDate, `${monthPrefix}-31`),
+          eq(booking.deliveryStatus, "Completed"),
+          sql`${booking.pickupArrivalTime} IS NOT NULL`
+        )
+      );
+  }
 
   // Fallback: If current month has no completed trips yet, fetch from most recent active month
   if (result.length === 0) {
@@ -396,8 +435,29 @@ function parseScheduledDateTime(dateStr?: string, timeStr?: string): Date | null
   return isNaN(fallback.getTime()) ? null : fallback;
 }
 
-export async function getDailyOnTimeDeliveryBreakdown(targetDate?: string) {
-  const dateToUse = targetDate || new Date().toISOString().split("T")[0];
+export async function getDailyOnTimeDeliveryBreakdown(
+  targetDate?: string,
+  startDate?: string,
+  endDate?: string
+) {
+  let dateCondition;
+  let displayDateStr = "";
+
+  if (startDate && endDate) {
+    dateCondition = and(
+      gte(booking.pickupDate, startDate),
+      lte(booking.pickupDate, endDate),
+      sql`${booking.pickupArrivalTime} IS NOT NULL`
+    );
+    displayDateStr = startDate === endDate ? startDate : `${startDate} to ${endDate}`;
+  } else {
+    const dateToUse = targetDate || new Date().toISOString().split("T")[0];
+    dateCondition = and(
+      eq(booking.pickupDate, dateToUse),
+      sql`${booking.pickupArrivalTime} IS NOT NULL`
+    );
+    displayDateStr = dateToUse;
+  }
 
   const result = await db
     .select({
@@ -417,12 +477,8 @@ export async function getDailyOnTimeDeliveryBreakdown(targetDate?: string) {
       tripRemarks: booking.tripRemarks,
     })
     .from(booking)
-    .where(
-      and(
-        eq(booking.pickupDate, dateToUse),
-        sql`${booking.pickupArrivalTime} IS NOT NULL`
-      )
-    );
+    .where(dateCondition)
+    .orderBy(sql`${booking.pickupDate} ASC`, sql`${booking.pickupTime} ASC`);
 
   let onTimeCount = 0;
   let lateCount = 0;
@@ -478,7 +534,7 @@ export async function getDailyOnTimeDeliveryBreakdown(targetDate?: string) {
       clientName: row.clientName || "—",
       driverName: row.driverName || "—",
       plateNumber: row.plateNumber || "—",
-      pickupDate: row.pickupDate || dateToUse,
+      pickupDate: row.pickupDate || displayDateStr,
       pickupTime: row.pickupTime ? formatTime12Hour(row.pickupTime) : "—",
       pickupArrivalTime: formatWallClock12Hour(row.pickupArrivalTime),
       rawPickupTime: row.pickupTime || "",
@@ -499,7 +555,7 @@ export async function getDailyOnTimeDeliveryBreakdown(targetDate?: string) {
     totalDeliveries > 0 ? ((onTimeCount / totalDeliveries) * 100).toFixed(1) : "0.0";
 
   return {
-    date: dateToUse,
+    date: displayDateStr,
     totalDeliveries,
     onTimeCount,
     lateCount,

@@ -189,12 +189,22 @@ export const updateTripDetailAction = actionClient
   });
 
 export const getDailyOnTimeDeliveryBreakdownAction = actionClient
-  .schema(z.object({ date: z.string().optional() }))
+  .schema(
+    z.object({
+      date: z.string().optional(),
+      startDate: z.string().optional(),
+      endDate: z.string().optional(),
+    })
+  )
   .action(async ({ parsedInput }) => {
     const { getDailyOnTimeDeliveryBreakdown } = await import(
       "../repositories/queries/dashboard"
     );
-    return await getDailyOnTimeDeliveryBreakdown(parsedInput.date);
+    return await getDailyOnTimeDeliveryBreakdown(
+      parsedInput.date,
+      parsedInput.startDate,
+      parsedInput.endDate
+    );
   });
 
 export const updateTripRemarksAction = actionClient
