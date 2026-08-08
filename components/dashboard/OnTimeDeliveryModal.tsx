@@ -17,18 +17,24 @@ import {
   Loader,
   Center,
   ActionIcon,
+  Menu,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import {
   IconClock,
   IconCalendar,
   IconPencil,
+  IconDownload,
+  IconFileTypePdf,
+  IconFileSpreadsheet,
+  IconChevronDown,
 } from "@tabler/icons-react";
 import {
   getDailyOnTimeDeliveryBreakdownAction,
   updateTripMonitoringAction,
 } from "@/lib/actions/booking";
 import { TimeField } from "@/components/ui/TimeField";
+import { useOnTimeExport } from "@/app/hooks/useOnTimeExport";
 
 interface OnTimeDeliveryModalProps {
   opened: boolean;
@@ -102,6 +108,13 @@ export function OnTimeDeliveryModal({
 
   useEffect(() => {
     if (opened) {
+      const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Manila" }).format(new Date());
+      setSelectedDate(today);
+    }
+  }, [opened]);
+
+  useEffect(() => {
+    if (opened && selectedDate) {
       fetchBreakdown(selectedDate);
     }
   }, [opened, selectedDate, fetchBreakdown]);
@@ -158,8 +171,11 @@ export function OnTimeDeliveryModal({
     if (type === "yesterday") {
       d.setDate(d.getDate() - 1);
     }
-    setSelectedDate(d.toISOString().split("T")[0]);
+    const dateStr = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Manila" }).format(d);
+    setSelectedDate(dateStr);
   };
+
+  const { exporting, handleExportPdf, handleExportXlsx } = useOnTimeExport(selectedDate);
 
   const percentage = data ? parseFloat(data.onTimePercentage) || 0 : 0;
   const isGood = percentage >= 90;
@@ -188,7 +204,7 @@ export function OnTimeDeliveryModal({
         scrollAreaComponent={ScrollArea.Autosize}
       >
         <Stack gap="md">
-          {/* Controls: Date Picker & Quick Actions */}
+          {/* Controls: Date Picker & Quick Actions & Exports */}
           <Paper withBorder p="xs" radius="sm" bg="gray.0">
             <Group justify="space-between" align="flex-end">
               <Group gap="xs">
@@ -218,6 +234,81 @@ export function OnTimeDeliveryModal({
                     Yesterday
                   </Button>
                 </Button.Group>
+
+                {/* ── Export Actions Dropdowns ── */}
+                <Group gap="xs" mt={20}>
+                  <Menu position="bottom-end" shadow="md" width={220}>
+                    <Menu.Target>
+                      <Button
+                        variant="light"
+                        color="red"
+                        size="xs"
+                        loading={exporting}
+                        leftSection={<IconFileTypePdf size={14} />}
+                        rightSection={<IconChevronDown size={12} />}
+                      >
+                        Export PDF
+                      </Button>
+                    </Menu.Target>
+                    <Menu.Dropdown>
+                      <Menu.Label>Select Period to Export</Menu.Label>
+                      <Menu.Item
+                        leftSection={<IconCalendar size={14} />}
+                        onClick={() => handleExportPdf("today", selectedDate)}
+                      >
+                        Today / Selected Date
+                      </Menu.Item>
+                      <Menu.Item
+                        leftSection={<IconCalendar size={14} />}
+                        onClick={() => handleExportPdf("week", selectedDate)}
+                      >
+                        This Week's Log
+                      </Menu.Item>
+                      <Menu.Item
+                        leftSection={<IconCalendar size={14} />}
+                        onClick={() => handleExportPdf("month", selectedDate)}
+                      >
+                        This Month's Full Log
+                      </Menu.Item>
+                    </Menu.Dropdown>
+                  </Menu>
+
+                  <Menu position="bottom-end" shadow="md" width={220}>
+                    <Menu.Target>
+                      <Button
+                        variant="light"
+                        color="green"
+                        size="xs"
+                        loading={exporting}
+                        leftSection={<IconFileSpreadsheet size={14} />}
+                        rightSection={<IconChevronDown size={12} />}
+                      >
+                        Export XLSX
+                      </Button>
+                    </Menu.Target>
+                    <Menu.Dropdown>
+                      <Menu.Label>Select Period to Export</Menu.Label>
+                      <Menu.Item
+                        leftSection={<IconCalendar size={14} />}
+                        onClick={() => handleExportXlsx("today", selectedDate)}
+                      >
+                        Today / Selected Date
+                      </Menu.Item>
+                      <Menu.Item
+                        leftSection={<IconCalendar size={14} />}
+                        onClick={() => handleExportXlsx("week", selectedDate)}
+                      >
+                        This Week's Log
+                      </Menu.Item>
+                      <Menu.Item
+                        leftSection={<IconCalendar size={14} />}
+                        onClick={() => handleExportXlsx("month", selectedDate)}
+                      >
+                        This Month's Full Log
+                      </Menu.Item>
+                    </Menu.Dropdown>
+                  </Menu>
+                </Group>
               </Group>
 
               {data && (

@@ -62,7 +62,7 @@ export default async function DashboardPage() {
     getDailyOperations(todayStr),
     getWeeklyOperations(weekDatesStr[0], weekDatesStr[6]),
     getMonthlyOperations(currentYear, operationsStartDate),
-    getOnTimeDeliveryStats(currentYear, today.getMonth() + 1),
+    getOnTimeDeliveryStats(currentYear, today.getMonth() + 1, false),
     db
       .select({ plateNumber: booking.plateNumber })
       .from(booking)

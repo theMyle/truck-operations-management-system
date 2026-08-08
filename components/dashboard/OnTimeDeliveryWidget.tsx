@@ -1,8 +1,23 @@
-import { Badge, Paper, Text, Stack, RingProgress, Center, Group, Button } from "@mantine/core";
+"use client";
+
+import {
+  Badge,
+  Paper,
+  Text,
+  Stack,
+  RingProgress,
+  Center,
+  Group,
+  Button,
+  Switch,
+  Loader,
+  Tooltip,
+} from "@mantine/core";
 import React, { useState } from "react";
 import { CardHeader } from "./CardHeader";
 import { OnTimeDeliveryModal } from "./OnTimeDeliveryModal";
-import { IconChartPie } from "@tabler/icons-react";
+import { IconChartPie, IconInfoCircle } from "@tabler/icons-react";
+import { getOnTimeDeliveryStatsAction } from "@/lib/actions/dashboard";
 
 interface OnTimeDeliveryWidgetProps {
   stats: {
@@ -12,8 +27,27 @@ interface OnTimeDeliveryWidgetProps {
   };
 }
 
-export const OnTimeDeliveryWidget = ({ stats }: OnTimeDeliveryWidgetProps) => {
+export const OnTimeDeliveryWidget = ({ stats: initialStats }: OnTimeDeliveryWidgetProps) => {
   const [modalOpened, setModalOpened] = useState(false);
+  const [includeToday, setIncludeToday] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [stats, setStats] = useState(initialStats);
+
+  const handleToggle = async (checked: boolean) => {
+    setIncludeToday(checked);
+    setLoading(true);
+    try {
+      const res = await getOnTimeDeliveryStatsAction({ includeToday: checked });
+      if (res?.data?.success && res.data.data) {
+        setStats(res.data.data);
+      }
+    } catch (err) {
+      console.error("Error updating on-time stats:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const percentage = parseFloat(stats.percentage) || 0;
 
   const statusInfo =
@@ -25,7 +59,7 @@ export const OnTimeDeliveryWidget = ({ stats }: OnTimeDeliveryWidgetProps) => {
 
   return (
     <>
-      <Paper withBorder radius="md" p="md" h="100%" style={{ display: 'flex', flexDirection: 'column' }}>
+      <Paper withBorder radius="md" p="md" h="100%" style={{ display: "flex", flexDirection: "column" }}>
         <CardHeader
           title="On-Time Delivery %"
           subtitle={
@@ -52,6 +86,7 @@ export const OnTimeDeliveryWidget = ({ stats }: OnTimeDeliveryWidgetProps) => {
             </Group>
           }
         />
+
         <Center mt="md" style={{ flex: 1 }}>
           <Group gap="xl" align="center">
             <RingProgress
@@ -60,21 +95,61 @@ export const OnTimeDeliveryWidget = ({ stats }: OnTimeDeliveryWidgetProps) => {
               roundCaps
               sections={[{ value: percentage, color: statusInfo.color }]}
               label={
-                <Text ta="center" fw={800} size="xl" c={statusInfo.color}>
-                  {percentage}%
-                </Text>
+                loading ? (
+                  <Center>
+                    <Loader size="xs" color="blue" />
+                  </Center>
+                ) : (
+                  <Text ta="center" fw={800} size="xl" c={statusInfo.color}>
+                    {percentage}%
+                  </Text>
+                )
               }
             />
             <Stack gap={2}>
-              <Text fz="sm" fw={700} c="dimmed" tt="uppercase">
-                Deliveries
-              </Text>
+              <Group gap={4} align="center">
+                <Text fz="sm" fw={700} c="dimmed" tt="uppercase">
+                  Deliveries
+                </Text>
+                <Tooltip
+                  label={
+                    includeToday
+                      ? "Currently counting all trips including today's ongoing deliveries"
+                      : "Currently counting trips up to yesterday to avoid dragging down scores with ongoing trips"
+                  }
+                  position="top"
+                  withArrow
+                >
+                  <IconInfoCircle size={13} color="#868e96" style={{ cursor: "pointer" }} />
+                </Tooltip>
+              </Group>
+
               <Text fz="xl" fw={800} c="gray.8">
-                {stats.onTimeDeliveries} <Text component="span" fz="sm" c="dimmed">/ {stats.totalDeliveries}</Text>
+                {stats.onTimeDeliveries}{" "}
+                <Text component="span" fz="sm" c="dimmed">
+                  / {stats.totalDeliveries}
+                </Text>
               </Text>
-              <Text fz="xs" c="dimmed" mt={4} maw={150}>
-                Deliveries arriving at pickup on or before scheduled time.
+
+              <Text fz="xs" c="dimmed" mt={4} maw={160}>
+                {includeToday
+                  ? "Including today's active & ongoing trips."
+                  : "Up to yesterday (excludes today's active trips)."}
               </Text>
+
+              {/* ── Toggle Switch for Today's Transactions ── */}
+              <Group gap="xs" mt={8} align="center">
+                <Switch
+                  size="xs"
+                  checked={includeToday}
+                  onChange={(e) => handleToggle(e.currentTarget.checked)}
+                  label={
+                    <Text size="xs" fw={600} c={includeToday ? "blue.7" : "dimmed"}>
+                      Include Today
+                    </Text>
+                  }
+                />
+              </Group>
             </Stack>
           </Group>
         </Center>
