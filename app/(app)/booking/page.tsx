@@ -14,6 +14,7 @@ import {
 } from "@/components/booking/TripDetailsModal";
 import { ViewModal } from "@/components/booking/ViewModal";
 import { DeleteConfirmModal } from "@/components/booking/DeleteConfirmModal";
+import { CanceledTripsModal } from "@/components/booking/CanceledTripsModal";
 import { BookingTable } from "@/components/booking/BookingTable";
 import { BookingToolbar } from "@/components/booking/BookingToolbar";
 import { useTableExport } from "@/app/hooks/useTableExport";
@@ -73,6 +74,7 @@ export default function BookingRecordsPage() {
   const [deleteOpened, setDeleteOpened] = useState(false);
   const [tripRecord, setTripRecord] = useState<DispatchRecord | null>(null);
   const [tripOpened, setTripOpened] = useState(false);
+  const [canceledOpened, setCanceledOpened] = useState(false);
 
   useEffect(() => {
     async function loadBookings() {
@@ -141,6 +143,33 @@ export default function BookingRecordsPage() {
     loadBookings();
   }, []);
 
+  const isCanceledRecord = (r: DispatchRecord) => {
+    const s = (r.deliveryStatus || r.status || "").toLowerCase();
+    return s.includes("cancel") || s.includes("foul");
+  };
+
+  const isCompletedRecord = (r: DispatchRecord) => {
+    return (r.deliveryStatus || r.status) === "Completed";
+  };
+
+  const canceledRecords = useMemo(() => {
+    return records.filter(isCanceledRecord);
+  }, [records]);
+
+  const inTransitCount = useMemo(() => {
+    return records.filter(
+      (r) => (r.deliveryStatus || r.status) === "In Transit"
+    ).length;
+  }, [records]);
+
+  const incompleteCount = useMemo(() => {
+    return records.filter(
+      (r) =>
+        (r.deliveryStatus || r.status) === "Incomplete" ||
+        (r.deliveryStatus || r.status) === "Pending"
+    ).length;
+  }, [records]);
+
   const filtered = useMemo(() => {
     const q = filters.search.toLowerCase().trim();
     return records.filter((r) => {
@@ -167,9 +196,11 @@ export default function BookingRecordsPage() {
         String(r.bookedBy || "")
           .toLowerCase()
           .includes(q);
+
       const matchesStatus = filters.status
-        ? r.status === filters.status
-        : r.status !== "Completed";
+        ? (r.deliveryStatus || r.status) === filters.status
+        : !isCompletedRecord(r) && !isCanceledRecord(r);
+
       // Pickup date is stored as YYYY-MM-DD — string comparison works correctly
       const pickupDate = r.pickUpDate ?? r.date ?? "";
       const matchesDateFrom = !filters.dateFrom || pickupDate >= filters.dateFrom;
@@ -278,6 +309,7 @@ export default function BookingRecordsPage() {
           ...form,
           bookingDRNo: form.bookingDRNo || r.bookingDRNo || r.bookingDr || "",
           bookingDr: form.bookingDRNo || r.bookingDr || r.bookingDRNo || "",
+          deliveryStatus: form.deliveryStatus,
           status: form.deliveryStatus as DispatchRecord["status"],
         };
       });
@@ -318,12 +350,26 @@ export default function BookingRecordsPage() {
         record={tripRecord}
         onSave={handleTripSave}
       />
+      <CanceledTripsModal
+        opened={canceledOpened}
+        onClose={() => setCanceledOpened(false)}
+        canceledRecords={canceledRecords}
+        onRowClick={(record) => {
+          setTripRecord(record);
+          setTripOpened(true);
+        }}
+        onView={handleView}
+        onEdit={handleEdit}
+        onDelete={handleDeleteClick}
+      />
 
       <ScrollArea h="calc(100vh - 72px)" scrollbars="y">
         <Stack gap="md">
           <BookingToolbar
             totalFiltered={filtered.length}
             totalRecords={records.length}
+            canceledCount={canceledRecords.length}
+            onOpenCanceledModal={() => setCanceledOpened(true)}
             onFiltersChange={handleFiltersChange}
             onExport={handleExport}
             onPrint={handlePrint}
