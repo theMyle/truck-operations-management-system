@@ -70,7 +70,8 @@ import { getTruckAction } from "@/lib/actions/trucks";
 import { DeleteConfirmModal } from "@/components/booking/DeleteConfirmModal";
 import { BILLING_TABLE_HEADERS } from "@/components/ui/ModuleSkeletons";
 import { TableSkeleton } from "@/components/ui/TableSkeleton";
-import { formatTime12Hour } from "@/lib/utils/stringFormat";
+import { formatTime12Hour, capitalizeWords } from "@/lib/utils/stringFormat";
+import { useUser } from "@clerk/nextjs";
 
 export type BillingRecord = DispatchRecord & {
   tripRate?: string | number;
@@ -246,6 +247,10 @@ function PodCell({
 
 export default function BillingModule() {
   const { downloadPODs, downloading, progress } = usePodDownload();
+  const { user } = useUser();
+  const preparedByName = user?.fullName || "Billing Clerk";
+  const rawRole = (user?.publicMetadata?.role as string) || "";
+  const preparedByRole = rawRole ? capitalizeWords(rawRole) : "Billing Officer";
 
   // ── DB records — fetched on Generate, not on mount ──
   const [records, setRecords] = useState<BillingRecord[]>([]);
@@ -884,6 +889,7 @@ export default function BillingModule() {
       `"Period:","${activeFilters?.from ? formatDate(activeFilters.from) : "—"} to ${activeFilters?.to ? formatDate(activeFilters.to) : "—"}"`,
       `"Total Records:","${filtered.length}"`,
       `"Total Amount (PHP):","${stats.totalRate.toLocaleString()}"`,
+      `"Prepared by:","${preparedByName} (${preparedByRole})"`,
       `""`, // blank separator
     ];
 
@@ -916,7 +922,7 @@ export default function BillingModule() {
       color: "green",
       icon: <IconFileTypeCsv size={16} />,
     });
-  }, [filtered, activeFilters, stats.totalRate]);
+  }, [filtered, activeFilters, stats.totalRate, preparedByName]);
 
   const handleExportXLSX = useCallback(() => {
     if (!filtered.length) {
@@ -939,6 +945,7 @@ export default function BillingModule() {
       ["Period:", `${activeFilters?.from ? formatDate(activeFilters.from) : "—"} to ${activeFilters?.to ? formatDate(activeFilters.to) : "—"}`],
       ["Total Records:", filtered.length],
       ["Total Amount (PHP):", stats.totalRate],
+      ["Prepared by:", `${preparedByName} (${preparedByRole})`],
       [], // blank separator
       headers, // column header row
     ];
@@ -1058,7 +1065,7 @@ export default function BillingModule() {
       color: "green",
       icon: <IconFileSpreadsheet size={16} />,
     });
-  }, [filtered, activeFilters, stats.totalRate]);
+  }, [filtered, activeFilters, stats.totalRate, preparedByName]);
 
   return (
     <Box pos="relative" style={{ height: "calc(100vh - 72px)" }}>
@@ -2087,13 +2094,15 @@ export default function BillingModule() {
 
           {/* Footer Signatures */}
           <div style={{ display: "flex", justifyContent: "space-between", marginTop: "40px", paddingTop: "20px", borderTop: "1px dashed #cbd5e1" }}>
-            <div>
-              <div style={{ width: "150px", borderBottom: "1px solid #333", height: "20px" }}></div>
-              <span style={{ fontSize: "10px", color: "#64748b", display: "block", marginTop: "4px" }}>Prepared By</span>
+            <div style={{ textAlign: "center", width: "160px" }}>
+              <div style={{ fontWeight: "bold", fontSize: "11px", marginBottom: "20px" }}>Prepared By:</div>
+              <div style={{ borderBottom: "1px solid #333", paddingBottom: "2px", fontWeight: "bold", fontSize: "11px" }}>{preparedByName}</div>
+              <span style={{ fontSize: "10px", color: "#64748b", display: "block", marginTop: "4px" }}>{preparedByRole}</span>
             </div>
-            <div style={{ textAlign: "right" }}>
-              <div style={{ width: "150px", borderBottom: "1px solid #333", height: "20px", marginLeft: "auto" }}></div>
-              <span style={{ fontSize: "10px", color: "#64748b", display: "block", marginTop: "4px" }}>Approved By Client</span>
+            <div style={{ textAlign: "right", width: "160px" }}>
+              <div style={{ fontWeight: "bold", fontSize: "11px", marginBottom: "20px" }}>Approved By Client:</div>
+              <div style={{ borderBottom: "1px solid #333", paddingBottom: "2px", marginLeft: "auto" }}>&nbsp;</div>
+              <span style={{ fontSize: "10px", color: "#64748b", display: "block", marginTop: "4px" }}>Authorized Signature</span>
             </div>
           </div>
         </div>
@@ -2164,6 +2173,8 @@ export default function BillingModule() {
         onSuccess={() => {
           handleGenerate();
         }}
+        preparedBy={preparedByName}
+        preparedByRole={preparedByRole}
       />
 
       {/* ══ EXISTING SOA WARNING MODAL ══ */}
