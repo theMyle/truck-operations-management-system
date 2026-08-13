@@ -22,6 +22,7 @@ import {
   IconFileTypeDoc,
   IconFileTypeJpg,
   IconCalendar,
+  IconBan,
 } from "@tabler/icons-react";
 import { notifications } from "@mantine/notifications";
 import React, { useState } from "react";
@@ -36,6 +37,8 @@ interface FilterValues {
 interface BookingToolbarProps {
   totalFiltered: number;
   totalRecords: number;
+  canceledCount?: number;
+  onOpenCanceledModal?: () => void;
   onFiltersChange: (filters: FilterValues) => void;
   onExport: (format: string) => Promise<void>;
   onPrint: () => void;
@@ -48,6 +51,8 @@ function todayStr() {
 export function BookingToolbar({
   totalFiltered,
   totalRecords,
+  canceledCount = 0,
+  onOpenCanceledModal,
   onFiltersChange,
   onExport,
   onPrint,
@@ -106,10 +111,36 @@ export function BookingToolbar({
     setDateModalOpen(false);
   };
 
-  const setToday = () => {
-    const today = todayStr();
-    setPendingFrom(today);
-    setPendingTo(today);
+  const setPreset = (preset: "today" | "yesterday" | "thisWeek" | "thisMonth") => {
+    const today = new Date();
+    let from = "";
+    let to = "";
+
+    if (preset === "today") {
+      from = today.toISOString().slice(0, 10);
+      to = from;
+    } else if (preset === "yesterday") {
+      const y = new Date(today);
+      y.setDate(y.getDate() - 1);
+      from = y.toISOString().slice(0, 10);
+      to = from;
+    } else if (preset === "thisWeek") {
+      const day = today.getDay();
+      const diff = today.getDate() - day + (day === 0 ? -6 : 1);
+      const monday = new Date(today.setDate(diff));
+      const sunday = new Date(monday);
+      sunday.setDate(monday.getDate() + 6);
+      from = monday.toISOString().slice(0, 10);
+      to = sunday.toISOString().slice(0, 10);
+    } else if (preset === "thisMonth") {
+      const year = today.getFullYear();
+      const month = today.getMonth();
+      from = new Date(year, month, 1).toISOString().slice(0, 10);
+      to = new Date(year, month + 1, 0).toISOString().slice(0, 10);
+    }
+
+    setPendingFrom(from);
+    setPendingTo(to);
   };
 
   return (
@@ -120,53 +151,82 @@ export function BookingToolbar({
         onClose={() => setDateModalOpen(false)}
         title={
           <Group gap={8}>
-            <IconCalendar size={16} color="var(--mantine-color-blue-6)" />
-            <Text fw={700} size="sm">Date Range Filter</Text>
+            <IconCalendar size={18} color="var(--mantine-color-blue-6)" />
+            <Text fw={700} style={{ fontSize: "14px" }}>
+              Filter by Pickup Date Range
+            </Text>
           </Group>
         }
+        size="sm"
+        radius="md"
         centered
-        size="xs"
       >
-        <Stack gap="sm">
-          <SimpleGrid cols={2} spacing="sm">
+        <Stack gap="md">
+          {/* Quick presets */}
+          <Group gap={6} wrap="wrap">
+            <Button
+              size="xs"
+              variant="light"
+              color="gray"
+              styles={{ label: { fontSize: "10px" } }}
+              onClick={() => setPreset("today")}
+            >
+              Today
+            </Button>
+            <Button
+              size="xs"
+              variant="light"
+              color="gray"
+              styles={{ label: { fontSize: "10px" } }}
+              onClick={() => setPreset("yesterday")}
+            >
+              Yesterday
+            </Button>
+            <Button
+              size="xs"
+              variant="light"
+              color="gray"
+              styles={{ label: { fontSize: "10px" } }}
+              onClick={() => setPreset("thisWeek")}
+            >
+              This Week
+            </Button>
+            <Button
+              size="xs"
+              variant="light"
+              color="gray"
+              styles={{ label: { fontSize: "10px" } }}
+              onClick={() => setPreset("thisMonth")}
+            >
+              This Month
+            </Button>
+          </Group>
+
+          <SimpleGrid cols={2} spacing="xs">
             <TextInput
-              label="Date From"
+              label="From Date"
               type="date"
+              size="xs"
               value={pendingFrom}
-              onChange={(e) => setPendingFrom(e.currentTarget.value || "")}
-              max={pendingTo || undefined}
-              styles={{ input: { fontSize: "12px" } }}
-              radius="md"
+              onChange={(e) => setPendingFrom(e.currentTarget.value)}
+              styles={{ input: { fontSize: "11px" } }}
             />
             <TextInput
-              label="Date To"
+              label="To Date"
               type="date"
+              size="xs"
               value={pendingTo}
-              min={pendingFrom || undefined}
-              onChange={(e) => setPendingTo(e.currentTarget.value || "")}
-              styles={{ input: { fontSize: "12px" } }}
-              radius="md"
+              onChange={(e) => setPendingTo(e.currentTarget.value)}
+              styles={{ input: { fontSize: "11px" } }}
             />
           </SimpleGrid>
 
-          {/* Today shortcut */}
-          <Button
-            variant="light"
-            color="blue"
-            size="xs"
-            leftSection={<IconCalendar size={13} />}
-            styles={{ label: { fontSize: "10px", fontWeight: 700 } }}
-            onClick={setToday}
-          >
-            Today
-          </Button>
-
-          <Group justify="flex-end" gap="sm" mt="xs">
-            {(pendingFrom || pendingTo) && (
+          <Group justify="flex-end" gap="xs" mt="xs">
+            {hasDateFilter && (
               <Button
-                variant="subtle"
-                color="gray"
                 size="xs"
+                variant="subtle"
+                color="red"
                 styles={{ label: { fontSize: "10px", fontWeight: 700 } }}
                 onClick={clearDates}
               >
@@ -187,7 +247,7 @@ export function BookingToolbar({
 
       {/* Header row */}
       <Group justify="space-between" align="center">
-        <Group gap={8}>
+        <Group gap={8} wrap="wrap">
           <Badge
             variant="filled"
             color="blue.6"
@@ -280,41 +340,61 @@ export function BookingToolbar({
       </Group>
 
       {/* Filter row */}
-      <Group gap="sm">
-        <TextInput
-          placeholder="Search by client, driver, plate, booking, route..."
-          leftSection={
-            <IconSearch size={14} color="var(--mantine-color-gray-5)" />
-          }
-          {...form.getInputProps("search")}
-          styles={{ input: { fontSize: "11px", fontWeight: 500 } }}
-          radius="md"
-          w={400}
-        />
-        <Select
-          placeholder="All Active"
-          data={[
-            { value: "In Transit", label: "In Transit" },
-            { value: "Pending", label: "Pending" },
-          ]}
-          {...form.getInputProps("status")}
-          clearable
-          styles={{ input: { fontSize: "11px", fontWeight: 500 } }}
-          radius="md"
-          style={{ width: 160 }}
-        />
+      <Group justify="space-between" align="center">
+        <Group gap="sm">
+          <TextInput
+            placeholder="Search by client, driver, plate, booking, route..."
+            leftSection={
+              <IconSearch size={14} color="var(--mantine-color-gray-5)" />
+            }
+            {...form.getInputProps("search")}
+            styles={{ input: { fontSize: "11px", fontWeight: 500 } }}
+            radius="md"
+            w={400}
+          />
+          <Select
+            placeholder="All Active"
+            data={[
+              { value: "In Transit", label: "In Transit" },
+              { value: "Pending", label: "Pending" },
+              { value: "Incomplete", label: "Incomplete" },
+            ]}
+            {...form.getInputProps("status")}
+            clearable
+            styles={{ input: { fontSize: "11px", fontWeight: 500 } }}
+            radius="md"
+            style={{ width: 160 }}
+          />
 
-        {/* Date range button */}
-        <Tooltip label="Date Range" withArrow position="bottom">
+          {/* Date range button */}
+          <Tooltip label="Date Range" withArrow position="bottom">
+            <Button
+              variant={hasDateFilter ? "filled" : "default"}
+              color={hasDateFilter ? "blue" : undefined}
+              size="xs"
+              leftSection={<IconCalendar size={13} />}
+              styles={{ label: { fontSize: "10px", fontWeight: 700 } }}
+              onClick={openDateModal}
+            >
+              {hasDateFilter ? "Date Active" : "Date Range"}
+            </Button>
+          </Tooltip>
+        </Group>
+
+        {/* ── Canceled Trips button placed below Download & Print ── */}
+        <Tooltip label="View all canceled & foul trips" withArrow position="top">
           <Button
-            variant={hasDateFilter ? "filled" : "default"}
-            color={hasDateFilter ? "blue" : undefined}
+            variant="light"
+            color="red"
             size="xs"
-            leftSection={<IconCalendar size={13} />}
-            styles={{ label: { fontSize: "10px", fontWeight: 700 } }}
-            onClick={openDateModal}
+            leftSection={<IconBan size={14} />}
+            styles={{
+              root: { height: 28 },
+              label: { fontSize: "10px", fontWeight: 700 },
+            }}
+            onClick={onOpenCanceledModal}
           >
-            {hasDateFilter ? "Date Active" : "Date Range"}
+            Canceled Trips ({canceledCount})
           </Button>
         </Tooltip>
       </Group>
