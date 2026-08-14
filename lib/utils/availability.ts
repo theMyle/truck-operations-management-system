@@ -59,6 +59,11 @@ function parseDateTime(dateVal: string | Date | null | undefined, timeStr?: stri
  * From scheduled pickup time up to 2 hours later.
  * Allows multiple trips on the same day if separated by 2+ hours!
  */
+export function isCanceledDeliveryStatus(status: string | null | undefined): boolean {
+  const s = (status ?? "").trim().toLowerCase();
+  return s.includes("cancel") || s.includes("foul");
+}
+
 export function computeAvailability(
   bookings: BookingWithRelations[],
   targetDate?: string | Date | null,
@@ -79,8 +84,9 @@ export function computeAvailability(
     if (excludeBookingId && b.id === excludeBookingId) return;
 
     // Skip finished or cancelled trips
-    const status = (b.deliveryStatus || "").toLowerCase();
-    if (status === "completed" || status === "cancelled" || b.finishedDeliveryTime) {
+    const status = (b.deliveryStatus || "").trim().toLowerCase();
+    const isCanceled = status.includes("cancel") || status.includes("foul");
+    if (status === "completed" || isCanceled || b.finishedDeliveryTime) {
       return;
     }
 
