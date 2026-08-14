@@ -6,6 +6,11 @@ import { truckRepository } from "../repositories/truck.repository";
 
 export const IN_TRANSIT_DELIVERY_STATUS = "In Transit";
 
+export function isCanceledDeliveryStatus(status: string | null | undefined): boolean {
+  const s = (status ?? "").trim().toLowerCase();
+  return s.includes("cancel") || s.includes("foul");
+}
+
 export function isInTransitDeliveryStatus(
   status: string | null | undefined,
 ): boolean {
@@ -40,12 +45,14 @@ export async function syncTruckStatusForPlate(
 
   const hasActiveBookingToday = plateBookings.some((entry) => {
     const isToday = entry.pickupDate === todayStr;
-    const isActive = entry.deliveryStatus !== "Completed";
+    const isCompleted = (entry.deliveryStatus ?? "").trim().toLowerCase() === "completed";
+    const isCanceled = isCanceledDeliveryStatus(entry.deliveryStatus);
+    const isActive = !isCompleted && !isCanceled;
     return isToday && isActive;
   });
 
   const hasInTransitBooking = plateBookings.some((entry) =>
-    isInTransitDeliveryStatus(entry.deliveryStatus),
+    isInTransitDeliveryStatus(entry.deliveryStatus) && !isCanceledDeliveryStatus(entry.deliveryStatus),
   );
 
   const nextStatus = (hasInTransitBooking || hasActiveBookingToday) ? "on trip" : "available";
