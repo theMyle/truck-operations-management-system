@@ -25,6 +25,7 @@ import {
   updateTripMonitoringAction,
 } from "@/lib/actions/booking";
 import { formatTime12Hour, formatTimeHHMM } from "@/lib/utils/stringFormat";
+import { computeTripNumbersAndSort } from "@/lib/utils/tripNumbering";
 import { BookingModuleSkeleton } from "@/components/ui/ModuleSkeletons";
 import { getAllClientsAction } from "@/lib/actions/clients";
 
@@ -172,7 +173,7 @@ export default function BookingRecordsPage() {
 
   const filtered = useMemo(() => {
     const q = filters.search.toLowerCase().trim();
-    return records.filter((r) => {
+    const matches = records.filter((r) => {
       const matchesSearch =
         !q ||
         String(r.displayBookingNo || "")
@@ -207,6 +208,7 @@ export default function BookingRecordsPage() {
       const matchesDateTo = !filters.dateTo || pickupDate <= filters.dateTo;
       return matchesSearch && matchesStatus && matchesDateFrom && matchesDateTo;
     });
+    return computeTripNumbersAndSort(matches);
   }, [filters, records]);
 
   const paginated = useMemo(
