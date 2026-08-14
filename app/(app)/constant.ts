@@ -5,6 +5,8 @@ export interface DispatchRecord {
   bookingDate?: string;
   pickUpDate?: string;
   pickUpTime?: string;
+  tripNo?: number | string;
+  tripNumber?: number | string;
   client: string;
   clientName?: string;
   trucker?: string;

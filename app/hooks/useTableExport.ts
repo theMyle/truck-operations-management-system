@@ -20,6 +20,9 @@ const TIME_KEYS = [
 
 function getFormattedValue(record: DispatchRecord, colKey: string): string {
   let val = record[colKey as keyof DispatchRecord];
+  if (colKey === "tripNo" || colKey === "tripNumber") {
+    return val !== undefined && val !== null ? String(val) : "1";
+  }
   if (colKey === "pickUpTime") {
     return getDepartureInGarageTime(String(val ?? ""));
   }
@@ -79,6 +82,8 @@ export function useTableExport(
       },
       columnStyles: {
         displayBookingNo: { cellWidth: 20 },
+        tripNo: { cellWidth: 12 },
+        tripNumber: { cellWidth: 12 },
         tripRate: { cellWidth: 10 },
         date: { cellWidth: 16 },
         status: { cellWidth: 12 },
@@ -313,6 +318,7 @@ export function useTableExport(
               columnWidths: docxColumns.map((col) => {
                 const key = col.key;
                 if (key === "displayBookingNo") return 600;
+                if (key === "tripNo" || key === "tripNumber") return 600;
                 if (key === "tripRate") return 800;
                 if (key === "date") return 1100;
                 if (key === "status") return 900;

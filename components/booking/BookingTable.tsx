@@ -44,6 +44,7 @@ const cellStyle: React.CSSProperties = {
 const COLUMNS = [
   { key: "actions", label: "Actions" },
   { key: "id", label: "Booking ID" },
+  { key: "tripNo", label: "Trip #" },
   { key: "bookingDate", label: "Date Booked" },
   { key: "bookingDRNo", label: "Booking / DR#" },
   { key: "pickUpDate", label: "Pickup Date" },
