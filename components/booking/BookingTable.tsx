@@ -44,11 +44,11 @@ const cellStyle: React.CSSProperties = {
 const COLUMNS = [
   { key: "actions", label: "Actions" },
   { key: "id", label: "Booking ID" },
-  { key: "tripNo", label: "Trip #" },
   { key: "bookingDate", label: "Date Booked" },
   { key: "bookingDRNo", label: "Booking / DR#" },
   { key: "pickUpDate", label: "Pickup Date" },
   { key: "clientName", label: "Client" },
+  { key: "tripNo", label: "Trip #" },
   { key: "driverName", label: "Driver" },
   { key: "pickUpTime", label: "Pickup Time" },
   { key: "status", label: "Status" },
@@ -215,7 +215,7 @@ export function BookingTable({
                     {record.bookingDate || "—"}
                   </Table.Td>
                   <Table.Td style={cellStyle}>
-                    {record.bookingDRNo || record.bookingDRNo || "—"}
+                    {record.bookingDRNo || record.bookingDr || "—"}
                   </Table.Td>
                   <Table.Td style={cellStyle}>
                     {record.pickUpDate || record.date || "—"}
@@ -223,10 +223,14 @@ export function BookingTable({
                   <Table.Td style={cellStyle}>
                     {record.clientName || record.client || "—"}
                   </Table.Td>
+                  <Table.Td style={{ ...cellStyle, textAlign: "center" }}>
+                    <Badge variant="light" color="blue" size="xs" radius="sm">
+                      #{record.tripNo ?? 1}
+                    </Badge>
+                  </Table.Td>
                   <Table.Td style={cellStyle}>
                     {(record.driverName || record.driver || "—").toUpperCase()}
                   </Table.Td>
-
                   <Table.Td style={cellStyle}>
                     {record.pickUpTime || "—"}
                   </Table.Td>

@@ -34,9 +34,10 @@ const PAGE_SIZE = 10;
 const BOOKING_EXPORT_COLUMNS = [
   { key: "bookingDRNo", label: "Booking / DR#" },
   { key: "clientName", label: "Client" },
+  { key: "tripNo", label: "Trip #" },
+  { key: "driverName", label: "Driver" },
   { key: "pickUpDate", label: "Pickup Date" },
   { key: "pickUpTime", label: "Pickup Time" },
-  { key: "driverName", label: "Driver" },
   { key: "helper", label: "Helper" },
   { key: "arrivalPickup", label: "Pick Up Arrival Time" },
   { key: "loadingStart", label: "Loading Start Time" },
@@ -137,7 +138,7 @@ export default function BookingRecordsPage() {
           podRequired: podMap.get(b.clientName) ?? true,
         }));
 
-        setRecords(mapped);
+        setRecords(computeTripNumbersAndSort(mapped));
       }
       setIsLoading(false);
     }

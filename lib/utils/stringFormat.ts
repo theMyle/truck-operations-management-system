@@ -87,3 +87,15 @@ export function generateSoaNumber(clientName: string, existingSoas: string[] = [
   const nextSeq = String(maxSeq + 1).padStart(3, "0");
   return `${prefix}${nextSeq}`;
 }
+export function formatDriverShortName(driverName?: string | null): string {
+  if (!driverName || typeof driverName !== "string" || !driverName.trim() || driverName === "—") {
+    return "";
+  }
+  const parts = driverName.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 1) {
+    return parts[0].toUpperCase();
+  }
+  const firstName = parts[0].toUpperCase();
+  const lastInitial = parts[parts.length - 1][0].toUpperCase() + ".";
+  return `${firstName} ${lastInitial}`;
+}
