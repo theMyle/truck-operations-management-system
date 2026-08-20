@@ -1,4 +1,4 @@
-import { Modal, Group, ScrollArea, Stack, Box, Paper, Divider, Button, Text, Table } from "@mantine/core";
+﻿import { Modal, Group, ScrollArea, Stack, Box, Paper, Divider, Button, Text, Table } from "@mantine/core";
 import { IconEye, IconEdit, IconCheck } from "@tabler/icons-react";
 import { DispatchFormValues } from "@/types/dispatch";
 import { Truck, Helper } from "@/lib/db/schema";
@@ -30,6 +30,17 @@ export function ReviewModal({
     });
   };
 
+  const getPickupLocationsString = () => {
+    const valid = (values.pickupLocations ?? []).filter((p) => p.location?.trim());
+    if (valid.length > 1) {
+      return valid.map((p, i) => `Pickup ${i + 1}: ${p.location}`).join("\n");
+    }
+    if (valid.length === 1) {
+      return valid[0].location;
+    }
+    return values.pickupLocation || "";
+  };
+
   const getDropOffsString = () => {
     return values.dropOffs
       .filter((d) => d.location)
@@ -44,7 +55,7 @@ export function ReviewModal({
     client: (values.clientName ?? "").toUpperCase(),
     ruta: (values.ruta ?? "").toUpperCase(),
     bookingDr: (values.bookingDr ?? "").toUpperCase(),
-    pickupLocation: (values.pickupLocation ?? "").toUpperCase(),
+    pickupLocation: getPickupLocationsString().toUpperCase(),
     dropOffs: getDropOffsString().toUpperCase(),
     noOfDrops: values.noOfDrops?.toString() || "",
     unit: (selectedTruck?.fleetType || "").toUpperCase(),

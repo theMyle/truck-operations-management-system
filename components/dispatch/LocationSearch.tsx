@@ -1,5 +1,74 @@
-import { Box, Group, TextInput, Loader, Paper, Text } from "@mantine/core";
+﻿import { Box, Group, TextInput, Loader, Paper, Text } from "@mantine/core";
 import React, { useState } from "react";
+
+export function formatShortAddress(item: {
+  display_name?: string;
+  name?: string;
+  address?: Record<string, string>;
+}): string {
+  if (item.address && typeof item.address === "object") {
+    const addr = item.address;
+    const local =
+      item.name ||
+      addr.suburb ||
+      addr.village ||
+      addr.neighbourhood ||
+      addr.quarter ||
+      addr.city_district ||
+      addr.hamlet ||
+      addr.road ||
+      addr.industrial ||
+      "";
+    const cityOrMun =
+      addr.city ||
+      addr.municipality ||
+      addr.town ||
+      addr.county ||
+      "";
+    const provinceOrState =
+      addr.province ||
+      addr.state ||
+      addr.region ||
+      "";
+
+    const parts: string[] = [];
+    if (local) parts.push(local);
+    if (cityOrMun && !parts.some((p) => p.toLowerCase() === cityOrMun.toLowerCase())) {
+      parts.push(cityOrMun);
+    }
+    if (
+      provinceOrState &&
+      provinceOrState.toLowerCase() !== "philippines" &&
+      !parts.some((p) => p.toLowerCase() === provinceOrState.toLowerCase())
+    ) {
+      parts.push(provinceOrState);
+    }
+
+    if (parts.length > 0) {
+      return parts.slice(0, 3).join(", ");
+    }
+  }
+
+  if (item.display_name) {
+    const filtered = item.display_name
+      .split(",")
+      .map((p) => p.trim())
+      .filter((p) => {
+        const l = p.toLowerCase();
+        if (!l) return false;
+        if (l === "philippines" || l === "ph") return false;
+        if (/^\d{4,5}$/.test(p)) return false;
+        if (l.includes("district") || l.includes("region")) return false;
+        return true;
+      });
+    if (filtered.length > 0) {
+      return filtered.slice(0, 3).join(", ");
+    }
+    return item.display_name;
+  }
+
+  return "";
+}
 
 export function LocationSearch({
   label,
@@ -19,20 +88,19 @@ export function LocationSearch({
   rightAction?: React.ReactNode;
 }) {
   const [query, setQuery] = useState(value ?? "");
-  const [suggestions, setSuggestions] = useState<{ display_name: string }[]>(
-    [],
-  );
+  const [suggestions, setSuggestions] = useState<
+    { display_name: string; short_name: string }[]
+  >([]);
   const [loading, setLoading] = useState(false);
   const debounceRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
   React.useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setQuery(value ?? "");
   }, [value]);
 
   const search = (q: string) => {
     setQuery(q);
-    onChange?.(q); // keep parent in sync as user types
+    onChange?.(q);
     if (debounceRef.current) clearTimeout(debounceRef.current);
     if (q.trim().length < 3) {
       setSuggestions([]);
@@ -47,7 +115,16 @@ export function LocationSearch({
           { headers: { "Accept-Language": "en" } },
         );
         const data = await res.json();
-        setSuggestions(data);
+        if (Array.isArray(data)) {
+          setSuggestions(
+            data.map((item) => ({
+              display_name: item.display_name,
+              short_name: formatShortAddress(item),
+            }))
+          );
+        } else {
+          setSuggestions([]);
+        }
       } catch {
         setSuggestions([]);
       } finally {
@@ -56,15 +133,14 @@ export function LocationSearch({
     }, 400);
   };
 
-  const select = (display_name: string) => {
-    setQuery(display_name);
-    onChange?.(display_name);
+  const select = (short_name: string) => {
+    setQuery(short_name);
+    onChange?.(short_name);
     setSuggestions([]);
   };
 
   return (
     <Box style={{ position: "relative" }}>
-      {/* Label row with optional right action */}
       <Group justify="space-between" align="center" mb={4}>
         <Text
           style={{
@@ -90,7 +166,6 @@ export function LocationSearch({
           input: { fontSize: "11px", fontWeight: 600, textTransform: "uppercase" },
         }}
       />
-      {/* suggestions dropdown unchanged */}
       {suggestions.length > 0 && (
         <Paper
           withBorder
@@ -102,7 +177,7 @@ export function LocationSearch({
             left: 0,
             right: 0,
             zIndex: 300,
-            maxHeight: 200,
+            maxHeight: 220,
             overflowY: "auto",
           }}
         >
@@ -113,21 +188,24 @@ export function LocationSearch({
               py={6}
               style={{
                 cursor: "pointer",
-                fontSize: "11px",
-                fontWeight: 500,
                 borderBottom:
                   i < suggestions.length - 1
                     ? "1px solid var(--mantine-color-gray-2)"
                     : "none",
               }}
-              onMouseDown={() => select(s.display_name)}
+              onMouseDown={() => select(s.short_name)}
               onMouseEnter={(e) =>
                 (e.currentTarget.style.backgroundColor =
                   "var(--mantine-color-gray-0)")
               }
               onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "")}
             >
-              {s.display_name}
+              <Text style={{ fontSize: "11px", fontWeight: 700 }} tt="uppercase">
+                {s.short_name}
+              </Text>
+              <Text style={{ fontSize: "9px" }} c="dimmed" truncate>
+                {s.display_name}
+              </Text>
             </Box>
           ))}
         </Paper>

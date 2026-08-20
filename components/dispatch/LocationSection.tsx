@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
 import {
@@ -35,6 +35,19 @@ export function LocationSection({
   const minDate = new Date();
   minDate.setDate(minDate.getDate() - 3);
 
+  const addPickupLocation = () => {
+    form.insertListItem("pickupLocations", {
+      id: Date.now(),
+      location: "",
+    });
+  };
+
+  const removePickupLocation = (index: number) => {
+    if (form.values.pickupLocations.length > 1) {
+      form.removeListItem("pickupLocations", index);
+    }
+  };
+
   const addDropOff = () => {
     form.insertListItem("dropOffs", {
       id: Date.now(),
@@ -64,19 +77,62 @@ export function LocationSection({
       <Divider m="xl" label="LOCATION DETAILS" />
 
       <Grid gap="sm" mb="sm">
+        {/* Left Column: Pickup Points & Booking Metadata */}
         <Grid.Col span={{ base: 12, sm: 6 }}>
           <Stack gap="sm">
-            <LocationSearch
-              label="Pickup Location"
-              placeholder="Search pickup address..."
-              {...form.getInputProps("pickupLocation")}
-              leftSection={
-                <IconMapPin
-                  size={13}
-                  color="var(--mantine-color-green-6)"
-                />
-              }
-            />
+            <Stack gap={6}>
+              {form.values.pickupLocations.map((pickup, index) => (
+                <Paper key={pickup.id} withBorder radius="sm" p="xs">
+                  <LocationSearch
+                    label={
+                      form.values.pickupLocations.length > 1
+                        ? `Pickup Point ${index + 1}`
+                        : "Pickup Location"
+                    }
+                    placeholder="Search pickup address..."
+                    {...form.getInputProps(`pickupLocations.${index}.location`)}
+                    leftSection={
+                      <IconMapPin
+                        size={11}
+                        color="var(--mantine-color-green-6)"
+                      />
+                    }
+                    rightAction={
+                      <Group gap={4}>
+                        {index === 0 && (
+                          <Button
+                            size="sm"
+                            variant="light"
+                            color="green"
+                            leftSection={<IconPlus size={12} />}
+                            styles={{
+                              root: { height: 18, padding: "0 6px" },
+                              label: {
+                                fontSize: "10px",
+                                fontWeight: 700,
+                              },
+                            }}
+                            onClick={addPickupLocation}
+                          >
+                            Add Pick-up Points
+                          </Button>
+                        )}
+                        {form.values.pickupLocations.length > 1 && (
+                          <ActionIcon
+                            variant="subtle"
+                            color="red"
+                            size="xs"
+                            onClick={() => removePickupLocation(index)}
+                          >
+                            <IconX size={11} />
+                          </ActionIcon>
+                        )}
+                      </Group>
+                    }
+                  />
+                </Paper>
+              ))}
+            </Stack>
 
             <Grid gap="sm">
               <Grid.Col span={6}>
@@ -99,7 +155,9 @@ export function LocationSection({
                   min={1}
                   styles={inputStyles}
                   value={
-                    form.values.dropOffs.filter(drop => drop.location.trim().length > 0).length
+                    form.values.dropOffs.filter(
+                      (drop) => drop.location.trim().length > 0
+                    ).length
                   }
                   readOnly
                   aria-readonly
@@ -172,6 +230,7 @@ export function LocationSection({
           </Stack>
         </Grid.Col>
 
+        {/* Right Column: Drop-off Points */}
         <Grid.Col span={{ base: 12, sm: 6 }}>
           <Box>
             <Stack gap={6}>

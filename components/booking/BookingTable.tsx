@@ -112,7 +112,7 @@ export function BookingTable({
               {COLUMNS.slice(1).map((col) => (
                 <Table.Th
                   key={col.key}
-                  style={{ ...headerCellStyle, minWidth: 130 }}
+                  style={{ ...headerCellStyle, minWidth: col.key === "pickLocation" || col.key === "dropOffLocation" ? 220 : 130 }}
                 >
                   {col.label}
                 </Table.Th>
@@ -265,21 +265,55 @@ export function BookingTable({
                   >
                     {record.ruta || "—"}
                   </Table.Td>
-                  <Table.Td style={cellStyle}>
-                    {record.pickLocation || "—"}
+                  <Table.Td
+                    style={cellStyle}
+                    title={(record.pickLocation || "—").replace(/\n/g, " - ")}
+                  >
+                    {(() => {
+                      if (!record.pickLocation || record.pickLocation === "—") return "—";
+                      const locs = record.pickLocation
+                        .split("\n")
+                        .map((l) => l.trim())
+                        .filter(Boolean);
+                      if (locs.length <= 1) {
+                        return locs[0] || "—";
+                      }
+                      return (
+                        <Group gap={6} wrap="nowrap" align="center">
+                          <Badge variant="light" color="teal" size="xs" radius="sm" style={{ flexShrink: 0 }}>
+                            {locs.length}
+                          </Badge>
+                          <Text size="11px" fw={500} style={{ whiteSpace: "nowrap" }}>
+                            {locs.join(" - ")}
+                          </Text>
+                        </Group>
+                      );
+                    })()}
                   </Table.Td>
                   <Table.Td
-                    style={{
-                      ...cellStyle,
-                      maxWidth: 150,
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      whiteSpace: "nowrap",
-                      fontSize: "10px",
-                    }}
-                    title={(record.dropOffLocation || "—").replace(/\n/g, ", ")}
+                    style={cellStyle}
+                    title={(record.dropOffLocation || "—").replace(/\n/g, " - ")}
                   >
-                    {record.dropOffLocation || "—"}
+                    {(() => {
+                      if (!record.dropOffLocation || record.dropOffLocation === "—") return "—";
+                      const drops = record.dropOffLocation
+                        .split("\n")
+                        .map((l) => l.trim())
+                        .filter(Boolean);
+                      if (drops.length <= 1) {
+                        return drops[0] || "—";
+                      }
+                      return (
+                        <Group gap={6} wrap="nowrap" align="center">
+                          <Badge variant="light" color="blue" size="xs" radius="sm" style={{ flexShrink: 0 }}>
+                            {drops.length}
+                          </Badge>
+                          <Text size="11px" fw={500} style={{ whiteSpace: "nowrap" }}>
+                            {drops.join(" - ")}
+                          </Text>
+                        </Group>
+                      );
+                    })()}
                   </Table.Td>
                   <Table.Td style={cellStyle}>
                     {toTitleCase(record.bookedBy)}

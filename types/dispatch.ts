@@ -1,6 +1,11 @@
-import { Helper } from "@/lib/db/schema";
+﻿import { Helper } from "@/lib/db/schema";
 
-interface DropOff {
+export interface PickupLocation {
+  id: number;
+  location: string;
+}
+
+export interface DropOff {
   id: number;
   location: string;
   contactPerson: string;
@@ -11,6 +16,7 @@ export interface DispatchFormValues {
   clientName: string | null;
   clientRate: string;
   ruta: string;
+  pickupLocations: PickupLocation[];
   pickupLocation: string;
   bookingDr?: string;
   noOfDrops: string | number;

@@ -1,5 +1,6 @@
-import { DispatchRecord } from "@/app/(app)/constant";
+﻿import { DispatchRecord } from "@/app/(app)/constant";
 import {
+  Badge,
   Box,
   Button,
   Divider,
@@ -33,6 +34,8 @@ export function ViewModal({
         { label: "Client (Kliyente)", value: record.client || record.clientName },
         { label: "Route (Ruta)", value: record.ruta },
         { label: "Booking / DR#", value: record.bookingDr || record.bookingDRNo },
+        { label: "Pickup Location", value: record.pickLocation },
+        { label: "Drop-off Location", value: record.dropOffLocation },
         { label: "No. of Drops", value: String(record.noOfDrops) },
         { label: "Unit", value: record.unit || record.fleetType },
         { label: "Plate #", value: record.plateNo },
@@ -112,7 +115,27 @@ export function ViewModal({
                               : "var(--mantine-color-gray-4)",
                           }}
                         >
-                          {row.value || "—"}
+                          {typeof row.value === "string" && row.value.includes("\n") ? (
+                            <Stack gap={4}>
+                              {row.value.split("\n").map((item, idx) => (
+                                <Group key={idx} gap={6} wrap="nowrap" align="center">
+                                  <Badge
+                                    size="xs"
+                                    variant="light"
+                                    color={row.label.toLowerCase().includes("pickup") ? "teal" : "blue"}
+                                    styles={{ root: { height: 16, padding: "0 4px", fontSize: "9px" } }}
+                                  >
+                                    #{idx + 1}
+                                  </Badge>
+                                  <Text size="11px" fw={600}>
+                                    {item}
+                                  </Text>
+                                </Group>
+                              ))}
+                            </Stack>
+                          ) : (
+                            row.value || "—"
+                          )}
                         </Table.Td>
                       </Table.Tr>
                     ))}

@@ -83,6 +83,9 @@ export default function DispatchPage() {
       clientName: null,
       clientRate: "",
       ruta: "",
+      pickupLocations: [
+        { id: 1, location: "" },
+      ],
       pickupLocation: "",
       bookingDr: "",
       noOfDrops: "",
@@ -110,8 +113,14 @@ export default function DispatchPage() {
         if (!values.clientName) return null;
         return !value?.trim() ? "Route is required" : null;
       },
-      pickupLocation: (value) =>
-        !value?.trim() ? "Pickup location is required" : null,
+      pickupLocations: {
+        location: (value, values, path) => {
+          if (path === "pickupLocations.0.location" && !value?.trim()) {
+            return "Pickup location is required";
+          }
+          return null;
+        },
+      },
       noOfDrops: (value) =>
         !value || Number(value) < 1 ? "At least 1 drop required" : null,
       pickupDate: (value) => (!value ? "Pickup date is required" : null),
@@ -276,7 +285,12 @@ export default function DispatchPage() {
       ruta: (form.values.ruta ?? "").trim().toUpperCase(),
       pickupDate: form.values.pickupDate ? form.values.pickupDate.toISOString() : "",
       pickupTime: form.values.pickupTime,
-      pickupLocation: (form.values.pickupLocation ?? "").trim().toUpperCase(),
+      pickupLocation: (
+        (form.values.pickupLocations ?? [])
+          .filter((p) => p.location.trim().length > 0)
+          .map((p) => p.location.trim().toUpperCase())
+          .join(String.fromCharCode(10)) || (form.values.pickupLocation ?? "").trim().toUpperCase()
+      ),
       driverId: selectedDriver.id,
       driverName: selectedDriver.driverName,
       plateNumber: selectedTruck.plateNumber,
@@ -388,6 +402,15 @@ export default function DispatchPage() {
       clientName: editingRecord.clientName ?? null,
       clientRate: String(editingRecord.tripRate ?? ""),
       ruta: editingRecord.ruta ?? "",
+      pickupLocations:
+        (editingRecord.pickLocation ?? "").split(String.fromCharCode(10)).filter(Boolean).length > 0
+          ? (editingRecord.pickLocation ?? "")
+              .split(String.fromCharCode(10))
+              .map((loc, i) => ({
+                id: Date.now() + i + 100,
+                location: loc.trim(),
+              }))
+          : [{ id: Date.now() + 100, location: editingRecord.pickLocation ?? "" }],
       pickupLocation: editingRecord.pickLocation ?? "",
       bookingDr: editingRecord.bookingDRNo ?? "",
       noOfDrops: editingRecord.noOfDrops ?? "",
