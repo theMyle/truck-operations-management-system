@@ -210,6 +210,7 @@ export const makeBookingRepository = (database = db) => {
         columns: {
           plateNumber: true,
           pickupDate: true,
+          pickupTime: true,
           pickupArrivalTime: true,
           loadingStartTime: true,
           loadingEndTime: true,
@@ -231,6 +232,10 @@ export const makeBookingRepository = (database = db) => {
       await database
         .update(booking)
         .set({
+          pickupTime:
+            data.pickupTime !== undefined && data.pickupTime.trim() !== ""
+              ? data.pickupTime.trim()
+              : existingBooking?.pickupTime,
           pickupArrivalTime:
             data.arrivalPickup !== undefined
               ? toTs(data.arrivalPickup)
