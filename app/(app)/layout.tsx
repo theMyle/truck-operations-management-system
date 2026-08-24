@@ -36,6 +36,7 @@ import { usePathname } from "next/navigation";
 import { DispatchProvider } from "./context/dispatch-context";
 import { SidebarNav, NavItem } from "../../components/SidebarNav";
 import { UserCard } from "../../components/UserCard";
+import { PodCleanupNotification } from "../../components/pod-cleanup/PodCleanupNotification";
 import { UserRole } from "@/types/user";
 
 export default function DashboardLayout({
@@ -219,6 +220,10 @@ export default function DashboardLayout({
                   DOMINGO
                 </Text>
               </Text>
+            </Group>
+
+            <Group gap={8}>
+              <PodCleanupNotification />
             </Group>
           </Group>
         </AppShell.Header>
