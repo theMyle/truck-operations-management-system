@@ -17,39 +17,120 @@ export function PersonnelSection({
   drivers: Driver[];
   helpers: Helper[];
 }) {
+  const [driverSearch, setDriverSearch] = useState("");
   const [helperSearch, setHelperSearch] = useState("");
 
+  const addDriver = (driver: Driver) => {
+    if (driver && !(form.values.drivers || []).some((d) => d.id === driver.id)) {
+      form.insertListItem("drivers", driver);
+      form.clearFieldError("drivers");
+    }
+  };
+
+  const removeDriver = (driverId: string) => {
+    const idx = (form.values.drivers || []).findIndex((d) => d.id === driverId);
+    if (idx !== -1) {
+      form.removeListItem("drivers", idx);
+    }
+  };
+
   const addHelper = (helper: Helper) => {
-    if (helper && !form.values.helpers.some((h) => h.id === helper.id)) {
+    if (helper && !(form.values.helpers || []).some((h) => h.id === helper.id)) {
       form.insertListItem("helpers", helper);
     }
   };
 
   const removeHelper = (helperId: string) => {
-    const idx = form.values.helpers.findIndex((h) => h.id === helperId);
+    const idx = (form.values.helpers || []).findIndex((h) => h.id === helperId);
     if (idx !== -1) {
       form.removeListItem("helpers", idx);
     }
   };
+
+  const currentDrivers = form.values.drivers || [];
+  const currentHelpers = form.values.helpers || [];
 
   return (
     <>
       <Divider m="xl" label="PERSONNEL" />
 
       <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm" mb="md">
-        <Select
-          label="Driver"
-          placeholder="Search driver"
-          data={drivers
-            .filter((driver) => driver.isActive !== false)
-            .map((driver) => driver.driverName)
-            .sort((a, b) => a.localeCompare(b))}
-          {...form.getInputProps("driverName")}
-          styles={inputStyles}
-          searchable
-          clearable
-        />
+        {/* DRIVERS */}
+        <Stack gap={4}>
+          <Select
+            label="Driver/s"
+            placeholder="Search driver"
+            searchValue={driverSearch}
+            onSearchChange={setDriverSearch}
+            data={drivers
+              .filter(
+                (driver) =>
+                  driver.isActive !== false &&
+                  !currentDrivers.some((sd) => sd.id === driver.id)
+              )
+              .map((driver) => driver.driverName)
+              .sort((a, b) => a.localeCompare(b))}
+            value={""}
+            onChange={(val) => {
+              const driver = drivers.find((d) => d.driverName === val);
+              if (driver) {
+                addDriver(driver);
+                setTimeout(() => {
+                  setDriverSearch("");
+                }, 0);
+              }
+            }}
+            styles={inputStyles}
+            searchable
+            maxDropdownHeight={160}
+            error={form.errors.drivers}
+          />
 
+          <Box
+            p="xs"
+            style={{
+              border: `1px dashed ${form.errors.drivers ? "var(--mantine-color-red-5)" : "var(--mantine-color-gray-3)"}`,
+              borderRadius: "var(--mantine-radius-sm)",
+              minHeight: 36,
+            }}
+          >
+            {currentDrivers.length === 0 ? (
+              <Text style={{ fontSize: "10px" }} c={form.errors.drivers ? "red.6" : "dimmed"} ta="center">
+                {form.errors.drivers ? String(form.errors.drivers) : "No drivers added"}
+              </Text>
+            ) : (
+              <Group gap="xs">
+                {currentDrivers.map((d) => (
+                  <Badge
+                    key={d.id}
+                    variant="light"
+                    color="teal"
+                    radius="sm"
+                    rightSection={
+                      <IconX
+                        size={10}
+                        style={{ cursor: "pointer" }}
+                        onClick={() => removeDriver(d.id)}
+                      />
+                    }
+                    styles={{ label: { fontSize: "10px" } }}
+                  >
+                    {d.driverName}
+                  </Badge>
+                ))}
+              </Group>
+            )}
+          </Box>
+
+          {currentDrivers.length > 0 && (
+            <Text style={{ fontSize: "9px" }} c="dimmed" ta="right">
+              {currentDrivers.length} driver
+              {currentDrivers.length > 1 ? "s" : ""} added
+            </Text>
+          )}
+        </Stack>
+
+        {/* HELPERS */}
         <Stack gap={4}>
           <Select
             label="Helper/s"
@@ -60,18 +141,17 @@ export function PersonnelSection({
               .filter(
                 (helper) =>
                   helper.isActive !== false &&
-                  !form.values.helpers.some((sh) => sh.id === helper.id)
+                  !currentHelpers.some((sh) => sh.id === helper.id)
               )
               .map((helper) => helper.helperName)
-              .sort((a, b) => a.localeCompare(b))
-            }
+              .sort((a, b) => a.localeCompare(b))}
             value={""}
             onChange={(val) => {
               const helper = helpers.find((h) => h.helperName === val);
               if (helper) {
                 addHelper(helper);
                 setTimeout(() => {
-                  setHelperSearch('');
+                  setHelperSearch("");
                 }, 0);
               }
             }}
@@ -88,13 +168,13 @@ export function PersonnelSection({
               minHeight: 36,
             }}
           >
-            {form.values.helpers.length === 0 ? (
+            {currentHelpers.length === 0 ? (
               <Text style={{ fontSize: "10px" }} c="dimmed" ta="center">
                 No helpers added
               </Text>
             ) : (
               <Group gap="xs">
-                {form.values.helpers.map((h) => (
+                {currentHelpers.map((h) => (
                   <Badge
                     key={h.id}
                     variant="light"
@@ -116,10 +196,10 @@ export function PersonnelSection({
             )}
           </Box>
 
-          {form.values.helpers.length > 0 && (
+          {currentHelpers.length > 0 && (
             <Text style={{ fontSize: "9px" }} c="dimmed" ta="right">
-              {form.values.helpers.length} helper
-              {form.values.helpers.length > 1 ? "s" : ""} added
+              {currentHelpers.length} helper
+              {currentHelpers.length > 1 ? "s" : ""} added
             </Text>
           )}
         </Stack>
