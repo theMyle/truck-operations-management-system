@@ -1,4 +1,4 @@
-﻿import { Helper } from "@/lib/db/schema";
+﻿import { Driver, Helper } from "@/lib/db/schema";
 
 export interface PickupLocation {
   id: number;
@@ -26,5 +26,6 @@ export interface DispatchFormValues {
   plateNo: string | null;
   truckerRate: string;
   driverName: string | null;
+  drivers: Driver[];
   helpers: Helper[];
 }

@@ -97,6 +97,7 @@ export default function DispatchPage() {
       plateNo: null,
       truckerRate: "",
       driverName: null,
+      drivers: [],
       helpers: [],
     },
     validate: {
@@ -137,7 +138,13 @@ export default function DispatchPage() {
           ? "Valid trucker rate is required"
           : null;
       },
-      driverName: (value) => (!value ? "Driver is required" : null),
+      drivers: (value, values) => {
+        const list = value ?? [];
+        if (list.length === 0 && !values.driverName) {
+          return "At least 1 driver is required";
+        }
+        return null;
+      },
     },
   });
 
@@ -214,13 +221,16 @@ export default function DispatchPage() {
       return;
     }
 
-    if (form.values.driverName && availability.busyDriverNames.has(form.values.driverName.trim().toUpperCase())) {
-      notifications.show({
-        title: "Driver Unavailable",
-        message: `Driver "${form.values.driverName}" is currently assigned to another trip within this 2-hour pickup window.`,
-        color: "red",
-      });
-      return;
+    const selectedDrivers = form.values.drivers || [];
+    for (const d of selectedDrivers) {
+      if (availability.busyDriverNames.has(d.driverName.trim().toUpperCase())) {
+        notifications.show({
+          title: "Driver Unavailable",
+          message: `Driver "${d.driverName}" is currently assigned to another trip within this 2-hour pickup window.`,
+          color: "red",
+        });
+        return;
+      }
     }
 
     if (form.values.plateNo && availability.busyPlateNumbers.has(form.values.plateNo.trim().toUpperCase())) {
@@ -257,9 +267,27 @@ export default function DispatchPage() {
       (client) => client.clientName.trim() == form.values.clientName!.trim(),
     )!;
 
-    const selectedDriver = drivers.find(
-      (driver) => driver.driverName.trim() == form.values.driverName!.trim(),
-    )!;
+    const formDrivers = form.values.drivers || [];
+    const selectedDrivers = formDrivers.length > 0
+      ? formDrivers
+      : (form.values.driverName
+          ? drivers.filter((d) => d.driverName.trim().toUpperCase() === form.values.driverName?.trim().toUpperCase())
+          : []);
+
+    if (selectedDrivers.length === 0) {
+      notifications.show({
+        title: "Validation Error",
+        message: "At least one driver is required.",
+        color: "red",
+      });
+      setIsSubmitting(false);
+      return;
+    }
+
+    const primaryDriver = selectedDrivers[0];
+    const combinedDriverNames = selectedDrivers
+      .map((d) => d.driverName.trim().toUpperCase())
+      .join(", ");
 
     const selectedTruck = trucks.find(
       (truck) => truck.plateNumber.trim() == form.values.plateNo!.trim(),
@@ -291,8 +319,8 @@ export default function DispatchPage() {
           .map((p) => p.location.trim().toUpperCase())
           .join(String.fromCharCode(10)) || (form.values.pickupLocation ?? "").trim().toUpperCase()
       ),
-      driverId: selectedDriver.id,
-      driverName: selectedDriver.driverName,
+      driverId: primaryDriver.id,
+      driverName: combinedDriverNames,
       plateNumber: selectedTruck.plateNumber,
       fleetType: selectedTruck.fleetType!,
       trucker: selectedTruck.unitType!,
@@ -398,6 +426,21 @@ export default function DispatchPage() {
           }))
         : [{ id: Date.now(), location: "", contactPerson: "", contactNo: "" }];
 
+    const driverNames = (editingRecord.driverName ?? "")
+      .split(",")
+      .map((d) => d.trim().toUpperCase())
+      .filter(Boolean);
+
+    let matchedDrivers = drivers.filter((d) =>
+      driverNames.includes(d.driverName.trim().toUpperCase())
+    );
+    if (matchedDrivers.length === 0 && editingRecord.driverName) {
+      const singleMatch = drivers.find(
+        (d) => d.driverName.trim().toUpperCase() === editingRecord.driverName?.trim().toUpperCase()
+      );
+      if (singleMatch) matchedDrivers = [singleMatch];
+    }
+
     form.setValues({
       clientName: editingRecord.clientName ?? null,
       clientRate: String(editingRecord.tripRate ?? ""),
@@ -422,6 +465,7 @@ export default function DispatchPage() {
       plateNo: editingRecord.plateNo ?? null,
       truckerRate: String(editingRecord.truckerRate ?? ""),
       driverName: editingRecord.driverName ?? null,
+      drivers: matchedDrivers,
       helpers: matchedHelpers,
     });
   }, [isLoading, editingRecord]);

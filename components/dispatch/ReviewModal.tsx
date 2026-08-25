@@ -60,7 +60,7 @@ export function ReviewModal({
     noOfDrops: values.noOfDrops?.toString() || "",
     unit: (selectedTruck?.fleetType || "").toUpperCase(),
     plateNo: (values.plateNo ?? "").toUpperCase(),
-    driver: (values.driverName ?? "").toUpperCase(),
+    driver: (values.drivers?.length ? values.drivers.map((d) => d.driverName.toUpperCase()).join(", ") : (values.driverName ?? "").toUpperCase()),
     helper: values.helpers.map((h: Helper) => h.helperName.toUpperCase()).join(", "),
     pickupDate: formatDate(values.pickupDate as Date).toUpperCase(),
     pickupTime: formatTime12Hour(values.pickupTime).toUpperCase(),
