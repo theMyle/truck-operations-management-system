@@ -718,6 +718,53 @@ export default function BillingModule() {
       .replace(/\b\w/g, (char) => char.toUpperCase());
   }
 
+  function formatExpenseBreakdown(
+    expenses: { expenseType: string; amount: string | number }[]
+  ): string | number {
+    if (!expenses.length) return "";
+    if (expenses.length === 1) {
+      const amt = Number(expenses[0].amount) || 0;
+      const name = expenses[0].expenseType
+        .replace(/^Cash Advance,\s*/i, "")
+        .replace(/\s*\((Driver|Helper|Trucker)\)$/i, "")
+        .trim();
+      return `${name} - ${amt.toLocaleString("en-PH", { minimumFractionDigits: 2 })}`;
+    }
+    let total = 0;
+    const lines = expenses.map((e) => {
+      const amt = Number(e.amount) || 0;
+      total += amt;
+      const name = e.expenseType
+        .replace(/^Cash Advance,\s*/i, "")
+        .replace(/\s*\((Driver|Helper|Trucker)\)$/i, "")
+        .trim();
+      return `${name} - ${amt.toLocaleString("en-PH", { minimumFractionDigits: 2 })}`;
+    });
+    lines.push(`Total - ${total.toLocaleString("en-PH", { minimumFractionDigits: 2 })}`);
+    return lines.join("\n");
+  }
+
+  function formatPersonnelRateBreakdown(
+    names: string[],
+    rateValue: string | number | null | undefined
+  ): string | number {
+    const rateNum = Number(rateValue || 0);
+    if (!rateNum) return "";
+
+    if (names.length > 1) {
+      const perPerson = Math.round((rateNum / names.length) * 100) / 100;
+      const lines = names.map(
+        (n) => `${n} - ${perPerson.toLocaleString("en-PH", { minimumFractionDigits: 2 })}`
+      );
+      lines.push(`Total - ${rateNum.toLocaleString("en-PH", { minimumFractionDigits: 2 })}`);
+      return lines.join("\n");
+    }
+    if (names.length === 1) {
+      return `${names[0]} - ${rateNum.toLocaleString("en-PH", { minimumFractionDigits: 2 })}`;
+    }
+    return rateNum;
+  }
+
   function buildExportRow(r: BillingRecord): ExportRow {
     const totalKm = (r.odoDetails ?? []).reduce(
       (sum, o) => sum + Math.max(0, (o.odoEnd || 0) - (o.odoStart || 0)),
@@ -730,6 +777,32 @@ export default function BillingModule() {
 
     const firstOdo = r.odoDetails?.[0]?.odoStart;
     const lastOdo = r.odoDetails?.[r.odoDetails.length - 1]?.odoEnd;
+
+    const driverNames = (r.driver || r.driverName || "")
+      .split(",")
+      .map((d) => d.trim())
+      .filter(Boolean);
+
+    const helperNames = (r.helper || "")
+      .replace(/—/g, "")
+      .replace(/No Helper/gi, "")
+      .split(",")
+      .map((h) => h.trim())
+      .filter(Boolean);
+
+    const driverCAExpenses = (r.expenses ?? []).filter(
+      (e) =>
+        e.expenseType &&
+        e.expenseType.startsWith("Cash Advance, ") &&
+        e.expenseType.endsWith("(Driver)")
+    );
+
+    const helperCAExpenses = (r.expenses ?? []).filter(
+      (e) =>
+        e.expenseType &&
+        e.expenseType.startsWith("Cash Advance, ") &&
+        e.expenseType.endsWith("(Helper)")
+    );
 
     const row: ExportRow = {
       Date: r.date,
@@ -766,8 +839,8 @@ export default function BillingModule() {
       "Cash on Hand Returned": numOrBlank(r.cashOnHandReturned),
       "Returned To": toTitleCaseStr(r.cashOnHandReturnedTo),
       "Auto Cash Advance": r.autoCash ? "Yes" : "No",
-      "Driver Rate": numOrBlank(r.driverRate),
-      "Helper Rate": numOrBlank(r.helperRate),
+      "Driver Rate": formatPersonnelRateBreakdown(driverNames, r.driverRate),
+      "Helper Rate": formatPersonnelRateBreakdown(helperNames, r.helperRate),
       Trucker: r.trucker || (isSubconRecord(r, subconPlates) ? "SUBCON" : "KRISDOMINGO"),
       "Trucker Rate": numOrBlank(r.truckerRate || (isSubconRecord(r, subconPlates) ? r.truckerRate : r.tripRate)),
       "Expenses Total": expensesTotal || "",
@@ -778,9 +851,22 @@ export default function BillingModule() {
       row[colName] = "";
     });
 
-    // Sum amounts of expenses belonging to the same mapped category
+    if (driverCAExpenses.length > 0) {
+      row["Expense: Cash Advance (Driver)"] = formatExpenseBreakdown(driverCAExpenses);
+    }
+    if (helperCAExpenses.length > 0) {
+      row["Expense: Cash Advance (Helper)"] = formatExpenseBreakdown(helperCAExpenses);
+    }
+
+    // Sum amounts of other expenses
     (r.expenses ?? []).forEach((e) => {
       if (!e.expenseType) return;
+      if (
+        (e.expenseType.startsWith("Cash Advance, ") && e.expenseType.endsWith("(Driver)")) ||
+        (e.expenseType.startsWith("Cash Advance, ") && e.expenseType.endsWith("(Helper)"))
+      ) {
+        return; // already formatted with detailed breakdown
+      }
       const colName = getExportExpenseKey(e.expenseType);
       const currentVal = row[colName] === "" ? 0 : Number(row[colName]);
       row[colName] = numOrBlank(currentVal + (Number(e.amount) || 0));
