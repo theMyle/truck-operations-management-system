@@ -115,9 +115,18 @@ export const pmsRepository = {
     });
   },
 
-  getPmsHistory: async (plateNumber: string) => {
+  getPmsHistory: async (plateNumber: string, startDate?: string, endDate?: string) => {
+    let whereClause: any = eq(pmsLogs.plateNumber, plateNumber);
+    if (startDate && endDate) {
+      whereClause = and(
+        eq(pmsLogs.plateNumber, plateNumber),
+        gte(pmsLogs.pmsDate, startDate),
+        lte(pmsLogs.pmsDate, endDate)
+      );
+    }
+    
     return await db.query.pmsLogs.findMany({
-      where: eq(pmsLogs.plateNumber, plateNumber),
+      where: whereClause,
       orderBy: [desc(pmsLogs.pmsDate), desc(pmsLogs.createdAt)],
     });
   },

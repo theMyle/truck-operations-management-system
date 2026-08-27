@@ -38,7 +38,7 @@ import {
   IconPencil,
 } from "@tabler/icons-react";
 import { DateRangeFilterModal } from "@/components/ui/DateRangeFilterModal";
-import { usePmsExport } from "@/app/hooks/usePmsExport";
+import { usePmsExport, usePmsHistoryExport } from "@/app/hooks/usePmsExport";
 import {
   getFleetPmsStatusAction,
   logCompletedPmsAction,
@@ -185,6 +185,16 @@ export default function PmsPage() {
 
   const { exporting, handleExportPdf, handleExportXlsx } = usePmsExport(startDate, endDate, filteredFleet);
 
+  const {
+    exportingHistory,
+    handleExportHistoryPdf,
+    handleExportHistoryXlsx,
+  } = usePmsHistoryExport(historyTruckPlate, pmsHistory);
+
+  const totalHistoryCost = useMemo(() => {
+    return pmsHistory.reduce((sum, h) => sum + (Number(h.cost) || 0), 0);
+  }, [pmsHistory]);
+
   const pagedFleet = useMemo(() => {
     return filteredFleet.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
   }, [filteredFleet, page]);
@@ -264,8 +274,8 @@ export default function PmsPage() {
       });
       setLogModalOpen(false);
       fetchFleetStatus();
-      if (historyTruckPlate) {
-        handleOpenHistory(historyTruckPlate);
+      if (historyTruckPlate && historyDrawerOpen) {
+        fetchPmsHistory(historyTruckPlate, startDate, endDate);
       }
     } else {
       notifications.show({
@@ -280,15 +290,28 @@ export default function PmsPage() {
   const handleOpenHistory = async (plateNumber: string) => {
     setHistoryTruckPlate(plateNumber);
     setHistoryDrawerOpen(true);
+  };
+
+  const fetchPmsHistory = useCallback(async (plate: string, start?: string, end?: string) => {
     setLoadingHistory(true);
-    const res = await getPmsHistoryAction({ plateNumber });
+    const res = await getPmsHistoryAction({ 
+      plateNumber: plate,
+      startDate: start || undefined,
+      endDate: end || undefined
+    });
     if (res?.data?.success && res.data.data) {
       setPmsHistory(res.data.data);
     } else {
       setPmsHistory([]);
     }
     setLoadingHistory(false);
-  };
+  }, []);
+
+  useEffect(() => {
+    if (historyDrawerOpen && historyTruckPlate) {
+      fetchPmsHistory(historyTruckPlate, startDate, endDate);
+    }
+  }, [historyDrawerOpen, historyTruckPlate, startDate, endDate, fetchPmsHistory]);
 
   return (
     <Stack gap="md">
@@ -638,10 +661,37 @@ export default function PmsPage() {
       <Drawer
         opened={historyDrawerOpen}
         onClose={() => setHistoryDrawerOpen(false)}
+        styles={{ title: { width: "100%" } }}
         title={
-          <Text fw={700} size="sm">
-            PMS History — {historyTruckPlate}
-          </Text>
+          <Group justify="space-between" w="100%" pr="md">
+            <Text fw={700} size="sm">
+              PMS History — {historyTruckPlate}
+            </Text>
+            {pmsHistory.length > 0 && (
+              <Group gap="xs">
+                <Button
+                  size="compact-xs"
+                  variant="light"
+                  color="red"
+                  leftSection={<IconFileTypePdf size={14} />}
+                  onClick={handleExportHistoryPdf}
+                  loading={exportingHistory}
+                >
+                  PDF
+                </Button>
+                <Button
+                  size="compact-xs"
+                  variant="light"
+                  color="green"
+                  leftSection={<IconFileSpreadsheet size={14} />}
+                  onClick={handleExportHistoryXlsx}
+                  loading={exportingHistory}
+                >
+                  Excel
+                </Button>
+              </Group>
+            )}
+          </Group>
         }
         position="right"
         size="lg"
@@ -689,6 +739,15 @@ export default function PmsPage() {
                       </Table.Td>
                     </Table.Tr>
                   ))}
+                  <Table.Tr bg="blue.0">
+                    <Table.Td colSpan={3} style={{ fontSize: "11px", textAlign: "left" }} fw={700}>
+                      TOTAL COST:
+                    </Table.Td>
+                    <Table.Td style={{ fontSize: "11px" }} fw={700}>
+                      ₱{totalHistoryCost.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                    </Table.Td>
+                    <Table.Td></Table.Td>
+                  </Table.Tr>
                 </Table.Tbody>
               </Table>
             </Paper>
