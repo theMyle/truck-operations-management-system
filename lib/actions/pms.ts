@@ -39,10 +39,18 @@ export const logCompletedPmsAction = actionClient
   });
 
 export const getPmsHistoryAction = actionClient
-  .schema(z.object({ plateNumber: z.string() }))
+  .schema(z.object({ 
+    plateNumber: z.string(),
+    startDate: z.string().optional(),
+    endDate: z.string().optional(),
+  }))
   .action(async ({ parsedInput }) => {
     try {
-      const history = await pmsRepository.getPmsHistory(parsedInput.plateNumber);
+      const history = await pmsRepository.getPmsHistory(
+        parsedInput.plateNumber,
+        parsedInput.startDate,
+        parsedInput.endDate
+      );
       return { success: true, data: history };
     } catch (err: any) {
       return { success: false, error: err?.message || "Failed to fetch PMS history" };

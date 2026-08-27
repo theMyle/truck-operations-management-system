@@ -307,3 +307,172 @@ export function usePmsExport(
     handleExportXlsx,
   };
 }
+
+
+export function usePmsHistoryExport(
+  plateNumber: string,
+  historyData: any[]
+) {
+  const [exportingHistory, setExportingHistory] = useState(false);
+
+  const handleExportHistoryPdf = useCallback(async () => {
+    setExportingHistory(true);
+    try {
+      const [{ default: jsPDF }, { default: autoTable }] = await Promise.all([
+        import("jspdf"),
+        import("jspdf-autotable"),
+      ]);
+
+      const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+
+      if (historyData.length > 0) {
+        doc.setFontSize(14);
+        doc.setFont("helvetica", "bold");
+        doc.text(`PMS History Report - ${plateNumber}`, 14, 14);
+        doc.setFontSize(10);
+        doc.setFont("helvetica", "normal");
+        doc.text(`Generated: ${new Date().toLocaleString()}`, 14, 20);
+        
+        const totalCost = historyData.reduce((sum, h) => sum + (Number(h.cost) || 0), 0);
+        doc.text(`Total Maintenance Entries: ${historyData.length}`, 14, 25);
+        doc.text(`Total Lifetime Cost: PHP ${totalCost.toLocaleString(undefined, { minimumFractionDigits: 2 })}`, 14, 30);
+
+        const columns = [
+          { header: "Date", dataKey: "pmsDate" },
+          { header: "Odo (km)", dataKey: "pmsOdo" },
+          { header: "Service", dataKey: "serviceType" },
+          { header: "Mechanic / Shop", dataKey: "performedBy" },
+          { header: "Cost (PHP)", dataKey: "cost" },
+        ];
+
+        const body = historyData.map((row) => ({
+          pmsDate: row.pmsDate,
+          pmsOdo: Number(row.pmsOdo).toLocaleString(),
+          serviceType: row.serviceType || "—",
+          performedBy: row.performedBy || "—",
+          cost: Number(row.cost || 0).toLocaleString(undefined, { minimumFractionDigits: 2 }),
+        }));
+        
+        body.push({
+          pmsDate: "TOTAL",
+          pmsOdo: "",
+          serviceType: "",
+          performedBy: "",
+          cost: totalCost.toLocaleString(undefined, { minimumFractionDigits: 2 }),
+        });
+
+        autoTable(doc, {
+          columns,
+          body,
+          startY: 34,
+          styles: { fontSize: 9, cellPadding: 2, valign: "middle" },
+          headStyles: {
+            fillColor: [37, 99, 235],
+            textColor: 255,
+            fontStyle: "bold",
+          },
+          alternateRowStyles: { fillColor: [245, 247, 250] },
+          didParseCell: function (data) {
+            if (data.row.index === body.length - 1) {
+               data.cell.styles.fontStyle = 'bold';
+               data.cell.styles.fillColor = [220, 230, 245];
+            }
+          }
+        });
+
+        const filename = `pms-history-${plateNumber}-${new Date().toISOString().split("T")[0]}.pdf`;
+        doc.save(filename);
+        notifications.show({ title: "PDF Exported", message: "File downloaded successfully.", color: "green" });
+      } else {
+        notifications.show({ title: "No records", message: "No history found for this truck.", color: "yellow" });
+      }
+    } catch (err) {
+      notifications.show({ title: "Export failed", message: "Could not generate PDF.", color: "red" });
+    } finally {
+      setExportingHistory(false);
+    }
+  }, [plateNumber, historyData]);
+
+  const handleExportHistoryXlsx = useCallback(async () => {
+    setExportingHistory(true);
+    try {
+      const [{ default: XLSX }] = await Promise.all([
+        import("xlsx-js-style"),
+      ]);
+
+      if (historyData.length > 0) {
+        const title = `PMS History - ${plateNumber}`;
+        const headers = ["Date", "Odo (km)", "Service", "Mechanic / Shop", "Cost (PHP)"];
+        
+        const totalCost = historyData.reduce((sum, h) => sum + (Number(h.cost) || 0), 0);
+
+        const exportRows = historyData.map((row) => [
+          row.pmsDate,
+          Number(row.pmsOdo).toLocaleString(),
+          row.serviceType || "—",
+          row.performedBy || "—",
+          Number(row.cost || 0).toLocaleString(undefined, { minimumFractionDigits: 2 }),
+        ]);
+        
+        exportRows.push(["TOTAL", "", "", "", totalCost.toLocaleString(undefined, { minimumFractionDigits: 2 })]);
+
+        const metaData = [
+          [title.toUpperCase()],
+          ["Generated:", new Date().toLocaleString()],
+          ["Total Maintenance Entries:", historyData.length],
+          ["Total Lifetime Cost:", `PHP ${totalCost.toLocaleString(undefined, { minimumFractionDigits: 2 })}`],
+          [],
+          headers,
+        ];
+
+        const allRows = [...metaData, ...exportRows];
+        const ws = XLSX.utils.aoa_to_sheet(allRows);
+
+        ws["!cols"] = headers.map((h, i) => {
+          const maxLen = Math.max(h.length, ...exportRows.map((r) => String(r[i] ?? "").length));
+          return { wch: Math.min(Math.max(maxLen + 2, 15), 50) };
+        });
+
+        const titleRef = XLSX.utils.encode_cell({ r: 0, c: 0 });
+        if (!ws[titleRef]) ws[titleRef] = { v: title.toUpperCase(), t: "s" };
+        ws[titleRef].s = { font: { bold: true, sz: 16, color: { rgb: "1a56db" } } };
+
+        const headerRowIdx = metaData.length - 1;
+        headers.forEach((_, colIdx) => {
+          const ref = XLSX.utils.encode_cell({ r: headerRowIdx, c: colIdx });
+          if (!ws[ref]) return;
+          ws[ref].s = {
+            font: { bold: true, sz: 12, color: { rgb: "FFFFFF" } },
+            fill: { fgColor: { rgb: "1a56db" } },
+            alignment: { horizontal: "center", vertical: "center" },
+            border: { bottom: { style: "thin", color: { rgb: "CCCCCC" } } },
+          };
+        });
+        
+        // Bold the total row
+        const totalRowIdx = allRows.length - 1;
+        headers.forEach((_, colIdx) => {
+          const ref = XLSX.utils.encode_cell({ r: totalRowIdx, c: colIdx });
+          if (!ws[ref]) return;
+          ws[ref].s = { font: { bold: true }, fill: { fgColor: { rgb: "E8F0FE" } } };
+        });
+
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "History");
+        XLSX.writeFile(wb, `pms-history-${plateNumber}-${new Date().toISOString().split("T")[0]}.xlsx`);
+        
+        notifications.show({ title: "XLSX Exported", message: "File downloaded successfully.", color: "green" });
+      }
+    } catch (err) {
+      notifications.show({ title: "Export failed", message: "Could not generate XLSX.", color: "red" });
+    } finally {
+      setExportingHistory(false);
+    }
+  }, [plateNumber, historyData]);
+
+  return {
+    exportingHistory,
+    handleExportHistoryPdf,
+    handleExportHistoryXlsx,
+  };
+}
