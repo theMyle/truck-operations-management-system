@@ -160,9 +160,12 @@ export async function getKrisdomingoKpiReport(targetYear?: number): Promise<KpiR
       const daysInMonth = getActiveDaysInMonth(year, m, operationsStartDate);
 
       // Fleet Utilization % (Krisdomingo daily truck-days ÷ Total KTS Fleet capacity * 100)
+      // Only count dates up to today for the current month to match the denominator
+      // (which uses getActiveDaysInMonth → today.getDate() for in-progress months)
+      const todayDateStr = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Manila" }).format(today);
       let ktsMonthTruckDays = 0;
       ktsDailyMap.forEach((count, dateStr) => {
-        if (dateStr.startsWith(monthPrefix)) {
+        if (dateStr.startsWith(monthPrefix) && dateStr <= todayDateStr) {
           ktsMonthTruckDays += count;
         }
       });
@@ -175,8 +178,7 @@ export async function getKrisdomingoKpiReport(targetYear?: number): Promise<KpiR
       const todayStr = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Manila" }).format(today);
       const completedTrips = mBookings.filter((b) =>
         b.deliveryStatus === "Completed" &&
-        b.pickupArrivalTime &&
-        !(m === currentMonthNum && year === today.getFullYear() && b.pickupDate === todayStr)
+        b.pickupArrivalTime
       );
       let onTimeCount = 0;
 
