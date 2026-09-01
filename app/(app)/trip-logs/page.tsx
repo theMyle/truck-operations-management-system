@@ -395,12 +395,32 @@ export default function DispatchRecordsPage() {
         const lastOdoEndForBooking: Record<string | number, number> = {};
         const plateOdoTracker: Record<string, number> = {};
 
-        // Sort bookings chronologically by pickupDate / bookingDate / id
+        // Sort bookings chronologically by pickupDate / bookingDate / completion
         const sortedForOdo = [...res.data].sort((a: any, b: any) => {
           const dateA = new Date(a.pickupDate || a.bookingDate || "").getTime();
           const dateB = new Date(b.pickupDate || b.bookingDate || "").getTime();
           if (dateA !== dateB) return dateA - dateB;
-          return Number(a.id) - Number(b.id);
+
+          const hasCompletedOdoA = (a.odoDetails ?? []).some((o: any) => Number(o.odoEnd) > 0);
+          const hasCompletedOdoB = (b.odoDetails ?? []).some((o: any) => Number(o.odoEnd) > 0);
+
+          // 1. Completed trips on the same date must be processed before pending trips
+          if (hasCompletedOdoA && !hasCompletedOdoB) return -1;
+          if (!hasCompletedOdoA && hasCompletedOdoB) return 1;
+
+          // 2. If both completed, sort by lower odoStart (earlier trip)
+          if (hasCompletedOdoA && hasCompletedOdoB) {
+            const odoA = a.odoDetails?.[0]?.odoStart || 0;
+            const odoB = b.odoDetails?.[0]?.odoStart || 0;
+            if (odoA !== odoB) return odoA - odoB;
+          }
+
+          // 3. Fallback tiebreaker: sort by pickup time or booking DR/ID
+          const timeA = a.pickupTime || "";
+          const timeB = b.pickupTime || "";
+          if (timeA !== timeB) return timeA.localeCompare(timeB);
+
+          return String(a.bookingDRNo || a.id).localeCompare(String(b.bookingDRNo || b.id));
         });
 
         sortedForOdo.forEach((b: any) => {

@@ -207,7 +207,7 @@ export async function getKrisdomingoKpiReport(targetYear?: number): Promise<KpiR
 
       const onTimeDeliveryPercentage = completedTrips.length > 0
         ? Number(((onTimeCount / completedTrips.length) * 100).toFixed(1))
-        : 0;
+        : 100;
 
       // On-Time Payment % (Paid on or before due date)
       const billedInvoices = mBookings.filter((b) => b.soaNumber && b.soaNumber.trim().length > 0);
