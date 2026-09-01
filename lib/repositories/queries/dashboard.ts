@@ -283,22 +283,24 @@ export async function getOnTimeDeliveryStats(
   const monthStr = String(month).padStart(2, "0");
   const monthPrefix = `${yearStr}-${monthStr}`;
   const startDateStr = `${monthPrefix}-01`;
+  const lastDayOfMonth = new Date(year, month, 0).getDate();
+  const endOfMonthStr = `${monthPrefix}-${String(lastDayOfMonth).padStart(2, "0")}`;
 
   // Calculate local date in Asia/Manila timezone
   const todayStr = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Manila" }).format(now);
   const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
   const yesterdayStr = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Manila" }).format(yesterday);
 
-  let endDateStr = `${monthPrefix}-31`;
+  let endDateStr = endOfMonthStr;
   if (!includeToday) {
     if (year === now.getFullYear() && month === (now.getMonth() + 1)) {
       endDateStr = yesterdayStr;
     }
   }
 
-  // If yesterday is before the 1st of the month (e.g. on Aug 1st), fallback to today
+  // If yesterday is before the 1st of the month (e.g. on Sep 1st, yesterday was Aug 31st), fallback to today
   if (endDateStr < startDateStr) {
-    endDateStr = `${monthPrefix}-31`;
+    endDateStr = todayStr <= endOfMonthStr ? todayStr : endOfMonthStr;
   }
 
   // 1. Fetch completed trips for date range
@@ -330,7 +332,7 @@ export async function getOnTimeDeliveryStats(
       .where(
         and(
           gte(booking.pickupDate, startDateStr),
-          lte(booking.pickupDate, `${monthPrefix}-31`),
+          lte(booking.pickupDate, endOfMonthStr),
           eq(booking.deliveryStatus, "Completed"),
           sql`${booking.pickupArrivalTime} IS NOT NULL`
         )
