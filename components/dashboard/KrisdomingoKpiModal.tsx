@@ -71,7 +71,7 @@ export const KrisdomingoKpiModal = ({
           </div>
         </Group>
       }
-      size="90%"
+      size="95%"
       radius="md"
       centered
     >
@@ -145,34 +145,38 @@ export const KrisdomingoKpiModal = ({
             {/* Monthly Report Table */}
             <Paper withBorder radius="md" style={{ overflow: "hidden" }}>
               <ScrollArea type="always" offsetScrollbars>
-                <Table striped highlightOnHover withColumnBorders style={{ minWidth: 1000 }}>
+                <Table striped highlightOnHover withColumnBorders style={{ minWidth: 1180 }}>
                   <Table.Thead bg="blue.9">
                     <Table.Tr>
-                      <Table.Th style={{ color: "white", fontSize: "11px", fontWeight: 800 }}>MONTH</Table.Th>
-                      <Table.Th ta="center" style={{ color: "white", fontSize: "10px", fontWeight: 800 }}>
+                      <Table.Th style={{ color: "white", fontSize: "11px", fontWeight: 800, minWidth: 95, whiteSpace: "nowrap" }}>MONTH</Table.Th>
+                      <Table.Th ta="center" style={{ color: "white", fontSize: "10px", fontWeight: 800, minWidth: 115, whiteSpace: "nowrap" }}>
+                        <div>SUCCESSFUL TRIPS</div>
+                        <div style={{ opacity: 0.8, fontSize: "9px" }}>TOTAL COMPLETED</div>
+                      </Table.Th>
+                      <Table.Th ta="center" style={{ color: "white", fontSize: "10px", fontWeight: 800, minWidth: 120, whiteSpace: "nowrap" }}>
                         <div>FLEET UTILIZATION %</div>
                         <div style={{ opacity: 0.8, fontSize: "9px" }}>WEIGHT: 20.00%</div>
                       </Table.Th>
-                      <Table.Th ta="center" style={{ color: "white", fontSize: "10px", fontWeight: 800 }}>
+                      <Table.Th ta="center" style={{ color: "white", fontSize: "10px", fontWeight: 800, minWidth: 125, whiteSpace: "nowrap" }}>
                         <div>ON TIME DELIVERY %</div>
                         <div style={{ opacity: 0.8, fontSize: "9px" }}>WEIGHT: 25.00%</div>
                       </Table.Th>
-                      <Table.Th ta="center" style={{ color: "white", fontSize: "10px", fontWeight: 800 }}>
+                      <Table.Th ta="center" style={{ color: "white", fontSize: "10px", fontWeight: 800, minWidth: 120, whiteSpace: "nowrap" }}>
                         <div>ON TIME PAYMENT %</div>
                         <div style={{ opacity: 0.8, fontSize: "9px" }}>WEIGHT: 15.00%</div>
                       </Table.Th>
-                      <Table.Th ta="center" style={{ color: "white", fontSize: "10px", fontWeight: 800 }}>
+                      <Table.Th ta="center" style={{ color: "white", fontSize: "10px", fontWeight: 800, minWidth: 135, whiteSpace: "nowrap" }}>
                         <div>MAINTENANCE COMPLIANCE %</div>
                         <div style={{ opacity: 0.8, fontSize: "9px" }}>WEIGHT: 20.00%</div>
                       </Table.Th>
-                      <Table.Th ta="center" style={{ color: "white", fontSize: "10px", fontWeight: 800 }}>
+                      <Table.Th ta="center" style={{ color: "white", fontSize: "10px", fontWeight: 800, minWidth: 125, whiteSpace: "nowrap" }}>
                         <div>MANPOWER RATING (PTS)</div>
                         <div style={{ opacity: 0.8, fontSize: "9px" }}>WEIGHT: 20.00%</div>
                       </Table.Th>
-                      <Table.Th ta="center" style={{ color: "white", fontSize: "11px", fontWeight: 900 }}>
+                      <Table.Th ta="center" style={{ color: "white", fontSize: "11px", fontWeight: 900, minWidth: 105, whiteSpace: "nowrap" }}>
                         OVERALL SCORE
                       </Table.Th>
-                      <Table.Th ta="center" style={{ color: "white", fontSize: "11px", fontWeight: 900 }}>
+                      <Table.Th ta="center" style={{ color: "white", fontSize: "11px", fontWeight: 900, minWidth: 150, whiteSpace: "nowrap" }}>
                         OVERALL RATING
                       </Table.Th>
                     </Table.Tr>
@@ -180,6 +184,9 @@ export const KrisdomingoKpiModal = ({
                     <Table.Tr bg="blue.8">
                       <Table.Td style={{ color: "white", fontSize: "10px", fontWeight: 900, fontStyle: "italic" }}>
                         TARGET
+                      </Table.Td>
+                      <Table.Td ta="center" style={{ color: "white", fontSize: "10px", fontWeight: 800 }}>
+                        —
                       </Table.Td>
                       <Table.Td ta="center" style={{ color: "white", fontSize: "10px", fontWeight: 800 }}>
                         70.0%
@@ -208,11 +215,36 @@ export const KrisdomingoKpiModal = ({
                     {reportData.monthlyData.map((m) => (
                       <Table.Tr key={m.month}>
                         <Table.Td style={{ fontSize: "11px", fontWeight: 700 }}>{m.month}</Table.Td>
-                        <Table.Td ta="center" style={{ fontSize: "11px", fontWeight: 600, color: m.hasData ? "var(--mantine-color-blue-7)" : "var(--mantine-color-gray-4)" }}>
-                          {m.hasData ? `${m.fleetUtilization.toFixed(1)}%` : "—"}
+                        <Table.Td ta="center">
+                          {m.hasData ? (
+                            <div>
+                              <Text style={{ fontSize: "11px", fontWeight: 700 }} c="dark.9">
+                                {m.successfulTrips ?? 0}{" "}
+                                <Text component="span" size="10px" c="dimmed" fw={500}>
+                                  / {m.totalTrips ?? 0}
+                                </Text>
+                              </Text>
+                            </div>
+                          ) : (
+                            <Text size="10px" c="dimmed">—</Text>
+                          )}
                         </Table.Td>
                         <Table.Td ta="center" style={{ fontSize: "11px", fontWeight: 600, color: m.hasData ? "var(--mantine-color-blue-7)" : "var(--mantine-color-gray-4)" }}>
-                          {m.hasData ? `${m.onTimeDelivery.toFixed(1)}%` : "—"}
+                          {m.hasData ? `${(m.fleetUtilization || 0).toFixed(1)}%` : "—"}
+                        </Table.Td>
+                        <Table.Td ta="center">
+                          {m.hasData ? (
+                            <div>
+                              <Text style={{ fontSize: "11px", fontWeight: 600 }} c="blue.7">
+                                {(m.onTimeDelivery || 0).toFixed(1)}%
+                              </Text>
+                              <Text size="9px" c="dimmed" fw={600}>
+                                {m.onTimeTrips ?? 0} / {m.successfulTrips ?? 0} on-time
+                              </Text>
+                            </div>
+                          ) : (
+                            <Text size="10px" c="dimmed">—</Text>
+                          )}
                         </Table.Td>
                         <Table.Td ta="center" style={{ fontSize: "11px", fontWeight: 600, color: m.hasData ? "var(--mantine-color-blue-7)" : "var(--mantine-color-gray-4)" }}>
                           {m.hasData ? `${m.onTimePayment.toFixed(1)}%` : "—"}
@@ -226,9 +258,15 @@ export const KrisdomingoKpiModal = ({
                         <Table.Td ta="center" style={{ fontSize: "11px", fontWeight: 900 }}>
                           {m.hasData ? `${m.overallScore.toFixed(1)}%` : "—"}
                         </Table.Td>
-                        <Table.Td ta="center">
+                        <Table.Td ta="center" style={{ whiteSpace: "nowrap", minWidth: 150 }}>
                           {m.hasData ? (
-                            <Badge color={getBadgeColor(m.overallRating)} variant="light" radius="sm">
+                            <Badge
+                              color={getBadgeColor(m.overallRating)}
+                              variant="light"
+                              radius="sm"
+                              size="sm"
+                              styles={{ root: { whiteSpace: "nowrap" }, label: { overflow: "visible", textOverflow: "clip", whiteSpace: "nowrap" } }}
+                            >
                               {m.overallRating}
                             </Badge>
                           ) : (
@@ -241,28 +279,51 @@ export const KrisdomingoKpiModal = ({
                   <Table.Tfoot bg="blue.0">
                     <Table.Tr>
                       <Table.Td style={{ fontSize: "11px", fontWeight: 900, color: "var(--mantine-color-gray-9)" }}>
-                        FULL-YEAR AVG
+                        FULL-YEAR AVG / TOTAL
                       </Table.Td>
                       <Table.Td ta="center" style={{ fontSize: "11px", fontWeight: 900, color: "var(--mantine-color-blue-9)" }}>
-                        {reportData.fullYearAvgScore > 0 ? "71.3%" : "—"}
+                        {(reportData.fullYearTotalTrips ?? 0) > 0 ? (
+                          <div>
+                            <span>{(reportData.fullYearSuccessfulTrips ?? 0).toLocaleString()}</span>
+                            <span style={{ fontSize: "10px", color: "var(--mantine-color-gray-6)", fontWeight: 600 }}>
+                              {" "}/ {(reportData.fullYearTotalTrips ?? 0).toLocaleString()}
+                            </span>
+                          </div>
+                        ) : "—"}
                       </Table.Td>
                       <Table.Td ta="center" style={{ fontSize: "11px", fontWeight: 900, color: "var(--mantine-color-blue-9)" }}>
-                        {reportData.fullYearAvgScore > 0 ? "69.1%" : "—"}
+                        {(reportData.fullYearAvgScore ?? 0) > 0 ? `${(reportData.fullYearAvgUtil || 0).toFixed(1)}%` : "—"}
                       </Table.Td>
                       <Table.Td ta="center" style={{ fontSize: "11px", fontWeight: 900, color: "var(--mantine-color-blue-9)" }}>
-                        {reportData.fullYearAvgScore > 0 ? "92.5%" : "—"}
+                        {(reportData.fullYearAvgScore ?? 0) > 0 ? (
+                          <div>
+                            <div>{(reportData.fullYearAvgDelivery || 0).toFixed(1)}%</div>
+                            <div style={{ fontSize: "9px", color: "var(--mantine-color-gray-6)", fontWeight: 600 }}>
+                              {(reportData.fullYearOnTimeTrips ?? 0).toLocaleString()} / {(reportData.fullYearSuccessfulTrips ?? 0).toLocaleString()} on-time
+                            </div>
+                          </div>
+                        ) : "—"}
                       </Table.Td>
                       <Table.Td ta="center" style={{ fontSize: "11px", fontWeight: 900, color: "var(--mantine-color-blue-9)" }}>
-                        {reportData.fullYearAvgScore > 0 ? "58.1%" : "—"}
+                        {(reportData.fullYearAvgScore ?? 0) > 0 ? `${(reportData.fullYearAvgPayment || 0).toFixed(1)}%` : "—"}
                       </Table.Td>
                       <Table.Td ta="center" style={{ fontSize: "11px", fontWeight: 900, color: "var(--mantine-color-blue-9)" }}>
-                        {reportData.fullYearAvgScore > 0 ? "97.2" : "—"}
+                        {(reportData.fullYearAvgScore ?? 0) > 0 ? `${(reportData.fullYearAvgPms || 0).toFixed(1)}%` : "—"}
+                      </Table.Td>
+                      <Table.Td ta="center" style={{ fontSize: "11px", fontWeight: 900, color: "var(--mantine-color-blue-9)" }}>
+                        {(reportData.fullYearAvgScore ?? 0) > 0 ? `${(reportData.fullYearAvgManpower || 0).toFixed(1)}` : "—"}
                       </Table.Td>
                       <Table.Td ta="center" style={{ fontSize: "12px", fontWeight: 900, color: "var(--mantine-color-blue-9)" }}>
                         {reportData.fullYearAvgScore}%
                       </Table.Td>
-                      <Table.Td ta="center">
-                        <Badge color={getBadgeColor(reportData.fullYearAvgRating)} variant="filled" radius="sm">
+                      <Table.Td ta="center" style={{ whiteSpace: "nowrap", minWidth: 150 }}>
+                        <Badge
+                          color={getBadgeColor(reportData.fullYearAvgRating)}
+                          variant="filled"
+                          radius="sm"
+                          size="sm"
+                          styles={{ root: { whiteSpace: "nowrap" }, label: { overflow: "visible", textOverflow: "clip", whiteSpace: "nowrap" } }}
+                        >
                           {reportData.fullYearAvgRating}
                         </Badge>
                       </Table.Td>

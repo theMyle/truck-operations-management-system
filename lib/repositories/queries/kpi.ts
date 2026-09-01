@@ -9,6 +9,9 @@ import { getActiveDaysInMonth } from "@/lib/utils/dateUtils";
 export interface MonthlyKpiData {
   month: string;
   monthNum: number;
+  successfulTrips: number;
+  totalTrips: number;
+  onTimeTrips: number;
   fleetUtilization: number;
   onTimeDelivery: number;
   onTimePayment: number;
@@ -30,6 +33,9 @@ export interface KpiReportSummary {
   fullYearAvgPayment: number;
   fullYearAvgPms: number;
   fullYearAvgManpower: number;
+  fullYearSuccessfulTrips: number;
+  fullYearTotalTrips: number;
+  fullYearOnTimeTrips: number;
   monthlyData: MonthlyKpiData[];
 }
 
@@ -174,12 +180,14 @@ export async function getKrisdomingoKpiReport(targetYear?: number): Promise<KpiR
       const rawUtil = totalCapacityDays > 0 ? (ktsMonthTruckDays / totalCapacityDays) * 100 : 0;
       const fleetUtilPercentage = hasData ? Number(Math.min(100, rawUtil).toFixed(1)) : 0;
 
-      // On-Time Delivery % (exclude today for current month to avoid ongoing trips dragging score)
-      const todayStr = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Manila" }).format(today);
-      const completedTrips = mBookings.filter((b) =>
-        b.deliveryStatus === "Completed" &&
-        b.pickupArrivalTime
+      // Successful (Completed) Trips Count
+      const allCompletedTrips = mBookings.filter((b) =>
+        (b.deliveryStatus || "").trim().toLowerCase() === "completed"
       );
+      const successfulTripsCount = allCompletedTrips.length;
+
+      // On-Time Delivery %
+      const completedTrips = allCompletedTrips.filter((b) => b.pickupArrivalTime);
       let onTimeCount = 0;
 
       completedTrips.forEach((b) => {
@@ -269,6 +277,9 @@ export async function getKrisdomingoKpiReport(targetYear?: number): Promise<KpiR
         {
           month: MONTH_NAMES[m - 1],
           monthNum: m,
+          successfulTrips: successfulTripsCount,
+          totalTrips: mBookings.length,
+          onTimeTrips: onTimeCount,
           fleetUtilization: fleetUtilPercentage,
           onTimeDelivery: onTimeDeliveryPercentage,
           onTimePayment: onTimePaymentPercentage,
@@ -293,6 +304,9 @@ export async function getKrisdomingoKpiReport(targetYear?: number): Promise<KpiR
   const avgPayment = Number((monthsWithData.reduce((sum, m) => sum + m.onTimePayment, 0) / dataCount).toFixed(1));
   const avgPms = Number((monthsWithData.reduce((sum, m) => sum + m.maintenanceCompliance, 0) / dataCount).toFixed(1));
   const avgManpower = Number((monthsWithData.reduce((sum, m) => sum + m.manpowerRating, 0) / dataCount).toFixed(1));
+  const fullYearSuccessfulTrips = Object.values(monthlyMap).reduce((sum, m) => sum + (m.successfulTrips || 0), 0);
+  const fullYearTotalTrips = Object.values(monthlyMap).reduce((sum, m) => sum + (m.totalTrips || 0), 0);
+  const fullYearOnTimeTrips = Object.values(monthlyMap).reduce((sum, m) => sum + (m.onTimeTrips || 0), 0);
 
   const fullYearAvgScore = computeOverallScore(avgUtil, avgDelivery, avgPayment, avgPms, avgManpower);
   const currentMonthData = monthlyMap[currentMonthNum] || monthlyMap[1];
@@ -308,6 +322,9 @@ export async function getKrisdomingoKpiReport(targetYear?: number): Promise<KpiR
     fullYearAvgPayment: avgPayment,
     fullYearAvgPms: avgPms,
     fullYearAvgManpower: avgManpower,
+    fullYearSuccessfulTrips,
+    fullYearTotalTrips,
+    fullYearOnTimeTrips,
     monthlyData: Object.values(monthlyMap),
   };
 }
