@@ -2225,7 +2225,7 @@ export default function BillingModule() {
                     </style>
                   </head>
                   <body>
-                    \${printContent}
+                    ${printContent}
                     <script>
                       window.onload = function() {
                         window.print();
