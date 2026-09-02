@@ -3,6 +3,7 @@ import autoTable from "jspdf-autotable";
 import { DispatchRecord } from "@/app/(app)/constant";
 import { NewTripDetailsFormData } from "@/components/trip-logs/TripDetailsModal";
 import { EXPENSE_CATEGORIES } from "@/components/trip-logs/ExpensesTab";
+import { formatEmployeeName } from "@/lib/utils/stringFormat";
 
 interface JsPDFWithPlugin extends jsPDF {
     lastAutoTable: { finalY: number };
@@ -45,9 +46,9 @@ export function generateLiquidationPDF(
     doc.setFontSize(8);
     const meta: [string, string][] = [
         [`Trip #: ${record.id}`, `Date: ${record.date}`],
-        [`Client: ${record.client}`, `Driver: ${record.driver}`],
+        [`Client: ${record.client}`, `Driver: ${formatEmployeeName(record.driver) || "—"}`],
         [`Route: ${record.ruta || "—"}`, `Plate #: ${record.plateNo || "—"}`],
-        [`Trucker: ${record.trucker || "—"}`, `Helper: ${record.helper || "—"}`],
+        [`Trucker: ${record.trucker || "—"}`, `Helper: ${formatEmployeeName(record.helper) || "—"}`],
     ];
     let y = 30;
     meta.forEach(([left, right]) => {
@@ -87,7 +88,7 @@ export function generateLiquidationPDF(
         (e, i) => [
             i + 1,
             EXPENSE_CATEGORIES.find((c) => c.value === e.expenseCategory)?.label || "—",
-            e.assignedTo || "—",
+            formatEmployeeName(e.assignedTo) || "—",
             `PHP ${e.amount.toLocaleString("en-PH", { minimumFractionDigits: 2 })}`,
         ],
     );

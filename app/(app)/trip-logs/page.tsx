@@ -48,6 +48,7 @@ import { formatTime12Hour, formatTimeHHMM } from "@/lib/utils/stringFormat";
 import { TripLogsTable } from "@/components/trip-logs/TripLogsTable";
 import { TripLogsModuleSkeleton } from "@/components/ui/ModuleSkeletons";
 import { useTableExport } from "@/app/hooks/useTableExport";
+import { formatEmployeeName } from "@/lib/utils/stringFormat";
 import { useTablePrint } from "@/app/hooks/useTablePrint";
 
 /* ── Status badge helper ── */
@@ -564,9 +565,11 @@ export default function DispatchRecordsPage() {
               let assignedTo = "";
               if (exp.expenseType.startsWith("Cash Advance, ")) {
                 category = "cash_advance";
-                assignedTo = exp.expenseType
-                  .replace("Cash Advance, ", "")
-                  .split(" (")[0];
+                assignedTo = formatEmployeeName(
+                  exp.expenseType
+                    .replace("Cash Advance, ", "")
+                    .split(" (")[0]
+                );
               }
               return {
                 expenseId: idx + 1,
@@ -701,13 +704,14 @@ export default function DispatchRecordsPage() {
       expenses: data.expenses.map((e, index) => {
         let expenseType = e.expenseCategory;
         if (e.expenseCategory === "cash_advance" && e.assignedTo) {
+          const cleanAssignedTo = formatEmployeeName(e.assignedTo);
           const isDriver =
-            e.assignedTo === seletectedTrip.driverName ||
-            e.assignedTo === seletectedTrip.driver;
+            cleanAssignedTo === formatEmployeeName(seletectedTrip.driverName) ||
+            cleanAssignedTo === formatEmployeeName(seletectedTrip.driver);
           const isHelper =
             seletectedTrip.helper &&
-            seletectedTrip.helper.includes(e.assignedTo);
-          const isTrucker = e.assignedTo === seletectedTrip.trucker;
+            formatEmployeeName(seletectedTrip.helper).includes(cleanAssignedTo);
+          const isTrucker = cleanAssignedTo === (seletectedTrip.trucker || "").toUpperCase();
 
           const role = isDriver
             ? "Driver"
@@ -717,7 +721,7 @@ export default function DispatchRecordsPage() {
                 ? "Trucker"
                 : "";
           const suffix = role ? ` (${role})` : "";
-          expenseType = `Cash Advance, ${e.assignedTo}${suffix}`;
+          expenseType = `Cash Advance, ${cleanAssignedTo}${suffix}`;
         }
         return {
           entryIndex: index + 1,
