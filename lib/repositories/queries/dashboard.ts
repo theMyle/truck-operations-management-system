@@ -155,6 +155,12 @@ export async function getMonthlyOperations(
   const startDateStr = `${yearStr}-01-01`;
   const endDateStr = `${yearStr}-12-31`;
 
+  const now = new Date();
+  const todayManilaStr = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Manila" }).format(now);
+  const [manilaYearNum, manilaMonthNum] = todayManilaStr.split("-").map(Number);
+  const yesterdayDate = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+  const yesterdayManilaStr = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Manila" }).format(yesterdayDate);
+
   const [dailyResult, onTimeResult, resolvedStartDate] = await Promise.all([
     db
       .select({
@@ -247,14 +253,40 @@ export async function getMonthlyOperations(
     const monthNum = parseInt(row.pickupDate.split("-")[1], 10);
     if (isNaN(monthNum) || monthNum < 1 || monthNum > 12) continue;
 
+    // For current in-progress month, apply yesterday cutoff (mirrors KPI banner and widget)
+    const isCurrentInProgressMonth = year === manilaYearNum && monthNum === manilaMonthNum;
+    if (isCurrentInProgressMonth) {
+      const monthPrefix = `${yearStr}-${String(monthNum).padStart(2, "0")}`;
+      const monthStartStr = `${monthPrefix}-01`;
+      const cutoffDateStr = yesterdayManilaStr >= monthStartStr ? yesterdayManilaStr : todayManilaStr;
+      if (row.pickupDate > cutoffDateStr) {
+        continue;
+      }
+    }
+
     try {
-      const dateStr = `${row.pickupDate} ${row.pickupTime}`;
-      const scheduledTime = new Date(dateStr);
-      if (isNaN(scheduledTime.getTime())) continue;
+      const scheduledTime = parseScheduledDateTime(row.pickupDate, row.pickupTime);
+      if (!scheduledTime) continue;
+
+      let arrivalH = 0;
+      let arrivalM = 0;
+      if (row.pickupArrivalTime instanceof Date) {
+        arrivalH = row.pickupArrivalTime.getUTCHours();
+        arrivalM = row.pickupArrivalTime.getUTCMinutes();
+      } else {
+        const match = String(row.pickupArrivalTime).match(/(\d{1,2}):(\d{2})/);
+        if (match) {
+          arrivalH = parseInt(match[1], 10);
+          arrivalM = parseInt(match[2], 10);
+        }
+      }
+
+      const actual = new Date(row.pickupDate);
+      actual.setHours(arrivalH, arrivalM, 0, 0);
 
       byMonth[monthNum].completedDeliveries++;
 
-      if (row.pickupArrivalTime <= scheduledTime) {
+      if (actual <= scheduledTime) {
         byMonth[monthNum].onTimeDeliveries++;
       }
     } catch (e) {
