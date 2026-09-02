@@ -799,25 +799,24 @@ export default function BillingModule() {
     return lines.join("\n");
   }
 
-  function formatPersonnelRateBreakdown(
+  function formatPersonnelRateNames(names: string[]): string {
+    if (!names.length) return "";
+    if (names.length === 1) return names[0];
+    return [...names, "Total"].join("\n");
+  }
+
+  function formatPersonnelRateAmounts(
     names: string[],
     rateValue: string | number | null | undefined
   ): string | number {
     const rateNum = Number(rateValue || 0);
     if (!rateNum) return "";
+    if (names.length <= 1) return rateNum;
 
-    if (names.length > 1) {
-      const perPerson = Math.round((rateNum / names.length) * 100) / 100;
-      const lines = names.map(
-        (n) => `${n} - ${perPerson.toLocaleString("en-PH", { minimumFractionDigits: 2 })}`
-      );
-      lines.push(`Total - ${rateNum.toLocaleString("en-PH", { minimumFractionDigits: 2 })}`);
-      return lines.join("\n");
-    }
-    if (names.length === 1) {
-      return `${names[0]} - ${rateNum.toLocaleString("en-PH", { minimumFractionDigits: 2 })}`;
-    }
-    return rateNum;
+    const perPerson = Math.round((rateNum / names.length) * 100) / 100;
+    const lines = names.map(() => perPerson.toLocaleString("en-PH", { minimumFractionDigits: 2 }));
+    lines.push(rateNum.toLocaleString("en-PH", { minimumFractionDigits: 2 }));
+    return lines.join("\n");
   }
 
   function buildExportRow(r: BillingRecord): ExportRow {
@@ -885,8 +884,10 @@ export default function BillingModule() {
       "Loading End Time": r.loadingEnd ? formatTime12Hour(r.loadingEnd) : "",
       "Departure Pick Up Time": r.departurePickup ? formatTime12Hour(r.departurePickup) : "",
       "Finish Delivery Time": r.finishDelivery ? formatTime12Hour(r.finishDelivery) : "",
-      Driver: r.driver,
-      Helper: r.helper,
+      Driver: formatPersonnelRateNames(driverNames),
+      "Driver Rate": formatPersonnelRateAmounts(driverNames, r.driverRate),
+      Helper: formatPersonnelRateNames(helperNames),
+      "Helper Rate": formatPersonnelRateAmounts(helperNames, r.helperRate),
       "Start ODO": numOrBlank(firstOdo),
       "End ODO": numOrBlank(lastOdo),
       "Total KM": totalKm || "",
@@ -898,8 +899,6 @@ export default function BillingModule() {
       "Cash on Hand Returned": numOrBlank(r.cashOnHandReturned),
       "Returned To": toTitleCaseStr(r.cashOnHandReturnedTo),
       "Auto Cash Advance": r.autoCash ? "Yes" : "No",
-      "Driver Rate": formatPersonnelRateBreakdown(driverNames, r.driverRate),
-      "Helper Rate": formatPersonnelRateBreakdown(helperNames, r.helperRate),
       Trucker: r.trucker || (isSubconRecord(r, subconPlates) ? "SUBCON" : "KRISDOMINGO"),
       "Trucker Rate": numOrBlank(r.truckerRate || (isSubconRecord(r, subconPlates) ? r.truckerRate : r.tripRate)),
       "Expenses Total": expensesTotal || "",
@@ -1144,7 +1143,7 @@ export default function BillingModule() {
 
     // ── Style the column header row (row index = metaData.length - 1) ──
     const headerRowIdx = metaData.length - 1;
-    const startOdoIdx = headers.indexOf("Start ODO");
+    const driverIdx = headers.indexOf("Driver");
     const truckerRateIdx = headers.indexOf("Trucker Rate");
 
     headers.forEach((h, colIdx) => {
@@ -1161,11 +1160,15 @@ export default function BillingModule() {
       ].includes(h);
 
       const isOdoDetailCol =
-        (startOdoIdx !== -1 &&
+        (driverIdx !== -1 &&
           truckerRateIdx !== -1 &&
-          colIdx >= startOdoIdx &&
+          colIdx >= driverIdx &&
           colIdx <= truckerRateIdx) ||
         [
+          "Driver",
+          "Driver Rate",
+          "Helper",
+          "Helper Rate",
           "Start ODO",
           "End ODO",
           "Total KM",
@@ -1177,8 +1180,6 @@ export default function BillingModule() {
           "Cash on Hand Returned",
           "Returned To",
           "Auto Cash Advance",
-          "Driver Rate",
-          "Helper Rate",
           "Trucker",
           "Trucker Rate",
         ].includes(h);
