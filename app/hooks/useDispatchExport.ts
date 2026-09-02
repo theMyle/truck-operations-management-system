@@ -3,6 +3,15 @@
 
 import { useCallback } from "react";
 import { DispatchRecord } from "@/app/(app)/constant";
+import { formatEmployeeName } from "@/lib/utils/stringFormat";
+
+function getCellValue(r: DispatchRecord, colKey: string): string {
+  const val = r[colKey as keyof DispatchRecord];
+  if (["driver", "helper"].includes(colKey)) {
+    return formatEmployeeName(typeof val === "string" ? val : String(val ?? ""));
+  }
+  return String(val ?? "—");
+}
 
 const COLUMNS = [
   { key: "id", label: "#" },
@@ -21,7 +30,7 @@ const COLUMNS = [
 
 function getRows(records: DispatchRecord[]) {
   return records.map((r) =>
-    COLUMNS.map((col) => String(r[col.key as keyof DispatchRecord] ?? "—"))
+    COLUMNS.map((col) => getCellValue(r, col.key))
   );
 }
 
@@ -112,7 +121,7 @@ export function useDispatchExport(records: DispatchRecord[]) {
                   new Paragraph({
                     children: [
                       new TextRun({
-                        text: String(record[col.key as keyof DispatchRecord] ?? "—"),
+                        text: getCellValue(record, col.key),
                         size: 16,
                       }),
                     ],
@@ -202,7 +211,7 @@ export function useDispatchExport(records: DispatchRecord[]) {
       tr.style.background = i % 2 === 0 ? "#fff" : "#f5f7fa";
       COLUMNS.forEach((col) => {
         const td = document.createElement("td");
-        td.textContent = String(record[col.key as keyof DispatchRecord] ?? "—");
+        td.textContent = getCellValue(record, col.key);
         td.style.cssText =
           "padding:5px 10px;border-bottom:1px solid #e5e7eb;white-space:nowrap;";
         tr.appendChild(td);

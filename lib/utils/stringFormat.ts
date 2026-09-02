@@ -99,3 +99,26 @@ export function formatDriverShortName(driverName?: string | null): string {
   const lastInitial = parts[parts.length - 1][0].toUpperCase() + ".";
   return `${firstName} ${lastInitial}`;
 }
+
+export function formatEmployeeName(name: string | null | undefined): string {
+  if (!name) return "";
+  const cleaned = name.trim();
+  if (!cleaned) return "";
+
+  return cleaned
+    .split(",")
+    .map((singleName) => {
+      const tokens = singleName.trim().split(/\s+/);
+      if (tokens.length <= 1) return tokens[0].toUpperCase();
+
+      const filtered = tokens.filter((token, idx) => {
+        if (idx === 0) return true;
+        if (idx === tokens.length - 1) return true;
+        const isMiddleInitial = /^[A-Za-z]\.?$/.test(token);
+        return !isMiddleInitial;
+      });
+
+      return filtered.join(" ").toUpperCase();
+    })
+    .join(", ");
+}
