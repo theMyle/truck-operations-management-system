@@ -11,6 +11,7 @@ import { NewExpensesTab } from "./ExpensesTab";
 import { TripSummaryModal } from "./TripSummaryModal";
 import { BookingWithRelations } from "@/lib/db/schema/booking";
 import { generateLiquidationPDF } from "@/lib/utils/pdf";
+import { formatEmployeeName } from "@/lib/utils/stringFormat";
 import { capitalizeWords } from "@/lib/utils/stringFormat";
 
 export interface TripData {
@@ -188,18 +189,22 @@ export function TripDetailsModal({
             });
         }
 
-        const helperOptions = helperList.map((name) => ({
-            value: name,
-            label: `${name} (Helper)`,
-        }));
+        const cleanDriver = formatEmployeeName(record.driver);
+        const helperOptions = helperList.map((name) => {
+            const clean = formatEmployeeName(name);
+            return {
+                value: clean,
+                label: `${clean} (Helper)`,
+            };
+        });
 
         const items = [
-            record.driver
-                ? { value: record.driver, label: `${record.driver} (Driver)` }
+            cleanDriver
+                ? { value: cleanDriver, label: `${cleanDriver} (Driver)` }
                 : null,
             ...helperOptions,
             record.trucker
-                ? { value: record.trucker, label: `${record.trucker} (Trucker)` }
+                ? { value: record.trucker.toUpperCase(), label: `${record.trucker.toUpperCase()} (Trucker)` }
                 : null,
         ].filter((o): o is { value: string; label: string } => o !== null);
 

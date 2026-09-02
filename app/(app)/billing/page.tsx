@@ -708,7 +708,7 @@ export default function BillingModule() {
         .trim();
       return formatEmployeeName(raw);
     });
-    lines.push("Total");
+    lines.push("TOTAL");
     return lines.join("\n");
   }
 
@@ -804,7 +804,7 @@ export default function BillingModule() {
   function formatPersonnelRateNames(names: string[]): string {
     if (!names.length) return "";
     if (names.length === 1) return names[0];
-    return [...names, "Total"].join("\n");
+    return [...names, "TOTAL"].join("\n");
   }
 
   function formatPersonnelRateAmounts(
