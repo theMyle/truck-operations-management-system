@@ -70,7 +70,7 @@ import { getTruckAction } from "@/lib/actions/trucks";
 import { DeleteConfirmModal } from "@/components/booking/DeleteConfirmModal";
 import { BILLING_TABLE_HEADERS } from "@/components/ui/ModuleSkeletons";
 import { TableSkeleton } from "@/components/ui/TableSkeleton";
-import { formatTime12Hour, capitalizeWords } from "@/lib/utils/stringFormat";
+import { formatTime12Hour, capitalizeWords, formatEmployeeName } from "@/lib/utils/stringFormat";
 import { useUser } from "@clerk/nextjs";
 
 export type BillingRecord = DispatchRecord & {
@@ -695,17 +695,19 @@ export default function BillingModule() {
   ): string {
     if (!caExpenses.length) return "";
     if (caExpenses.length === 1) {
-      return caExpenses[0].expenseType
+      const raw = caExpenses[0].expenseType
         .replace(/^Cash Advance,\s*/i, "")
         .replace(/\s*\((Driver|Helper|Trucker)\)$/i, "")
         .trim();
+      return formatEmployeeName(raw);
     }
-    const lines = caExpenses.map((e) =>
-      e.expenseType
+    const lines = caExpenses.map((e) => {
+      const raw = e.expenseType
         .replace(/^Cash Advance,\s*/i, "")
         .replace(/\s*\((Driver|Helper|Trucker)\)$/i, "")
-        .trim()
-    );
+        .trim();
+      return formatEmployeeName(raw);
+    });
     lines.push("Total");
     return lines.join("\n");
   }
@@ -834,14 +836,14 @@ export default function BillingModule() {
 
     const driverNames = (r.driver || r.driverName || "")
       .split(",")
-      .map((d) => d.trim())
+      .map((d) => formatEmployeeName(d.trim()))
       .filter(Boolean);
 
     const helperNames = (r.helper || "")
       .replace(/—/g, "")
       .replace(/No Helper/gi, "")
       .split(",")
-      .map((h) => h.trim())
+      .map((h) => formatEmployeeName(h.trim()))
       .filter(Boolean);
 
     const route = parseShortRoute(r.ruta, r.pickLocation, r.dropOffLocation);
