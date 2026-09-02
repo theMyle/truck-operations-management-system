@@ -32,6 +32,19 @@ function getFormattedValue(record: DispatchRecord, colKey: string): string {
   if (["driver", "driverName", "helper"].includes(colKey) && typeof val === "string") {
     return val.toUpperCase();
   }
+  if (colKey === "pickLocation" || colKey === "dropOffLocation") {
+    const rawRuta = record.ruta ? String(record.ruta).trim() : "";
+    if (rawRuta) {
+      if (/\s+TO\s+/i.test(rawRuta)) {
+        const parts = rawRuta.split(/\s+TO\s+/i);
+        return colKey === "pickLocation" ? parts[0].trim() : parts.slice(1).join(" - ").trim();
+      }
+      if (rawRuta.includes("-")) {
+        const parts = rawRuta.split("-");
+        return colKey === "pickLocation" ? parts[0].trim() : parts.slice(1).join(" - ").trim();
+      }
+    }
+  }
   if (TIME_KEYS.includes(colKey) && typeof val === "string" && val.trim().length > 0) {
     return formatTime12Hour(val);
   }

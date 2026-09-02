@@ -674,10 +674,65 @@ export default function BillingModule() {
     [filtered, page],
   );
 
+  function parseShortRoute(ruta?: string, pickLoc?: string, dropLoc?: string): { pickup: string; dropoff: string } {
+    if (ruta && ruta.trim().length > 0) {
+      const raw = ruta.trim();
+      if (/\s+TO\s+/i.test(raw)) {
+        const parts = raw.split(/\s+TO\s+/i);
+        return { pickup: parts[0].trim(), dropoff: parts.slice(1).join(" - ").trim() };
+      }
+      if (raw.includes("-")) {
+        const parts = raw.split("-");
+        return { pickup: parts[0].trim(), dropoff: parts.slice(1).join(" - ").trim() };
+      }
+      return { pickup: raw, dropoff: "" };
+    }
+    return { pickup: pickLoc || "", dropoff: dropLoc || "" };
+  }
+
+  function formatCANames(
+    caExpenses: { expenseType: string; amount: string | number }[]
+  ): string {
+    if (!caExpenses.length) return "";
+    if (caExpenses.length === 1) {
+      return caExpenses[0].expenseType
+        .replace(/^Cash Advance,\s*/i, "")
+        .replace(/\s*\((Driver|Helper|Trucker)\)$/i, "")
+        .trim();
+    }
+    const lines = caExpenses.map((e) =>
+      e.expenseType
+        .replace(/^Cash Advance,\s*/i, "")
+        .replace(/\s*\((Driver|Helper|Trucker)\)$/i, "")
+        .trim()
+    );
+    lines.push("Total");
+    return lines.join("\n");
+  }
+
+  function formatCAAmounts(
+    caExpenses: { expenseType: string; amount: string | number }[]
+  ): string | number {
+    if (!caExpenses.length) return "";
+    if (caExpenses.length === 1) {
+      const amt = Number(caExpenses[0].amount) || 0;
+      return amt ? amt : "";
+    }
+    let total = 0;
+    const lines = caExpenses.map((e) => {
+      const amt = Number(e.amount) || 0;
+      total += amt;
+      return amt.toLocaleString("en-PH", { minimumFractionDigits: 2 });
+    });
+    lines.push(total.toLocaleString("en-PH", { minimumFractionDigits: 2 }));
+    return lines.join("\n");
+  }
+
   const EXPORT_EXPENSE_COLUMNS = [
-    "Expense: Cash Advance (Driver)",
-    "Expense: Cash Advance (Helper)",
-    "Expense: Cash Advance (Trucker)",
+    "Driver CA",
+    "CA Driver Amount",
+    "Helper CA",
+    "CA Helper Amount",
     "Expense: Cash Advance (Others)",
     "Expense: Toll Fee",
     "Expense: Cash Out Fee",
@@ -790,6 +845,8 @@ export default function BillingModule() {
       .map((h) => h.trim())
       .filter(Boolean);
 
+    const route = parseShortRoute(r.ruta, r.pickLocation, r.dropOffLocation);
+
     const driverCAExpenses = (r.expenses ?? []).filter(
       (e) =>
         e.expenseType &&
@@ -804,6 +861,8 @@ export default function BillingModule() {
         e.expenseType.endsWith("(Helper)")
     );
 
+
+
     const row: ExportRow = {
       Date: r.date,
       "Pick Up Time (Booking)": r.pickUpTime || "",
@@ -812,8 +871,8 @@ export default function BillingModule() {
       "Plate No": r.plateNo,
       "Booking / DR#": r.bookingDr,
       "No. of Drops": r.noOfDrops ?? "",
-      "Pickup Location": r.pickLocation || "",
-      "Drop-off Location": r.dropOffLocation || "",
+      "Pick up": route.pickup,
+      "Drop off Location": route.dropoff,
       "Rate (PHP)": numOrBlank(r.tripRate),
       "Amount Paid (PHP)": numOrBlank(r.amountPaid),
       "SoA #": r.soaNumber || "",
@@ -851,11 +910,14 @@ export default function BillingModule() {
       row[colName] = "";
     });
 
+    // Place Driver and Helper CA in paired Name & Amount columns in Expense Section
     if (driverCAExpenses.length > 0) {
-      row["Expense: Cash Advance (Driver)"] = formatExpenseBreakdown(driverCAExpenses);
+      row["Driver CA"] = formatCANames(driverCAExpenses);
+      row["CA Driver Amount"] = formatCAAmounts(driverCAExpenses);
     }
     if (helperCAExpenses.length > 0) {
-      row["Expense: Cash Advance (Helper)"] = formatExpenseBreakdown(helperCAExpenses);
+      row["Helper CA"] = formatCANames(helperCAExpenses);
+      row["CA Helper Amount"] = formatCAAmounts(helperCAExpenses);
     }
 
     // Sum amounts of other expenses
@@ -865,10 +927,10 @@ export default function BillingModule() {
         (e.expenseType.startsWith("Cash Advance, ") && e.expenseType.endsWith("(Driver)")) ||
         (e.expenseType.startsWith("Cash Advance, ") && e.expenseType.endsWith("(Helper)"))
       ) {
-        return; // already formatted with detailed breakdown
+        return; // already handled in Expense: Cash Advance (Driver/Helper)
       }
       const colName = getExportExpenseKey(e.expenseType);
-      const currentVal = row[colName] === "" ? 0 : Number(row[colName]);
+      const currentVal = row[colName] === "" || row[colName] === undefined ? 0 : Number(row[colName]);
       row[colName] = numOrBlank(currentVal + (Number(e.amount) || 0));
     });
 
@@ -1041,16 +1103,39 @@ export default function BillingModule() {
 
     const ws = XLSX.utils.aoa_to_sheet(allRows);
 
-    // ── Column widths ──
+    // ── Column widths with comfortable padding ──
     ws["!cols"] = headers.map((h) => {
       const maxLen = Math.max(
         h.length,
-        ...exportRows.map((r) => String(r[h] ?? "").length),
+        ...exportRows.map((r) => {
+          const val = String(r[h] ?? "");
+          // If multiline, measure the longest line
+          const lines = val.split("\n");
+          return Math.max(...lines.map((l) => l.length));
+        }),
       );
-      return { wch: Math.min(Math.max(maxLen + 2, 12), 50) };
+      return { wch: Math.min(Math.max(maxLen + 3, 13), 42) };
     });
 
-    // ── Style the title row (row 0, col 0) as large bold ──
+    // ── Row heights to give ample breathing space and lessen visual clutter ──
+    const rowHeights: { hpt: number }[] = [];
+    for (let i = 0; i < metaData.length - 1; i++) {
+      rowHeights.push({ hpt: i === 0 ? 24 : 18 });
+    }
+    rowHeights.push({ hpt: 12 }); // blank separator
+    rowHeights.push({ hpt: 26 }); // header row
+
+    dataRows.forEach((row) => {
+      const maxLines = Math.max(
+        1,
+        ...row.map((cell) => (typeof cell === "string" ? cell.split("\n").length : 1))
+      );
+      // Base height 22pt + 14pt per extra line
+      rowHeights.push({ hpt: Math.max(22, maxLines * 15 + 7) });
+    });
+    ws["!rows"] = rowHeights;
+
+    // ── Style the title row (row 0, col 0) ──
     const titleRef = XLSX.utils.encode_cell({ r: 0, c: 0 });
     if (!ws[titleRef]) ws[titleRef] = { v: "BILLING STATEMENT EXPORT", t: "s" };
     ws[titleRef].s = {
@@ -1066,7 +1151,7 @@ export default function BillingModule() {
       const ref = XLSX.utils.encode_cell({ r: headerRowIdx, c: colIdx });
       if (!ws[ref]) return;
 
-      const isExpenseCol = h.startsWith("Expense:") || h === "Expenses Total";
+      const isExpenseCol = h.startsWith("Expense:") || h.includes("CA") || h === "Expenses Total";
       const isTimeCol = [
         "Pick Up Arrival Time",
         "Loading Start Time",
@@ -1098,16 +1183,16 @@ export default function BillingModule() {
           "Trucker Rate",
         ].includes(h);
 
-      let bgColor = "1a56db"; // blue for standard booking info
+      let bgColor = "1a56db"; // classic vibrant royal blue for booking info
       let textColor = "FFFFFF"; // white
 
       if (isExpenseCol) {
-        bgColor = "16a34a"; // green for expenses
+        bgColor = "16a34a"; // classic vibrant green for expenses & cash advances
       } else if (isTimeCol) {
-        bgColor = "bae6fd"; // light blue for times
+        bgColor = "bae6fd"; // classic light blue for times
         textColor = "0f172a"; // dark gray text
       } else if (isOdoDetailCol) {
-        bgColor = "ea580c"; // vibrant orange for trip odo & financial details
+        bgColor = "ea580c"; // classic vibrant orange for trip odo & financial details
         textColor = "FFFFFF"; // white text
       }
 
@@ -1121,22 +1206,55 @@ export default function BillingModule() {
       };
     });
 
-    // ── Stripe data rows alternating light blue / white ──
+    // ── Stripe data rows with aligned text and numbers ──
     dataRows.forEach((_, rowOffset) => {
       const rowIdx = headerRowIdx + 1 + rowOffset;
       const isEven = rowOffset % 2 === 0;
-      headers.forEach((_, colIdx) => {
+      headers.forEach((h, colIdx) => {
         const ref = XLSX.utils.encode_cell({ r: rowIdx, c: colIdx });
         if (!ws[ref]) return;
+
+        const isAmountCol =
+          h.includes("Amount") ||
+          h.includes("Rate") ||
+          h.includes("Total") ||
+          h === "Budget" ||
+          h === "RFID Load" ||
+          h === "Fuel" ||
+          h === "Customer Collection" ||
+          h === "Cash on Hand Returned" ||
+          h.startsWith("Expense: Toll") ||
+          h.startsWith("Expense: Cash Out") ||
+          h.startsWith("Expense: Transportation") ||
+          h.startsWith("Expense: Repairs") ||
+          h.startsWith("Expense: Cash Advance (Others)");
+
+        const isNameOrTextCol =
+          h === "Driver CA" ||
+          h === "Helper CA" ||
+          h === "Client" ||
+          h === "Driver" ||
+          h === "Helper" ||
+          h === "Pick up" ||
+          h === "Drop off Location" ||
+          h === "Route";
+
+        let alignH = "center";
+        if (isAmountCol) {
+          alignH = "right";
+        } else if (isNameOrTextCol) {
+          alignH = "left";
+        }
+
         ws[ref].s = {
           fill: isEven
-            ? { fgColor: { rgb: "EEF4FF" } }
+            ? { fgColor: { rgb: "F8FAFC" } }
             : { fgColor: { rgb: "FFFFFF" } },
-          font: { sz: 12 },
-          alignment: { vertical: "center", wrapText: true },
+          font: { sz: 10, color: { rgb: "1E293B" } },
+          alignment: { horizontal: alignH, vertical: "center", wrapText: true },
           border: {
-            bottom: { style: "hair", color: { rgb: "DDDDDD" } },
-            right: { style: "hair", color: { rgb: "DDDDDD" } },
+            bottom: { style: "hair", color: { rgb: "E2E8F0" } },
+            right: { style: "hair", color: { rgb: "E2E8F0" } },
           },
         };
       });
