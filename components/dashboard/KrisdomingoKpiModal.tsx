@@ -239,7 +239,7 @@ export const KrisdomingoKpiModal = ({
                                 {(m.onTimeDelivery || 0).toFixed(1)}%
                               </Text>
                               <Text size="9px" c="dimmed" fw={600}>
-                                {m.onTimeTrips ?? 0} / {m.successfulTrips ?? 0} on-time
+                                {m.onTimeTrips ?? 0} / {m.onTimeEligibleTrips ?? 0} on-time
                               </Text>
                             </div>
                           ) : (
@@ -299,7 +299,7 @@ export const KrisdomingoKpiModal = ({
                           <div>
                             <div>{(reportData.fullYearAvgDelivery || 0).toFixed(1)}%</div>
                             <div style={{ fontSize: "9px", color: "var(--mantine-color-gray-6)", fontWeight: 600 }}>
-                              {(reportData.fullYearOnTimeTrips ?? 0).toLocaleString()} / {(reportData.fullYearSuccessfulTrips ?? 0).toLocaleString()} on-time
+                              {(reportData.fullYearOnTimeTrips ?? 0).toLocaleString()} / {(reportData.fullYearOnTimeEligibleTrips ?? 0).toLocaleString()} on-time
                             </div>
                           </div>
                         ) : "—"}
