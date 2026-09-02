@@ -12,6 +12,7 @@ export interface MonthlyKpiData {
   successfulTrips: number;
   totalTrips: number;
   onTimeTrips: number;
+  onTimeEligibleTrips: number;
   fleetUtilization: number;
   onTimeDelivery: number;
   onTimePayment: number;
@@ -36,6 +37,7 @@ export interface KpiReportSummary {
   fullYearSuccessfulTrips: number;
   fullYearTotalTrips: number;
   fullYearOnTimeTrips: number;
+  fullYearOnTimeEligibleTrips: number;
   monthlyData: MonthlyKpiData[];
 }
 
@@ -101,9 +103,22 @@ export function computeOverallScore(
 }
 
 export async function getKrisdomingoKpiReport(targetYear?: number): Promise<KpiReportSummary> {
-  const year = targetYear || new Date().getFullYear();
   const today = new Date();
-  const currentMonthNum = today.getFullYear() === year ? today.getMonth() + 1 : 12;
+
+  // Determine "today" using Asia/Manila wall-clock time (not server/UTC
+  // time) so the current month and the yesterday-cutoff below always agree
+  // with what a user in the Philippines actually sees as "today". This
+  // mirrors the same timezone handling already used for Fleet Utilization
+  // further down in this function, and for the On-Time Delivery dashboard
+  // widget in getOnTimeDeliveryStats() (lib/repositories/queries/dashboard.ts).
+  const todayManilaStr = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Manila" }).format(today);
+  const [manilaYearNum, manilaMonthNum] = todayManilaStr.split("-").map(Number);
+
+  const yesterdayDate = new Date(today.getTime() - 24 * 60 * 60 * 1000);
+  const yesterdayManilaStr = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Manila" }).format(yesterdayDate);
+
+  const year = targetYear || manilaYearNum;
+  const currentMonthNum = manilaYearNum === year ? manilaMonthNum : 12;
   const operationsStartDate = await getOperationsStartDate();
 
   // 1. Fetch Fleet Data (KTS Trucks only for Utilization & Maintenance)
@@ -186,8 +201,29 @@ export async function getKrisdomingoKpiReport(targetYear?: number): Promise<KpiR
       );
       const successfulTripsCount = allCompletedTrips.length;
 
-      // On-Time Delivery %
-      const completedTrips = allCompletedTrips.filter((b) => b.pickupArrivalTime);
+      // On-Time Delivery % — for the current in-progress month only, exclude
+      // today's data (mirrors the On-Time Delivery dashboard widget's default
+      // "yesterday cutoff" in getOnTimeDeliveryStats, so the KPI banner and
+      // the widget never disagree for the same month). Historical (fully
+      // completed) months and other years are never cut off.
+      const isCurrentInProgressMonth = year === manilaYearNum && m === manilaMonthNum;
+      let onTimeCutoffDateStr: string | null = null;
+      if (isCurrentInProgressMonth) {
+        const monthStartStr = `${monthPrefix}-01`;
+        // Day-1-of-month guard: if "yesterday" falls in the previous month,
+        // fall back to today (same fallback getOnTimeDeliveryStats uses)
+        // instead of excluding all of this month's data on day 1.
+        onTimeCutoffDateStr =
+          yesterdayManilaStr >= monthStartStr ? yesterdayManilaStr : todayManilaStr;
+      }
+
+      const onTimeEligibleCompletedTrips = onTimeCutoffDateStr
+        ? allCompletedTrips.filter(
+            (b) => b.pickupDate && b.pickupDate <= onTimeCutoffDateStr
+          )
+        : allCompletedTrips;
+
+      const completedTrips = onTimeEligibleCompletedTrips.filter((b) => b.pickupArrivalTime);
       let onTimeCount = 0;
 
       completedTrips.forEach((b) => {
@@ -280,6 +316,7 @@ export async function getKrisdomingoKpiReport(targetYear?: number): Promise<KpiR
           successfulTrips: successfulTripsCount,
           totalTrips: mBookings.length,
           onTimeTrips: onTimeCount,
+          onTimeEligibleTrips: completedTrips.length,
           fleetUtilization: fleetUtilPercentage,
           onTimeDelivery: onTimeDeliveryPercentage,
           onTimePayment: onTimePaymentPercentage,
@@ -307,6 +344,7 @@ export async function getKrisdomingoKpiReport(targetYear?: number): Promise<KpiR
   const fullYearSuccessfulTrips = Object.values(monthlyMap).reduce((sum, m) => sum + (m.successfulTrips || 0), 0);
   const fullYearTotalTrips = Object.values(monthlyMap).reduce((sum, m) => sum + (m.totalTrips || 0), 0);
   const fullYearOnTimeTrips = Object.values(monthlyMap).reduce((sum, m) => sum + (m.onTimeTrips || 0), 0);
+  const fullYearOnTimeEligibleTrips = Object.values(monthlyMap).reduce((sum, m) => sum + (m.onTimeEligibleTrips || 0), 0);
 
   const fullYearAvgScore = computeOverallScore(avgUtil, avgDelivery, avgPayment, avgPms, avgManpower);
   const currentMonthData = monthlyMap[currentMonthNum] || monthlyMap[1];
@@ -325,6 +363,7 @@ export async function getKrisdomingoKpiReport(targetYear?: number): Promise<KpiR
     fullYearSuccessfulTrips,
     fullYearTotalTrips,
     fullYearOnTimeTrips,
+    fullYearOnTimeEligibleTrips,
     monthlyData: Object.values(monthlyMap),
   };
 }
