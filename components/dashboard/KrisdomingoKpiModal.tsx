@@ -14,12 +14,19 @@ import {
   SimpleGrid,
   ScrollArea,
   Divider,
+  Button,
+  Menu,
 } from "@mantine/core";
 import {
   IconChartBar,
   IconCalculator,
-
+  IconDownload,
+  IconFileTypeXls,
+  IconFileTypePdf,
+  IconChevronDown,
+  IconPrinter,
 } from "@tabler/icons-react";
+import { useKpiExport } from "@/app/hooks/useKpiExport";
 import type { KpiReportSummary, MonthlyKpiData } from "@/lib/repositories/queries/kpi";
 
 interface KrisdomingoKpiModalProps {
@@ -34,6 +41,7 @@ export const KrisdomingoKpiModal = ({
   reportData,
 }: KrisdomingoKpiModalProps) => {
   const [activeTab, setActiveTab] = useState<string | null>("monthly_report");
+  const { exporting, handleExportXlsx, handleExportPdf, handlePrint } = useKpiExport();
 
   if (!reportData) return null;
 
@@ -76,20 +84,74 @@ export const KrisdomingoKpiModal = ({
       centered
     >
       <Tabs value={activeTab} onChange={setActiveTab}>
-        <Tabs.List mb="md">
-          <Tabs.Tab
-            value="monthly_report"
-            leftSection={<IconChartBar size={14} />}
-          >
-            Monthly Summary Report
-          </Tabs.Tab>
-          <Tabs.Tab
-            value="formula_legend"
-            leftSection={<IconCalculator size={14} />}
-          >
-            KPI Weights & Formula Legend
-          </Tabs.Tab>
-        </Tabs.List>
+        <Group justify="space-between" align="center" mb="md" wrap="wrap">
+          <Tabs.List>
+            <Tabs.Tab
+              value="monthly_report"
+              leftSection={<IconChartBar size={14} />}
+            >
+              Monthly Summary Report
+            </Tabs.Tab>
+            <Tabs.Tab
+              value="formula_legend"
+              leftSection={<IconCalculator size={14} />}
+            >
+              KPI Weights & Formula Legend
+            </Tabs.Tab>
+          </Tabs.List>
+
+          <Group gap="xs">
+            <Button
+              variant="light"
+              color="gray"
+              size="xs"
+              radius="md"
+              leftSection={<IconPrinter size={14} />}
+              onClick={() => handlePrint(reportData)}
+              styles={{ root: { fontWeight: 700, fontSize: "11px" } }}
+            >
+              Print
+            </Button>
+
+            <Menu shadow="md" width={175} position="bottom-end">
+              <Menu.Target>
+                <Button
+                  variant="light"
+                  color="blue"
+                  size="xs"
+                  radius="md"
+                  loading={exporting}
+                  leftSection={<IconDownload size={14} />}
+                  rightSection={<IconChevronDown size={12} />}
+                  styles={{ root: { fontWeight: 700, fontSize: "11px" } }}
+                >
+                  Export Report
+                </Button>
+              </Menu.Target>
+              <Menu.Dropdown>
+                <Menu.Item
+                  leftSection={<IconFileTypeXls size={15} color="var(--mantine-color-green-6)" />}
+                  onClick={() => handleExportXlsx(reportData)}
+                >
+                  Export Excel (.xlsx)
+                </Menu.Item>
+                <Menu.Item
+                  leftSection={<IconFileTypePdf size={15} color="var(--mantine-color-red-6)" />}
+                  onClick={() => handleExportPdf(reportData)}
+                >
+                  Export PDF (.pdf)
+                </Menu.Item>
+                <Menu.Divider />
+                <Menu.Item
+                  leftSection={<IconPrinter size={15} color="var(--mantine-color-gray-6)" />}
+                  onClick={() => handlePrint(reportData)}
+                >
+                  Print Report
+                </Menu.Item>
+              </Menu.Dropdown>
+            </Menu>
+          </Group>
+        </Group>
 
         <Tabs.Panel value="monthly_report">
           <Stack gap="md">

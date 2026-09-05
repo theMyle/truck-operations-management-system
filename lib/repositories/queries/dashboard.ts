@@ -166,6 +166,7 @@ export async function getMonthlyOperations(
       .select({
         pickupDate: booking.pickupDate,
         isSubcon: trucks.isSubcon,
+        isActive: trucks.isActive,
         tripsCount: sql<number>`count(*)::int`,
         trucksCount: sql<number>`count(distinct ${booking.plateNumber})::int`,
       })
@@ -177,7 +178,7 @@ export async function getMonthlyOperations(
           lte(booking.pickupDate, endDateStr),
         ),
       )
-      .groupBy(booking.pickupDate, trucks.isSubcon),
+      .groupBy(booking.pickupDate, trucks.isSubcon, trucks.isActive),
 
     db
       .select({
@@ -239,12 +240,22 @@ export async function getMonthlyOperations(
 
     uniqueDatesByMonth[monthNum].add(row.pickupDate);
 
+    // Truck-days for utilization % must only count currently-active trucks
+    // and dates up to "today" (Asia/Manila) — mirrors the exact scoping
+    // already used in getKrisdomingoKpiReport()'s fleet utilization calc
+    // so the KPI banner and this table never drift apart.
+    const isEligibleForUtilization = row.isActive && row.pickupDate <= todayManilaStr;
+
     if (row.isSubcon) {
       byMonth[monthNum].subcon += row.tripsCount;
-      byMonth[monthNum].subconTrucks += row.trucksCount;
+      if (isEligibleForUtilization) {
+        byMonth[monthNum].subconTrucks += row.trucksCount;
+      }
     } else {
       byMonth[monthNum].kts += row.tripsCount;
-      byMonth[monthNum].ktsTrucks += row.trucksCount;
+      if (isEligibleForUtilization) {
+        byMonth[monthNum].ktsTrucks += row.trucksCount;
+      }
     }
   }
 
