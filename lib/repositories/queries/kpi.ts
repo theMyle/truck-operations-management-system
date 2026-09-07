@@ -127,11 +127,11 @@ export async function getKrisdomingoKpiReport(targetYear?: number): Promise<KpiR
   });
   const totalKtsTruckCount = Math.max(activeKtsTrucks.length, 1);
 
-  // 2. Fetch Fleet PMS Status
+  // 2. Fetch Fleet PMS Status (Only overdue trucks penalize compliance; due_soon is an early warning)
   const pmsStatuses = await pmsRepository.getFleetPmsStatus();
   const ktsPmsStatuses = pmsStatuses.filter((t) => !t.isSubcon);
-  const healthyKtsCount = ktsPmsStatuses.filter((t) => t.pmsStatus === "ok").length;
-  const currentPmsCompliance = Number(Math.min(100, (healthyKtsCount / totalKtsTruckCount) * 100).toFixed(1));
+  const compliantKtsCount = ktsPmsStatuses.filter((t) => t.pmsStatus !== "overdue").length;
+  const currentPmsCompliance = Number(Math.min(100, (compliantKtsCount / totalKtsTruckCount) * 100).toFixed(1));
 
   // 3. Fetch Krisdomingo (KTS) daily truck deployments (Strictly own units where trucks.isSubcon = false)
   const startDateStr = `${year}-01-01`;
@@ -291,7 +291,7 @@ export async function getKrisdomingoKpiReport(targetYear?: number): Promise<KpiR
         ? Number(((onTimePaidCount / billedInvoices.length) * 100).toFixed(1))
         : 100;
 
-      // Maintenance Compliance % (Uses PMS healthy ratio)
+      // Maintenance Compliance % (Uses PMS non-overdue ratio)
       const pmsCompliancePercentage = hasData ? currentPmsCompliance : 0;
 
       // Manpower Rating Score (pts out of 100 from live demerit DB)

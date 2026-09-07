@@ -431,7 +431,7 @@ export const KrisdomingoKpiModal = ({
                   <Table.Tr>
                     <Table.Td style={{ fontSize: "11px", fontWeight: 700 }}>Maintenance Compliance</Table.Td>
                     <Table.Td ta="center" style={{ fontSize: "11px", fontWeight: 800, color: "var(--mantine-color-blue-7)" }}>20%</Table.Td>
-                    <Table.Td style={{ fontSize: "11px" }}>Healthy units (KTS TRUCKS ONLY) ÷ Total fleet (KTS TRUCKS ONLY) (dashboard: Fleet PMS Compliance)</Table.Td>
+                    <Table.Td style={{ fontSize: "11px" }}>Non-overdue units (KTS TRUCKS ONLY) ÷ Total fleet (KTS TRUCKS ONLY) (due soon units serve as warnings and do not penalize compliance)</Table.Td>
                   </Table.Tr>
                   <Table.Tr>
                     <Table.Td style={{ fontSize: "11px", fontWeight: 700 }}>Manpower Rating</Table.Td>
