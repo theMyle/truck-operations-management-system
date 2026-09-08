@@ -135,23 +135,6 @@ const BILL_STATUS_LABEL: Record<string, string> = {
   overdue: "Overdue",
 };
 
-export function getRecordBillStatusKey(r: BillingRecord): string {
-  const amountPaidVal = Number(r.amountPaid) || 0;
-  const clientRateVal = Number(r.tripRate) || 0;
-
-  if (amountPaidVal >= clientRateVal && clientRateVal > 0) return "paid";
-  if (amountPaidVal > 0 && amountPaidVal < clientRateVal) return "partially_paid";
-  if (r.dueDate) {
-    const due = new Date(r.dueDate);
-    const today = new Date();
-    due.setHours(0, 0, 0, 0);
-    today.setHours(0, 0, 0, 0);
-    if (today > due && amountPaidVal < clientRateVal) return "overdue";
-  }
-  if (r.soaNumber && r.soaNumber.trim().length > 0) return "pending";
-  return r.billingStatus || "unbilled";
-}
-
 export function isSubconRecord(r: BillingRecord, subconPlates?: Set<string>): boolean {
   if (r.isSubcon) return true;
   const plate = (r.plateNo || "").trim().toUpperCase();
@@ -160,6 +143,26 @@ export function isSubconRecord(r: BillingRecord, subconPlates?: Set<string>): bo
   if (r.unit && r.unit.toLowerCase().includes("subcon")) return true;
   if (r.fleetType && r.fleetType.toLowerCase().includes("subcon")) return true;
   return false;
+}
+
+export function getRecordBillStatusKey(r: BillingRecord): string {
+  const amountPaidVal = Number(r.amountPaid) || 0;
+  const isSub = isSubconRecord(r);
+  const basisRateVal = isSub
+    ? Number(r.truckerRate || r.tripRate || 0)
+    : Number(r.tripRate) || 0;
+
+  if (amountPaidVal >= basisRateVal && basisRateVal > 0) return "paid";
+  if (amountPaidVal > 0 && amountPaidVal < basisRateVal) return "partially_paid";
+  if (r.dueDate) {
+    const due = new Date(r.dueDate);
+    const today = new Date();
+    due.setHours(0, 0, 0, 0);
+    today.setHours(0, 0, 0, 0);
+    if (today > due && amountPaidVal < basisRateVal) return "overdue";
+  }
+  if (r.soaNumber && r.soaNumber.trim().length > 0) return "pending";
+  return r.billingStatus || "unbilled";
 }
 
 const cell: React.CSSProperties = {
@@ -371,7 +374,9 @@ export default function BillingModule() {
 
   const totalBatchSoaRate = useMemo(() => {
     return batchSoaRecords.reduce((sum, r) => {
-      const rate = r.isSubcon ? Number(r.tripRate || 0) : Number(r.tripRate || 0);
+      const rate = r.isSubcon
+        ? Number(r.truckerRate || r.tripRate || 0)
+        : Number(r.tripRate || 0);
       return sum + rate;
     }, 0);
   }, [batchSoaRecords]);
@@ -382,9 +387,12 @@ export default function BillingModule() {
 
     try {
       const lumpSum = Number(batchLumpSumAmount) || 0;
+      const assignedMap: Record<string, string> = {};
 
       for (const record of batchSoaRecords) {
-        const rate = Number(record.tripRate || 0);
+        const rate = record.isSubcon
+          ? Number(record.truckerRate || record.tripRate || 0)
+          : Number(record.tripRate || 0);
         let amountToAssign = "0.00";
 
         if (batchPaymentMode === "full") {
@@ -395,6 +403,7 @@ export default function BillingModule() {
         } else if (batchPaymentMode === "manual") {
           amountToAssign = batchManualAmounts[String(record.id)] ?? String(record.amountPaid || "0.00");
         }
+        assignedMap[String(record.id)] = amountToAssign;
 
         await updateBillingStatusAction({
           bookingIds: [String(record.id)],
@@ -404,6 +413,31 @@ export default function BillingModule() {
           amountPaid: amountToAssign,
         });
       }
+
+      // Optimistically update records in state so table and tabs reflect payment immediately
+      setRecords((prev) =>
+        prev.map((r) => {
+          const assigned = assignedMap[String(r.id)];
+          if (assigned !== undefined) {
+            const clientRateVal = Number(r.tripRate) || 0;
+            const paidVal = Number(assigned) || 0;
+            let billingStatus = "pending";
+            if (paidVal >= clientRateVal && clientRateVal > 0) {
+              billingStatus = "paid";
+            } else if (paidVal > 0 && paidVal < clientRateVal) {
+              billingStatus = "partially_paid";
+            }
+            return {
+              ...r,
+              amountPaid: assigned,
+              invoiceDate: batchInvoiceDate || r.invoiceDate,
+              dueDate: batchDueDate || r.dueDate,
+              billingStatus,
+            };
+          }
+          return r;
+        })
+      );
 
       notifications.show({
         title: "Batch Payment Applied",
@@ -512,22 +546,24 @@ export default function BillingModule() {
       setRecords((prev) =>
         prev.map((r) => {
           if (r.id === selectedBillingRecord.id) {
-            const clientRateVal = Number(tripRateInput) || 0;
+            const basisRateVal = selectedBillingRecord.isSubcon
+              ? Number(truckerRateInput) || 0
+              : Number(tripRateInput) || 0;
             const amountPaidVal = Number(amountPaidInput) || 0;
             let billingStatus = "unbilled";
             if (soaNumberInput && soaNumberInput.trim().length > 0) {
               billingStatus = "pending";
             }
-            if (amountPaidVal >= clientRateVal && clientRateVal > 0) {
+            if (amountPaidVal >= basisRateVal && basisRateVal > 0) {
               billingStatus = "paid";
-            } else if (amountPaidVal > 0 && amountPaidVal < clientRateVal) {
+            } else if (amountPaidVal > 0 && amountPaidVal < basisRateVal) {
               billingStatus = "partially_paid";
             } else if (dueDateInput && soaNumberInput && soaNumberInput.trim().length > 0) {
               const due = new Date(dueDateInput);
               const today = new Date();
               due.setHours(23, 59, 59, 999);
               today.setHours(0, 0, 0, 0);
-              if (today > due && amountPaidVal < clientRateVal) {
+              if (today > due && amountPaidVal < basisRateVal) {
                 billingStatus = "overdue";
               }
             }
@@ -640,34 +676,60 @@ export default function BillingModule() {
     return combined.map((f) => ({ value: f, label: f }));
   }, [dbFleetTypes, records]);
 
-  // Client-side search + status + fleet + bill status + truck category filter on top of DB results
-  const filtered = useMemo(() => {
+  // Base filtered records: search + delivery status + fleet + truck category (without billStatusFilter)
+  const baseFiltered = useMemo(() => {
     const q = search.toLowerCase().trim();
     return records.filter((r) => {
       const matchSearch =
         !q || Object.values(r).some((v) => String(v).toLowerCase().includes(q));
       const matchStatus = !statusFilter || r.status === statusFilter;
       const matchFleet = !fleetFilter || r.unit === fleetFilter;
-      const matchBillStatus =
-        !billStatusFilter ||
-        (billStatusFilter === "unbilled"
-          ? r.billingStatus === "unbilled" || !r.billingStatus || !r.soaNumber || r.soaNumber.trim().length === 0
-          : r.billingStatus === billStatusFilter);
-
       const isSub = isSubconRecord(r, subconPlates);
       const matchTruckCategory =
         !truckCategoryFilter ||
         (truckCategoryFilter === "subcon" ? isSub : !isSub);
 
-      return (
-        matchSearch &&
-        matchStatus &&
-        matchFleet &&
-        matchBillStatus &&
-        matchTruckCategory
-      );
+      return matchSearch && matchStatus && matchFleet && matchTruckCategory;
     });
-  }, [records, search, statusFilter, fleetFilter, billStatusFilter, truckCategoryFilter, subconPlates]);
+  }, [records, search, statusFilter, fleetFilter, truckCategoryFilter, subconPlates]);
+
+  // Dynamic tab badge counts derived strictly from baseFiltered
+  const tabCounts = useMemo(() => {
+    let unbilled = 0;
+    let pending = 0;
+    let partiallyPaid = 0;
+    let paid = 0;
+    let overdue = 0;
+
+    for (const r of baseFiltered) {
+      const statusKey = getRecordBillStatusKey(r);
+      if (statusKey === "unbilled" || statusKey === "unpaid") unbilled++;
+      else if (statusKey === "pending") pending++;
+      else if (statusKey === "partially_paid") partiallyPaid++;
+      else if (statusKey === "paid") paid++;
+      else if (statusKey === "overdue") overdue++;
+    }
+
+    return {
+      all: baseFiltered.length,
+      unbilled,
+      pending,
+      partiallyPaid,
+      paid,
+      overdue,
+    };
+  }, [baseFiltered]);
+
+  // Final filtered records: baseFiltered narrowed by the selected billStatus tab
+  const filtered = useMemo(() => {
+    if (!billStatusFilter) return baseFiltered;
+    return baseFiltered.filter((r) => {
+      const recordBillStatus = getRecordBillStatusKey(r);
+      return billStatusFilter === "unbilled"
+        ? recordBillStatus === "unbilled" || recordBillStatus === "unpaid"
+        : recordBillStatus === billStatusFilter;
+    });
+  }, [baseFiltered, billStatusFilter]);
 
   const paginated = useMemo(
     () => filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
@@ -947,10 +1009,14 @@ export default function BillingModule() {
     let unpaidBalance = 0;
     let overdueAmount = 0;
 
-    filtered.forEach((r) => {
-      const rate = Number(r.tripRate || 0);
+    baseFiltered.forEach((r) => {
+      const isSub = isSubconRecord(r);
+      const rate = isSub && truckCategoryFilter === "subcon"
+        ? Number(r.truckerRate || r.tripRate || 0)
+        : Number(r.tripRate || 0);
       const hasPod = Boolean(r.podFileUrl || r.podFile);
-      const isPaid = r.billingStatus === "paid";
+      const recordBillStatus = getRecordBillStatusKey(r);
+      const isPaid = recordBillStatus === "paid";
 
       const rawPaid = Number(r.amountPaid) || 0;
       const paid = isPaid ? (rawPaid > 0 ? rawPaid : rate) : rawPaid;
@@ -963,7 +1029,7 @@ export default function BillingModule() {
 
       const balance = isPaid ? 0 : Math.max(0, rate - paid);
       unpaidBalance += balance;
-      if (r.billingStatus === "overdue") {
+      if (recordBillStatus === "overdue") {
         overdueAmount += balance;
       }
     });
@@ -977,7 +1043,7 @@ export default function BillingModule() {
       unpaidBalance,
       overdueAmount,
     };
-  }, [filtered]);
+  }, [baseFiltered, truckCategoryFilter]);
 
   const billingLabel = activeFilters
     ? [
@@ -1567,9 +1633,9 @@ export default function BillingModule() {
             <SimpleGrid cols={{ base: 1, sm: 3, lg: 5 }} spacing="sm">
               <SummaryCard
                 label="Total Trips"
-                value={filtered.length}
+                value={baseFiltered.length}
                 sub={
-                  filtered.length !== records.length
+                  baseFiltered.length !== records.length
                     ? `of ${records.length} in period`
                     : "in period"
                 }
@@ -1624,7 +1690,7 @@ export default function BillingModule() {
                         radius="xl"
                         styles={{ root: { padding: "0 6px", height: 16, minWidth: 18 } }}
                       >
-                        {records.length}
+                        {tabCounts.all}
                       </Badge>
                       <Text style={{ fontSize: "11px", fontWeight: 700 }}>All</Text>
                     </Group>
@@ -1641,7 +1707,7 @@ export default function BillingModule() {
                         radius="xl"
                         styles={{ root: { padding: "0 6px", height: 16, minWidth: 18 } }}
                       >
-                        {records.filter((r) => r.billingStatus === "unbilled" || !r.billingStatus || !r.soaNumber || r.soaNumber.trim().length === 0).length}
+                        {tabCounts.unbilled}
                       </Badge>
                       <Text style={{ fontSize: "11px", fontWeight: 700 }}>For Billing</Text>
                     </Group>
@@ -1658,7 +1724,7 @@ export default function BillingModule() {
                         radius="xl"
                         styles={{ root: { padding: "0 6px", height: 16, minWidth: 18 } }}
                       >
-                        {records.filter((r) => r.billingStatus === "pending" || (r.soaNumber && r.soaNumber.trim().length > 0 && r.billingStatus !== "paid" && r.billingStatus !== "partially_paid")).length}
+                        {tabCounts.pending}
                       </Badge>
                       <Text style={{ fontSize: "11px", fontWeight: 700 }}>Pending</Text>
                     </Group>
@@ -1675,7 +1741,7 @@ export default function BillingModule() {
                         radius="xl"
                         styles={{ root: { padding: "0 6px", height: 16, minWidth: 18 } }}
                       >
-                        {records.filter((r) => r.billingStatus === "partially_paid").length}
+                        {tabCounts.partiallyPaid}
                       </Badge>
                       <Text style={{ fontSize: "11px", fontWeight: 700 }}>Partially Paid</Text>
                     </Group>
@@ -1692,7 +1758,7 @@ export default function BillingModule() {
                         radius="xl"
                         styles={{ root: { padding: "0 6px", height: 16, minWidth: 18 } }}
                       >
-                        {records.filter((r) => r.billingStatus === "paid").length}
+                        {tabCounts.paid}
                       </Badge>
                       <Text style={{ fontSize: "11px", fontWeight: 700 }}>Paid</Text>
                     </Group>
@@ -1709,7 +1775,7 @@ export default function BillingModule() {
                         radius="xl"
                         styles={{ root: { padding: "0 6px", height: 16, minWidth: 18 } }}
                       >
-                        {records.filter((r) => r.billingStatus === "overdue").length}
+                        {tabCounts.overdue}
                       </Badge>
                       <Text style={{ fontSize: "11px", fontWeight: 700 }}>Overdue</Text>
                     </Group>
