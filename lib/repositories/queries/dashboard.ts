@@ -76,7 +76,6 @@ export async function getWeeklyOperations(
         and(
           gte(booking.pickupDate, startDateStr),
           lte(booking.pickupDate, endDateStr),
-          eq(booking.deliveryStatus, "Completed"),
           sql`${booking.pickupArrivalTime} IS NOT NULL`
         )
       ),
@@ -130,16 +129,31 @@ export async function getWeeklyOperations(
     }
 
     try {
-      const dateStr = `${row.pickupDate} ${row.pickupTime}`;
-      const scheduledTime = new Date(dateStr);
-      if (isNaN(scheduledTime.getTime())) continue;
+      const scheduledTime = parseScheduledDateTime(row.pickupDate, row.pickupTime);
+      if (!scheduledTime) continue;
+
+      let arrivalH = 0;
+      let arrivalM = 0;
+      if (row.pickupArrivalTime instanceof Date) {
+        arrivalH = row.pickupArrivalTime.getUTCHours();
+        arrivalM = row.pickupArrivalTime.getUTCMinutes();
+      } else {
+        const match = String(row.pickupArrivalTime).match(/(\d{1,2}):(\d{2})/);
+        if (match) {
+          arrivalH = parseInt(match[1], 10);
+          arrivalM = parseInt(match[2], 10);
+        }
+      }
+
+      const actual = new Date(row.pickupDate);
+      actual.setHours(arrivalH, arrivalM, 0, 0);
 
       byDate[row.pickupDate].completedDeliveries++;
 
-      if (row.pickupArrivalTime <= scheduledTime) {
+      if (actual <= scheduledTime) {
         byDate[row.pickupDate].onTimeDeliveries++;
       }
-    } catch (e) {
+    } catch {
       continue;
     }
   }
@@ -300,7 +314,7 @@ export async function getMonthlyOperations(
       if (actual <= scheduledTime) {
         byMonth[monthNum].onTimeDeliveries++;
       }
-    } catch (e) {
+    } catch {
       continue;
     }
   }
@@ -433,7 +447,7 @@ export async function getOnTimeDeliveryStats(
       if (actual && actual <= scheduledTime) {
         onTimeDeliveries++;
       }
-    } catch (e) {
+    } catch {
       continue;
     }
   }

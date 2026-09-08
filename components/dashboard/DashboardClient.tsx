@@ -11,6 +11,8 @@ import { WeeklyOperationsTable } from "@/components/dashboard/WeeklyOperationsTa
 import { MonthlyOperationsTable } from "@/components/dashboard/MonthlyOperationsTable";
 import { LiveFleetTable } from "@/components/dashboard/LiveFleetTable";
 import { KrisdomingoOverallKpiWidget } from "@/components/dashboard/KrisdomingoOverallKpiWidget";
+import { OperationsGraphAnalyticsModal } from "@/components/dashboard/OperationsGraphAnalyticsModal";
+import { getWeekOfMonth } from "@/lib/utils/dateUtils";
 import { useState, useEffect, useMemo } from "react";
 import { Truck } from "@/lib/db/schema";
 import { getTruckStatusLabel } from "@/lib/utils/truckStatus";
@@ -28,7 +30,7 @@ type Props = {
   truckList: Truck[];
   dailyOperations: { id: number; name: string; kts: number; subcon: number }[];
   weeklyOperations: { day: string; kts: number; subcon: number; ktsTrucks: number; subconTrucks: number; completedDeliveries: number; onTimeDeliveries: number }[];
-  monthlyOperations: { day: string; kts: number; subcon: number; ktsTrucks: number; subconTrucks: number; completedDeliveries: number; onTimeDeliveries: number }[];
+  monthlyOperations: { day: string; kts: number; subcon: number; ktsTrucks: number; subconTrucks: number; activeDays?: number; completedDeliveries: number; onTimeDeliveries: number }[];
   onTimeDeliveryStats: { totalDeliveries: number; onTimeDeliveries: number; percentage: string };
   operationsStartDate?: string;
   todayStr?: string;
@@ -206,6 +208,50 @@ export default function DashboardClient({
 
   const totalKtsTrucks = useMemo(() => truckList.filter((t) => !t.isSubcon).length, [truckList]);
   const totalSubconTrucks = useMemo(() => truckList.filter((t) => t.isSubcon).length, [truckList]);
+  const [graphModalOpened, setGraphModalOpened] = useState(false);
+
+  const currentWeekNum = useMemo(() => getWeekOfMonth(new Date()), []);
+
+  const weeklyChartData = useMemo(() => {
+    return weeklyOperations.map((item) => {
+      const ktsPct = totalKtsTrucks > 0 ? Number(((item.ktsTrucks / totalKtsTrucks) * 100).toFixed(1)) : 0;
+      const subconPct = totalSubconTrucks > 0 ? Number(((item.subconTrucks / totalSubconTrucks) * 100).toFixed(1)) : 0;
+      const onTimePct = item.completedDeliveries > 0 ? Number(((item.onTimeDeliveries / item.completedDeliveries) * 100).toFixed(1)) : 0;
+      const dayParts = item.day.split(" | ");
+      return {
+        label: item.day,
+        shortLabel: dayParts[0],
+        ktsTrips: item.kts,
+        subconTrips: item.subcon,
+        totalTrips: item.kts + item.subcon,
+        ktsUtilPct: ktsPct,
+        subconUtilPct: subconPct,
+        onTimePct,
+        completedDeliveries: item.completedDeliveries,
+        onTimeDeliveries: item.onTimeDeliveries,
+      };
+    });
+  }, [weeklyOperations, totalKtsTrucks, totalSubconTrucks]);
+
+  const monthlyChartData = useMemo(() => {
+    return monthlyOperations.map((item) => {
+      const ktsPct = totalKtsTrucks > 0 ? Number(((item.ktsTrucks / (totalKtsTrucks * (item.activeDays || 30))) * 100).toFixed(1)) : 0;
+      const subconPct = totalSubconTrucks > 0 ? Number(((item.subconTrucks / (totalSubconTrucks * (item.activeDays || 30))) * 100).toFixed(1)) : 0;
+      const onTimePct = item.completedDeliveries > 0 ? Number(((item.onTimeDeliveries / item.completedDeliveries) * 100).toFixed(1)) : 0;
+      return {
+        label: item.day,
+        shortLabel: item.day.slice(0, 3),
+        ktsTrips: item.kts,
+        subconTrips: item.subcon,
+        totalTrips: item.kts + item.subcon,
+        ktsUtilPct: ktsPct,
+        subconUtilPct: subconPct,
+        onTimePct,
+        completedDeliveries: item.completedDeliveries,
+        onTimeDeliveries: item.onTimeDeliveries,
+      };
+    });
+  }, [monthlyOperations, totalKtsTrucks, totalSubconTrucks]);
 
   return (
     <Flex gap="md" direction={{ base: "column", lg: "row" }} align="flex-start">
@@ -262,6 +308,7 @@ export default function DashboardClient({
               data={weeklyOperations}
               totalKtsTrucks={totalKtsTrucks}
               totalSubconTrucks={totalSubconTrucks}
+              onOpenFullAnalytics={() => setGraphModalOpened(true)}
             />
           </Box>
           <Box style={{ flex: 1 }}>
@@ -272,6 +319,7 @@ export default function DashboardClient({
               totalSubconTrucks={totalSubconTrucks}
               operationsStartDate={operationsStartDate}
               todayStr={todayStr}
+              onOpenFullAnalytics={() => setGraphModalOpened(true)}
             />
           </Box>
         </Flex>
@@ -290,6 +338,15 @@ export default function DashboardClient({
           onSearchChange={setFleetSearch}
         />
       </Collapse>
+
+      <OperationsGraphAnalyticsModal
+        opened={graphModalOpened}
+        onClose={() => setGraphModalOpened(false)}
+        weeklyData={weeklyChartData}
+        monthlyData={monthlyChartData}
+        currentWeekNum={currentWeekNum}
+        year={new Date().getFullYear()}
+      />
     </Flex>
   );
 }

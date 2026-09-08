@@ -1,6 +1,7 @@
 @import "tailwindcss";
 @import "@mantine/core/styles.css";
 @import "@mantine/notifications/styles.css";
+@import "@mantine/charts/styles.css";
 @import "mantine-datatable/styles.css";
 
 /* 
@@ -12,4 +13,27 @@ html,
 body {
   height: 100%;
   margin: 0;
+}
+
+
+/* Fix Recharts hover cursor black background */
+.recharts-tooltip-cursor {
+  fill: rgba(59, 130, 246, 0.08) !important;
+  stroke: rgba(59, 130, 246, 0.25) !important;
+  stroke-width: 1px !important;
+  stroke-dasharray: 4 4 !important;
+}
+
+/* Fix chart tooltip background, border and z-index */
+.recharts-default-tooltip,
+.recharts-tooltip-wrapper {
+  z-index: 99999 !important;
+}
+
+.mantine-ChartTooltip-tooltip,
+.m_e4d36c9b {
+  background-color: #ffffff !important;
+  border: 1px solid #dee2e6 !important;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12) !important;
+  border-radius: 8px !important;
 }
