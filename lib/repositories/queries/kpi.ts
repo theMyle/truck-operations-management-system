@@ -1,6 +1,6 @@
 import { db } from "@/lib/db";
-import { booking, trucks, drivers, helpers } from "@/lib/db/schema";
-import { eq, and, sql, gte, lte, inArray } from "drizzle-orm";
+import { booking, trucks } from "@/lib/db/schema";
+import { eq, and, sql, gte, lte } from "drizzle-orm";
 import { pmsRepository } from "../pms.repository";
 import { demeritRepository } from "../demerit.repository";
 import { getOperationsStartDate } from "@/lib/repositories/queries/dashboard";
@@ -255,40 +255,57 @@ export async function getKrisdomingoKpiReport(targetYear?: number): Promise<KpiR
         ? Number(((onTimeCount / completedTrips.length) * 100).toFixed(1))
         : 100;
 
-      // On-Time Payment % (Paid on or before due date)
-      const billedInvoices = mBookings.filter((b) => b.soaNumber && b.soaNumber.trim().length > 0);
-      let onTimePaidCount = 0;
-
-      billedInvoices.forEach((b) => {
-        const isPaid = (b.billingStatus || "").toLowerCase() === "paid" || Number(b.amountPaid) >= Number(b.clientRate);
-        if (isPaid) {
-          if (!b.dueDate) {
-            onTimePaidCount++;
-          } else {
-            const due = new Date(b.dueDate);
-            due.setHours(23, 59, 59, 999);
-            const payDate = b.invoiceDate ? new Date(b.invoiceDate) : new Date();
-            // Count as on-time if paid on or before due date
-            if (payDate <= due) {
-              onTimePaidCount++;
-            }
+      // On-Time Payment (Client) % — % of client invoices paid on/before due date (Billing Module)
+      // Group billed trips by distinct SOA Number (Client Invoice) rather than counting individual trips
+      const invoiceMap = new Map<string, typeof mBookings>();
+      mBookings.forEach((b) => {
+        const soa = (b.soaNumber || "").trim();
+        if (soa.length > 0) {
+          if (!invoiceMap.has(soa)) {
+            invoiceMap.set(soa, []);
           }
-        } else {
-          // Pending SOA invoice: if not past due date, it is in good standing / on-time
-          if (!b.dueDate) {
-            onTimePaidCount++;
-          } else {
-            const due = new Date(b.dueDate);
-            due.setHours(23, 59, 59, 999);
-            if (new Date() <= due) {
-              onTimePaidCount++;
-            }
+          invoiceMap.get(soa)!.push(b);
+        }
+      });
+
+      const totalClientInvoices = invoiceMap.size;
+      let overdueInvoices = 0;
+
+      invoiceMap.forEach((trips) => {
+        // Explicitly marked overdue in DB
+        if (trips.some((t) => (t.billingStatus || "").toLowerCase() === "overdue")) {
+          overdueInvoices++;
+          return;
+        }
+
+        // Transportify trips are auto-settled per existing billing convention unless explicitly marked overdue
+        const isTransportify = trips.some((t) =>
+          (t.clientName || "").toLowerCase().includes("transportify") ||
+          (t.trucker || "").toLowerCase().includes("transportify") ||
+          (t.fleetType || "").toLowerCase().includes("transportify")
+        );
+
+        const totalRate = trips.reduce((sum, t) => sum + (Number(t.clientRate) || 0), 0);
+        const totalPaid = isTransportify && trips.every((t) => !t.amountPaid || Number(t.amountPaid) === 0)
+          ? totalRate
+          : trips.reduce((sum, t) => sum + (Number(t.amountPaid) || 0), 0);
+
+        // If paid in full, not overdue
+        if (totalPaid >= totalRate && totalRate > 0) return;
+
+        // Check if invoice due date has passed
+        const firstWithDueDate = trips.find((t) => t.dueDate);
+        if (firstWithDueDate && firstWithDueDate.dueDate) {
+          const dueStr = firstWithDueDate.dueDate.split("T")[0];
+          if (todayManilaStr > dueStr && totalPaid < totalRate) {
+            overdueInvoices++;
+            return;
           }
         }
       });
 
-      const onTimePaymentPercentage = billedInvoices.length > 0
-        ? Number(((onTimePaidCount / billedInvoices.length) * 100).toFixed(1))
+      const onTimePaymentPercentage = totalClientInvoices > 0
+        ? Number((((totalClientInvoices - overdueInvoices) / totalClientInvoices) * 100).toFixed(1))
         : 100;
 
       // Maintenance Compliance % (Uses PMS non-overdue ratio)
