@@ -231,6 +231,19 @@ export const updateBillingStatusAction = actionClient
 
     if (!bookingIds.length) return { success: false, error: "No booking IDs provided" };
 
+    // Fetch all trucks once for subcon plate checking
+    const allTrucks = await db.query.trucks.findMany();
+    const subconPlateSet = new Set(
+      allTrucks
+        .filter(
+          (t) =>
+            t.isSubcon ||
+            (t.unitType || "").toLowerCase().includes("subcon") ||
+            (t.fleetType || "").toLowerCase().includes("subcon"),
+        )
+        .map((t) => t.plateNumber.trim().toUpperCase()),
+    );
+
     for (const id of bookingIds) {
       const current = await db.query.booking.findFirst({
         where: (b, { eq }) => eq(b.id, id),
@@ -238,15 +251,23 @@ export const updateBillingStatusAction = actionClient
 
       if (!current) continue;
 
+      const isSub =
+        subconPlateSet.has((current.plateNumber || "").trim().toUpperCase()) ||
+        (current.trucker && current.trucker.toLowerCase().includes("subcon")) ||
+        (current.fleetType && current.fleetType.toLowerCase().includes("subcon")) ||
+        false;
+
       const clientRateVal = Number(current.clientRate) || 0;
+      const truckerRateVal = Number(current.truckerRate) || 0;
+      const basisRateVal = isSub ? truckerRateVal : clientRateVal;
       const amountPaidVal = amountPaid !== undefined ? Number(amountPaid) : (Number(current.amountPaid) || 0);
 
       let billingStatus = "unbilled";
       const effectiveSoa = (soaNumber !== undefined ? soaNumber : current.soaNumber) || "";
 
-      if (amountPaidVal >= clientRateVal && clientRateVal > 0) {
+      if (amountPaidVal >= basisRateVal && basisRateVal > 0) {
         billingStatus = "paid";
-      } else if (amountPaidVal > 0 && amountPaidVal < clientRateVal) {
+      } else if (amountPaidVal > 0 && amountPaidVal < basisRateVal) {
         billingStatus = "partially_paid";
       } else {
         const checkDueDate = dueDate !== undefined ? dueDate : current.dueDate;
@@ -255,7 +276,7 @@ export const updateBillingStatusAction = actionClient
           const today = new Date();
           due.setHours(0, 0, 0, 0);
           today.setHours(0, 0, 0, 0);
-          if (today > due && amountPaidVal < clientRateVal) {
+          if (today > due && amountPaidVal < basisRateVal) {
             billingStatus = "overdue";
           } else {
             billingStatus = effectiveSoa.trim().length > 0 ? "pending" : "unbilled";
@@ -344,14 +365,28 @@ export const updateBillingTripRateAction = actionClient
     if (numberOfDrops !== undefined) updateData.numberOfDrops = numberOfDrops;
     if (excessDropRate !== undefined) updateData.excessDropRate = excessDropRate;
 
-    // Recalculate billing status if clientRate changed
+    // Recalculate billing status against correct basis rate (trucker rate for subcon, client rate for KTS)
+    const truck = current.plateNumber
+      ? await db.query.trucks.findFirst({
+          where: (t, { eq }) => eq(t.plateNumber, current.plateNumber),
+        })
+      : null;
+
+    const isSub =
+      truck?.isSubcon ||
+      (current.trucker && current.trucker.toLowerCase().includes("subcon")) ||
+      (current.fleetType && current.fleetType.toLowerCase().includes("subcon")) ||
+      false;
+
     const newClientRate = clientRate !== undefined ? Number(clientRate) || 0 : (Number(current.clientRate) || 0);
+    const newTruckerRate = truckerRate !== undefined ? Number(truckerRate) || 0 : (Number(current.truckerRate) || 0);
+    const basisRateVal = isSub ? newTruckerRate : newClientRate;
     const amountPaidVal = Number(current.amountPaid) || 0;
     const effectiveSoa = current.soaNumber || "";
 
-    if (amountPaidVal >= newClientRate && newClientRate > 0) {
+    if (amountPaidVal >= basisRateVal && basisRateVal > 0) {
       updateData.billingStatus = "paid";
-    } else if (amountPaidVal > 0 && amountPaidVal < newClientRate) {
+    } else if (amountPaidVal > 0 && amountPaidVal < basisRateVal) {
       updateData.billingStatus = "partially_paid";
     } else {
       if (current.dueDate) {
@@ -359,7 +394,7 @@ export const updateBillingTripRateAction = actionClient
         const today = new Date();
         due.setHours(0, 0, 0, 0);
         today.setHours(0, 0, 0, 0);
-        if (today > due && amountPaidVal < newClientRate) {
+        if (today > due && amountPaidVal < basisRateVal) {
           updateData.billingStatus = "overdue";
         } else {
           updateData.billingStatus = effectiveSoa.trim().length > 0 ? "pending" : "unbilled";
