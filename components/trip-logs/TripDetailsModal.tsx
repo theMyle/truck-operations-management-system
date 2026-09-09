@@ -271,13 +271,28 @@ export function TripDetailsModal({
 
             driverRate: String(form.values.driverRate),
             helperRate: String(form.values.helperRate),
-            expenses: form.values.expenses.map((e, idx) => ({
-                id: String(e.expenseId),
-                bookingId: String(record.id),
-                entryIndex: idx,
-                expenseType: e.expenseCategory,
-                amount: String(e.amount),
-            })),
+            expenses: form.values.expenses.map((e, idx) => {
+                let expenseType = e.expenseCategory;
+                if (e.expenseCategory === "cash_advance" && e.assignedTo) {
+                    const cleanAssignedTo = formatEmployeeName(e.assignedTo);
+                    const isDriver =
+                        cleanAssignedTo === formatEmployeeName(record.driver);
+                    const isHelper =
+                        record.helper &&
+                        formatEmployeeName(record.helper).includes(cleanAssignedTo);
+                    const isTrucker = cleanAssignedTo === (record.trucker || "").toUpperCase();
+                    const role = isDriver ? "Driver" : isHelper ? "Helper" : isTrucker ? "Trucker" : "";
+                    const suffix = role ? ` (${role})` : "";
+                    expenseType = `Cash Advance, ${cleanAssignedTo}${suffix}`;
+                }
+                return {
+                    id: String(e.expenseId),
+                    bookingId: String(record.id),
+                    entryIndex: idx,
+                    expenseType,
+                    amount: String(e.amount),
+                };
+            }),
             helpers: [],
             drops: [],
             billingStatus: (record as any).billingStatus || "unpaid",
