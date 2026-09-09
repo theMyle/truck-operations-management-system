@@ -1,4 +1,4 @@
-import { decimal, integer, pgTable, text, uuid } from "drizzle-orm/pg-core";
+import { decimal, index, integer, pgTable, text, uuid } from "drizzle-orm/pg-core";
 import { booking } from "./booking";
 import { relations } from "drizzle-orm";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
