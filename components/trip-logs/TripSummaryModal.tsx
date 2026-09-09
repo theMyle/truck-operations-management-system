@@ -111,6 +111,29 @@ function ReviewSection({
   );
 }
 
+/* ── Format Expense Label with Assigned Manpower ── */
+function formatExpenseSummaryLabel(expenseType: string, idx: number): string {
+  if (!expenseType) return `${idx + 1}. —`;
+
+  if (expenseType.startsWith("Cash Advance, ")) {
+    const raw = expenseType.replace(/^Cash Advance,\s*/i, "");
+    const rawName = raw.replace(/\s*\((Driver|Helper|Trucker)\)$/i, "").trim();
+    const formattedName = toTitleCase(rawName);
+    return `${idx + 1}. Cash Advance (${formattedName})`;
+  }
+
+  if (expenseType === "cash_advance") {
+    return `${idx + 1}. Cash Advance (Unassigned)`;
+  }
+
+  const catMatch = EXPENSE_CATEGORIES.find((c) => c.value === expenseType);
+  if (catMatch) {
+    return `${idx + 1}. ${catMatch.label}`;
+  }
+
+  return `${idx + 1}. ${expenseType.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase())}`;
+}
+
 export function TripSummaryModal({
   opened,
   onClose,
@@ -228,11 +251,15 @@ export function TripSummaryModal({
       autoCA: booking.autoCash || false,
       driverRate: Number(booking.driverRate) || 0,
       helperRate: Number(booking.helperRate) || 0,
-      expenses: booking.expenses.map((e, idx) => ({
-        expenseId: idx,
-        expenseCategory: e.expenseType,
-        amount: Number(e.amount),
-      })),
+      expenses: booking.expenses.map((e, idx) => {
+        const isCA = e.expenseType.startsWith("Cash Advance, ");
+        return {
+          expenseId: idx,
+          expenseCategory: isCA ? "cash_advance" : e.expenseType,
+          amount: Number(e.amount),
+          assignedTo: isCA ? e.expenseType.replace(/^Cash Advance,\s*/i, "").split(" (")[0] : "",
+        };
+      }),
     };
 
     generateLiquidationPDF(record, formValues, refNumber);
@@ -464,7 +491,7 @@ export function TripSummaryModal({
                 {booking.expenses.map((e, idx) => (
                   <ReviewRow
                     key={e.id}
-                    label={`${idx + 1}. ${EXPENSE_CATEGORIES.find((c) => c.value === e.expenseType)?.label || (e.expenseType ? e.expenseType.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase()) : "—")}`}
+                    label={formatExpenseSummaryLabel(e.expenseType, idx)}
                     value={`₱${(Number(e.amount) || 0).toLocaleString("en-PH", { minimumFractionDigits: 2 })}`}
                   />
                 ))}

@@ -412,7 +412,7 @@ export function NewExpensesTab({
           }}
           onClick={() =>
             form.insertListItem("expenses", {
-              expenseId: Date.now(),
+              expenseId: Date.now() + Math.random(),
               expenseCategory: "",
               amount: 0,
               assignedTo: "",
