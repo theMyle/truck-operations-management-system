@@ -1,4 +1,4 @@
-import { pgTable, primaryKey, uuid } from "drizzle-orm/pg-core";
+import { index, pgTable, primaryKey, uuid } from "drizzle-orm/pg-core";
 import { booking } from "./booking";
 import { helpers } from "./helpers";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
