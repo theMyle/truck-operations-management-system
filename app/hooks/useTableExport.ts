@@ -24,7 +24,10 @@ function getFormattedValue(record: DispatchRecord, colKey: string): string {
     return val !== undefined && val !== null ? String(val) : "1";
   }
   if (colKey === "pickUpTime") {
-    return getDepartureInGarageTime(String(val ?? ""));
+    return getDepartureInGarageTime(
+      String(val ?? ""),
+      record.pickUpDate || record.date
+    );
   }
   if (colKey === "bookedBy") {
     return toTitleCase(typeof val === "string" ? val : String(val ?? ""));
@@ -411,7 +414,7 @@ export function useTableExport(
       jpgColumns.forEach((col) => {
         const td = document.createElement("td");
         td.textContent = getFormattedValue(record, col.key);
-        if (col.key === "dropOffLocation" || col.key === "ruta") {
+        if (col.key === "dropOffLocation" || col.key === "ruta" || col.key === "pickUpTime") {
           td.style.cssText =
             "padding:9px 14px;border-bottom:1px solid #e5e7eb;white-space:pre-wrap;min-width:150px;";
         } else {
