@@ -2,7 +2,7 @@
 
 import { actionClient } from "@/lib/safe-action";
 import { db } from "@/lib/db";
-import { booking, clients } from "@/lib/db/schema";
+import { booking } from "@/lib/db/schema";
 import { z } from "zod";
 import { and, eq, gte, lte, isNotNull, or, desc, like } from "drizzle-orm";
 import { formatTime12Hour, formatTimeHHMM, generateClientCode } from "@/lib/utils/stringFormat";
@@ -18,54 +18,46 @@ export const getBillingRecordsAction = actionClient
   .action(async ({ parsedInput }) => {
     const { client, from, to } = parsedInput;
 
-    // Build where clauses dynamically
-    const conditions = [];
-    if (client) conditions.push(eq(booking.clientName, client));
-    if (from) conditions.push(gte(booking.pickupDate, from));
-    if (to) conditions.push(lte(booking.pickupDate, to));
-
-    const rows = await db
-      .select({
-        booking: booking,
-        client: clients,
-      })
-      .from(booking)
-      .leftJoin(clients, eq(booking.clientId, clients.id))
-      .where(conditions.length ? and(...conditions) : undefined)
-      .orderBy(desc(booking.pickupDate));
-
-    // Fetch relations (helpers, drops) for each booking
-    const bookingIds = rows.map((r) => r.booking.id);
-    const bookingsWithRelations = bookingIds.length
-      ? await db.query.booking.findMany({
-          where: (b, { inArray }) => inArray(b.id, bookingIds),
-          with: {
-            helpers: {
-              with: {
-                helper: true,
-              },
+    // In parallel: Fetch bookings with relations and active subcon trucks in a single round-trip
+    const [bookingsWithRelations, subconTrucks] = await Promise.all([
+      db.query.booking.findMany({
+        where: (b, { and, eq, gte, lte, isNotNull, ne }) => {
+          const conds = [];
+          if (client) conds.push(eq(b.clientName, client));
+          if (from) conds.push(gte(b.pickupDate, from));
+          if (to) conds.push(lte(b.pickupDate, to));
+          // Valid Booking DR# is required for billing eligibility
+          conds.push(isNotNull(b.bookingDRNo));
+          conds.push(ne(b.bookingDRNo, ""));
+          return conds.length ? and(...conds) : undefined;
+        },
+        with: {
+          helpers: {
+            with: {
+              helper: true,
             },
-            drops: true,
-            odoDetails: true,
-            expenses: true,
           },
-          orderBy: (b, { desc }) => [desc(b.pickupDate)],
-        })
-      : [];
+          drops: true,
+          odoDetails: true,
+          expenses: true,
+        },
+        orderBy: (b, { desc }) => [desc(b.pickupDate)],
+      }),
+      db.query.trucks.findMany({
+        columns: {
+          plateNumber: true,
+        },
+        where: (t, { or, eq, ilike }) =>
+          or(
+            eq(t.isSubcon, true),
+            ilike(t.unitType, "%subcon%"),
+            ilike(t.fleetType, "%subcon%"),
+          ),
+      }),
+    ]);
 
-    // Enforce Module Workflow Gates:
-    // - Subcon Trucks: Proceed directly to Billing once Completed (and POD met)
-    // - KTS Trucks: MUST complete Trip Logs requirements first (Odometer logged!)
-    const allTrucks = await db.query.trucks.findMany();
     const subconPlateSet = new Set(
-      allTrucks
-        .filter(
-          (t) =>
-            t.isSubcon ||
-            (t.unitType || "").toLowerCase().includes("subcon") ||
-            (t.fleetType || "").toLowerCase().includes("subcon"),
-        )
-        .map((t) => t.plateNumber.trim().toUpperCase()),
+      subconTrucks.map((t) => t.plateNumber.trim().toUpperCase()),
     );
 
     const eligibleForBilling = bookingsWithRelations.filter((b) => {
