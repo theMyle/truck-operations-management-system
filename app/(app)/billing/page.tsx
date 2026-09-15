@@ -1,5 +1,6 @@
 "use client";
 
+import { parseCashAdvanceExpense } from "@/lib/utils/expense";
 import {
   Stack,
   Text,
@@ -70,7 +71,7 @@ import { getTruckAction } from "@/lib/actions/trucks";
 import { DeleteConfirmModal } from "@/components/booking/DeleteConfirmModal";
 import { BILLING_TABLE_HEADERS } from "@/components/ui/ModuleSkeletons";
 import { TableSkeleton } from "@/components/ui/TableSkeleton";
-import { formatTime12Hour, capitalizeWords, formatEmployeeName } from "@/lib/utils/stringFormat";
+import { formatTime12Hour, capitalizeWords, formatEmployeeName, splitRoute } from "@/lib/utils/stringFormat";
 import { useUser } from "@clerk/nextjs";
 
 export type BillingRecord = DispatchRecord & {
@@ -746,19 +747,7 @@ export default function BillingModule() {
   );
 
   function parseShortRoute(ruta?: string, pickLoc?: string, dropLoc?: string): { pickup: string; dropoff: string } {
-    if (ruta && ruta.trim().length > 0) {
-      const raw = ruta.trim();
-      if (/\s+TO\s+/i.test(raw)) {
-        const parts = raw.split(/\s+TO\s+/i);
-        return { pickup: parts[0].trim(), dropoff: parts.slice(1).join(" - ").trim() };
-      }
-      if (raw.includes("-")) {
-        const parts = raw.split("-");
-        return { pickup: parts[0].trim(), dropoff: parts.slice(1).join(" - ").trim() };
-      }
-      return { pickup: raw, dropoff: "" };
-    }
-    return { pickup: pickLoc || "", dropoff: dropLoc || "" };
+    return splitRoute(ruta, pickLoc, dropLoc);
   }
 
   function formatCANames(
@@ -766,18 +755,12 @@ export default function BillingModule() {
   ): string {
     if (!caExpenses.length) return "";
     if (caExpenses.length === 1) {
-      const raw = caExpenses[0].expenseType
-        .replace(/^Cash Advance,\s*/i, "")
-        .replace(/\s*\((Driver|Helper|Trucker)\)$/i, "")
-        .trim();
-      return formatEmployeeName(raw);
+      const parsed = parseCashAdvanceExpense(caExpenses[0].expenseType);
+      return formatEmployeeName(parsed.employeeName);
     }
     const lines = caExpenses.map((e) => {
-      const raw = e.expenseType
-        .replace(/^Cash Advance,\s*/i, "")
-        .replace(/\s*\((Driver|Helper|Trucker)\)$/i, "")
-        .trim();
-      return formatEmployeeName(raw);
+      const parsed = parseCashAdvanceExpense(e.expenseType);
+      return formatEmployeeName(parsed.employeeName);
     });
     lines.push("TOTAL");
     return lines.join("\n");
@@ -862,9 +845,7 @@ export default function BillingModule() {
     const lines = expenses.map((e) => {
       const amt = Number(e.amount) || 0;
       total += amt;
-      const name = e.expenseType
-        .replace(/^Cash Advance,\s*/i, "")
-        .replace(/\s*\((Driver|Helper|Trucker)\)$/i, "")
+      const name = parseCashAdvanceExpense(e.expenseType).employeeName
         .trim();
       return `${name} - ${amt.toLocaleString("en-PH", { minimumFractionDigits: 2 })}`;
     });

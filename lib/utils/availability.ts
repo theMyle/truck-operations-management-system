@@ -1,3 +1,4 @@
+import { parseScheduledDateTime } from "./dateTime";
 import { BookingWithRelations } from "@/lib/db/schema/booking";
 
 export interface AvailabilityResult {
@@ -7,50 +8,9 @@ export interface AvailabilityResult {
   busyPlateNumbers: Set<string>;
 }
 
-/**
- * Parses date string/object and time string into a JS Date timestamp.
- */
 function parseDateTime(dateVal: string | Date | null | undefined, timeStr?: string | null): number | null {
-  if (!dateVal) return null;
-  let year: number, month: number, day: number;
-
-  if (typeof dateVal === "string") {
-    const parts = dateVal.split("T")[0].split("-");
-    if (parts.length === 3) {
-      year = parseInt(parts[0], 10);
-      month = parseInt(parts[1], 10) - 1;
-      day = parseInt(parts[2], 10);
-    } else {
-      const d = new Date(dateVal);
-      if (isNaN(d.getTime())) return null;
-      year = d.getFullYear();
-      month = d.getMonth();
-      day = d.getDate();
-    }
-  } else if (dateVal instanceof Date && !isNaN(dateVal.getTime())) {
-    year = dateVal.getFullYear();
-    month = dateVal.getMonth();
-    day = dateVal.getDate();
-  } else {
-    return null;
-  }
-
-  let hours = 8; // Default 8:00 AM if no time specified
-  let minutes = 0;
-
-  if (timeStr && timeStr.trim()) {
-    const cleanTime = timeStr.trim();
-    const match24 = cleanTime.match(/^(\d{1,2}):(\d{2})/);
-    if (match24) {
-      hours = parseInt(match24[1], 10);
-      minutes = parseInt(match24[2], 10);
-      if (cleanTime.toLowerCase().includes("pm") && hours < 12) hours += 12;
-      if (cleanTime.toLowerCase().includes("am") && hours === 12) hours = 0;
-    }
-  }
-
-  const result = new Date(year, month, day, hours, minutes, 0, 0);
-  return result.getTime();
+  const d = parseScheduledDateTime(dateVal, timeStr);
+  return d ? d.getTime() : null;
 }
 
 /**

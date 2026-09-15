@@ -1,5 +1,6 @@
 "use client";
 
+import { parseCashAdvanceExpense } from "@/lib/utils/expense";
 import {
   Modal,
   ScrollArea,
@@ -116,8 +117,8 @@ function formatExpenseSummaryLabel(expenseType: string, idx: number): string {
   if (!expenseType) return `${idx + 1}. —`;
 
   if (expenseType.startsWith("Cash Advance, ")) {
-    const raw = expenseType.replace(/^Cash Advance,\s*/i, "");
-    const rawName = raw.replace(/\s*\((Driver|Helper|Trucker)\)$/i, "").trim();
+    const parsedCA = parseCashAdvanceExpense(expenseType);
+      const rawName = parsedCA.employeeName;
     const formattedName = toTitleCase(rawName);
     return `${idx + 1}. Cash Advance (${formattedName})`;
   }
@@ -257,7 +258,7 @@ export function TripSummaryModal({
           expenseId: idx,
           expenseCategory: isCA ? "cash_advance" : e.expenseType,
           amount: Number(e.amount),
-          assignedTo: isCA ? e.expenseType.replace(/^Cash Advance,\s*/i, "").split(" (")[0] : "",
+          assignedTo: isCA ? parseCashAdvanceExpense(e.expenseType).employeeName : "",
         };
       }),
     };

@@ -122,3 +122,27 @@ export function formatEmployeeName(name: string | null | undefined): string {
     })
     .join(", ");
 }
+
+/**
+ * Splits a composite route string (e.g. "MANILA TO CAVITE", "LAGUNA - BATANGAS")
+ * into origin pickup and destination dropoff locations.
+ */
+export function splitRoute(
+  ruta?: string | null,
+  fallbackPick?: string | null,
+  fallbackDrop?: string | null
+): { pickup: string; dropoff: string } {
+  if (ruta && typeof ruta === "string" && ruta.trim().length > 0) {
+    const raw = ruta.trim();
+    if (/\s+TO\s+/i.test(raw)) {
+      const parts = raw.split(/\s+TO\s+/i);
+      return { pickup: parts[0].trim(), dropoff: parts.slice(1).join(" - ").trim() };
+    }
+    if (raw.includes("-")) {
+      const parts = raw.split("-");
+      return { pickup: parts[0].trim(), dropoff: parts.slice(1).join(" - ").trim() };
+    }
+    return { pickup: raw, dropoff: fallbackDrop || "" };
+  }
+  return { pickup: fallbackPick || "", dropoff: fallbackDrop || "" };
+}

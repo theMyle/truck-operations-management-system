@@ -1,3 +1,4 @@
+import { parseScheduledDateTime } from "@/lib/utils/dateTime";
 import { db } from "@/lib/db";
 import { booking } from "@/lib/db/schema/booking";
 import { trucks } from "@/lib/db/schema/trucks";
@@ -468,31 +469,7 @@ export async function getOperationsStartDate() {
   return result[0]?.minDate || null;
 }
 
-function parseScheduledDateTime(dateStr?: string, timeStr?: string): Date | null {
-  if (!dateStr || !timeStr) return null;
-  const t = timeStr.trim();
-  const m12 = t.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
-  if (m12) {
-    let h = parseInt(m12[1], 10);
-    const m = parseInt(m12[2], 10);
-    const period = m12[3].toUpperCase();
-    if (period === "PM" && h < 12) h += 12;
-    if (period === "AM" && h === 12) h = 0;
-    const d = new Date(dateStr);
-    d.setHours(h, m, 0, 0);
-    return d;
-  }
-  const m24 = t.match(/^(\d{1,2}):(\d{2})/);
-  if (m24) {
-    const h = parseInt(m24[1], 10);
-    const m = parseInt(m24[2], 10);
-    const d = new Date(dateStr);
-    d.setHours(h, m, 0, 0);
-    return d;
-  }
-  const fallback = new Date(`${dateStr} ${timeStr}`);
-  return isNaN(fallback.getTime()) ? null : fallback;
-}
+// (parseScheduledDateTime centralized in @/lib/utils/dateTime)
 
 export async function getDailyOnTimeDeliveryBreakdown(
   targetDate?: string,
