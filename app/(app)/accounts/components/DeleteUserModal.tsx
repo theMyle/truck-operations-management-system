@@ -1,7 +1,7 @@
 'use client'
 
 import { Modal, Button, Text, Group, Stack } from "@mantine/core";
-import { useDeleteUser } from "@/app/hooks/use-users";
+import { useDeleteUser } from "@/hooks/useUsers";
 import { useAuth } from "@clerk/nextjs";
 import { notifications } from "@mantine/notifications";
 import { User } from "@/types/user";

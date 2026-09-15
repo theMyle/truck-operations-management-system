@@ -3,7 +3,7 @@
 import { Modal, Button, TextInput, PasswordInput, Select, Stack, Group, Alert } from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { CreateUserDto } from "@/lib/validations/user";
-import { useCreateUser } from "@/app/hooks/use-users";
+import { useCreateUser } from "@/hooks/useUsers";
 import { useAuth } from "@clerk/nextjs";
 import { IconAlertCircle } from "@tabler/icons-react";
 import { useState } from "react";

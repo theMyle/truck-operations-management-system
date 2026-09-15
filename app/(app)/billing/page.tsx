@@ -59,7 +59,7 @@ import {
 import * as XLSX from "xlsx-js-style";
 
 import { DispatchRecord } from "../constant";
-import { usePodDownload, type PodRecord } from "@/app/hooks/usePodDownload";
+import { usePodDownload, type PodRecord } from "@/hooks/usePodDownload";
 import { SummaryCard } from "@/components/billing/SummaryCard";
 import { StatementOfAccountModal } from "@/components/billing/StatementOfAccountModal";
 import { EditBillingTripModal } from "@/components/billing/EditBillingTripModal";
