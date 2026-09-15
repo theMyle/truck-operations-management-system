@@ -26,7 +26,7 @@ import {
   IconChevronDown,
   IconPrinter,
 } from "@tabler/icons-react";
-import { useKpiExport } from "@/app/hooks/useKpiExport";
+import { useKpiExport } from "@/hooks/useKpiExport";
 import type { KpiReportSummary, MonthlyKpiData } from "@/lib/repositories/queries/kpi";
 
 interface KrisdomingoKpiModalProps {

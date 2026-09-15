@@ -1,6 +1,6 @@
 'use client'
 
-import { useUsers } from "@/app/hooks/use-users";
+import { useUsers } from "@/hooks/useUsers";
 import { useAuth } from "@clerk/nextjs";
 import { Card, Loader, Button, Group, Text, Stack, Flex } from "@mantine/core";
 import { IconPlus, IconUser } from "@tabler/icons-react";

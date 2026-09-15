@@ -47,9 +47,9 @@ import { getTruckAction } from "@/lib/actions/trucks";
 import { formatTime12Hour, formatTimeHHMM } from "@/lib/utils/stringFormat";
 import { TripLogsTable } from "@/components/trip-logs/TripLogsTable";
 import { TripLogsModuleSkeleton } from "@/components/ui/ModuleSkeletons";
-import { useTableExport } from "@/app/hooks/useTableExport";
+import { useTableExport } from "@/hooks/useTableExport";
 import { formatEmployeeName } from "@/lib/utils/stringFormat";
-import { useTablePrint } from "@/app/hooks/useTablePrint";
+import { useTablePrint } from "@/hooks/useTablePrint";
 
 /* ── Status badge helper ── */
 const statusColor: Record<DispatchRecord["status"], string> = {

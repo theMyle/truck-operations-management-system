@@ -34,7 +34,7 @@ import {
   updateTripMonitoringAction,
 } from "@/lib/actions/booking";
 import { TimeField } from "@/components/ui/TimeField";
-import { useOnTimeExport } from "@/app/hooks/useOnTimeExport";
+import { useOnTimeExport } from "@/hooks/useOnTimeExport";
 
 interface OnTimeDeliveryModalProps {
   opened: boolean;

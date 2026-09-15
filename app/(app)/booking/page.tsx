@@ -17,8 +17,8 @@ import { DeleteConfirmModal } from "@/components/booking/DeleteConfirmModal";
 import { CanceledTripsModal } from "@/components/booking/CanceledTripsModal";
 import { BookingTable } from "@/components/booking/BookingTable";
 import { BookingToolbar } from "@/components/booking/BookingToolbar";
-import { useTableExport } from "@/app/hooks/useTableExport";
-import { useTablePrint } from "@/app/hooks/useTablePrint";
+import { useTableExport } from "@/hooks/useTableExport";
+import { useTablePrint } from "@/hooks/useTablePrint";
 import {
   deleteBookingAction,
   getAllBookingAction,
