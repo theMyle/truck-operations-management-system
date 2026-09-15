@@ -51,7 +51,23 @@ import { compressImage, mergeImagesToPdf } from "@/lib/utils/imageUtils";
 import { compressPdf } from "@/lib/utils/pdfCompression";
 import { inputStyles } from "@/app/(app)/dispatch/page";
 
-export interface TripDetailsForm {
+export interface TripMonitoringForm {
+  pickUpTime: string;
+  arrivalPickup: string;
+  loadingStart: string;
+  loadingEnd: string;
+  departurePickup: string;
+  finishDelivery: string;
+  deliveryStatus: string;
+  podFile: string;
+  podFileUrl: string;
+  podFileType: string;
+  tripRemarks: string;
+  bookingDRNo: string;
+}
+
+export type TripDetailsForm = TripMonitoringForm;
+interface _DeprecatedTripDetailsForm {
   pickUpTime: string;
   arrivalPickup: string;
   loadingStart: string;
@@ -371,7 +387,7 @@ function PodUploadField({
 }
 
 /* ── Main Modal ── */
-export function TripDetailsModal({
+export function TripMonitoringModal({
   opened,
   onClose,
   record,
@@ -982,3 +998,6 @@ export function TripDetailsModal({
     </>
   );
 }
+
+// Backward compatibility alias
+export { TripMonitoringModal as TripDetailsModal };
