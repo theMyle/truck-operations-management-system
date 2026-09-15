@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import React, { useState, useMemo, useEffect } from "react";
 import { IconError404, IconTrash } from "@tabler/icons-react";
 
-import { DispatchRecord } from "../constant";
+import { DispatchRecord } from "@/types/dispatch";
 import { useDispatch } from "../context/dispatch-context";
 import {
   TripMonitoringModal,

@@ -1,4 +1,4 @@
-﻿import { DispatchRecord } from "@/app/(app)/constant";
+﻿import { DispatchRecord } from "@/types/dispatch";
 
 /**
  * Parses time string (12-hour AM/PM or 24-hour HH:MM) into minutes since midnight (0 - 1439).

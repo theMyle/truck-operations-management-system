@@ -4,7 +4,7 @@ import { Modal, Tabs, Text, Group, Badge, ScrollArea } from "@mantine/core";
 import { IconClipboardList, IconGauge, IconWallet, IconReceipt } from "@tabler/icons-react";
 import { useState, useMemo, useEffect } from "react";
 import { useForm } from "@mantine/form";
-import { DispatchRecord } from "@/app/(app)/constant";
+import { DispatchRecord } from "@/types/dispatch";
 import { NewOdometerTab } from "./OdometerTab";
 import { NewBudgetTab } from "./BudgetTab";
 import { NewExpensesTab } from "./ExpensesTab";

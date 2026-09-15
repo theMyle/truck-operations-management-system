@@ -19,7 +19,7 @@ import {
   IconTrash,
   IconClipboardList,
 } from "@tabler/icons-react";
-import { DispatchRecord } from "@/app/(app)/constant";
+import { DispatchRecord } from "@/types/dispatch";
 import { STATUS_META } from "./TripMonitoringModal";
 import { toTitleCase } from "@/lib/utils/stringFormat";
 

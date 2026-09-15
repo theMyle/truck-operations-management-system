@@ -2,7 +2,7 @@
 "use client";
 
 import { useCallback } from "react";
-import { DispatchRecord } from "@/app/(app)/constant";
+import { DispatchRecord } from "@/types/dispatch";
 import { formatEmployeeName } from "@/lib/utils/stringFormat";
 
 function getCellValue(r: DispatchRecord, colKey: string): string {

@@ -1,4 +1,4 @@
-﻿import { DispatchRecord } from "@/app/(app)/constant";
+﻿import { DispatchRecord } from "@/types/dispatch";
 import {
   Badge,
   Box,

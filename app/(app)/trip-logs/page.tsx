@@ -37,7 +37,7 @@ import {
 import { useDispatch } from "../context/dispatch-context";
 import { TripDetailsModal } from "@/components/trip-logs/TripDetailsModal";
 import type { NewTripDetailsFormData } from "@/components/trip-logs/TripDetailsModal";
-import { DispatchRecord } from "@/app/(app)/constant";
+import { DispatchRecord } from "@/types/dispatch";
 import {
   getAllBookingAction,
   deleteBookingAction,

@@ -1,6 +1,6 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-import { DispatchRecord } from "@/app/(app)/constant";
+import { DispatchRecord } from "@/types/dispatch";
 import { NewTripDetailsFormData } from "@/components/trip-logs/TripDetailsModal";
 import { EXPENSE_CATEGORIES } from "@/components/trip-logs/ExpensesTab";
 import { formatEmployeeName } from "@/lib/utils/stringFormat";

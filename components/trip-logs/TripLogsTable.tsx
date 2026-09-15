@@ -20,7 +20,7 @@ import {
   IconTrash,
   IconClipboardList,
 } from "@tabler/icons-react";
-import { DispatchRecord } from "@/app/(app)/constant";
+import { DispatchRecord } from "@/types/dispatch";
 import { toTitleCase } from "@/lib/utils/stringFormat";
 
 const STATUS_COLOR: Record<string, string> = {

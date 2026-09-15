@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback } from "react";
-import { DispatchRecord } from "@/app/(app)/constant";
+import { DispatchRecord } from "@/types/dispatch";
 import { ExportColumn } from "./useTableExport";
 import { toTitleCase } from "@/lib/utils/stringFormat";
 

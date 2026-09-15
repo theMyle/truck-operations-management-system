@@ -58,7 +58,7 @@ import {
 } from "@tabler/icons-react";
 import * as XLSX from "xlsx-js-style";
 
-import { DispatchRecord } from "../constant";
+import { DispatchRecord } from "@/types/dispatch";
 import { usePodDownload, type PodRecord } from "@/hooks/usePodDownload";
 import { SummaryCard } from "@/components/billing/SummaryCard";
 import { StatementOfAccountModal } from "@/components/billing/StatementOfAccountModal";

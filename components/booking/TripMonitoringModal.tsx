@@ -22,7 +22,7 @@ import {
   Badge,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
-import { DispatchRecord } from "@/app/(app)/constant";
+import { DispatchRecord } from "@/types/dispatch";
 import {
   useState,
   useMemo,
