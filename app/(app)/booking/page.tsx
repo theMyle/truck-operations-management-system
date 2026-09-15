@@ -9,9 +9,9 @@ import { IconError404, IconTrash } from "@tabler/icons-react";
 import { DispatchRecord } from "../constant";
 import { useDispatch } from "../context/dispatch-context";
 import {
-  TripDetailsModal,
+  TripMonitoringModal,
   TripDetailsForm,
-} from "@/components/booking/TripDetailsModal";
+} from "@/components/booking/TripMonitoringModal";
 import { ViewModal } from "@/components/booking/ViewModal";
 import { DeleteConfirmModal } from "@/components/booking/DeleteConfirmModal";
 import { CanceledTripsModal } from "@/components/booking/CanceledTripsModal";
@@ -346,7 +346,7 @@ export default function BookingRecordsPage() {
             : ""
         }
       />
-      <TripDetailsModal
+      <TripMonitoringModal
         key={tripRecord?.id ?? "trip-details-modal"}
         opened={tripOpened}
         onClose={() => setTripOpened(false)}

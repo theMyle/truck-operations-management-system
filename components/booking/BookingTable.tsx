@@ -20,7 +20,7 @@ import {
   IconClipboardList,
 } from "@tabler/icons-react";
 import { DispatchRecord } from "@/app/(app)/constant";
-import { STATUS_META } from "./TripDetailsModal";
+import { STATUS_META } from "./TripMonitoringModal";
 import { toTitleCase } from "@/lib/utils/stringFormat";
 
 const headerCellStyle: React.CSSProperties = {
