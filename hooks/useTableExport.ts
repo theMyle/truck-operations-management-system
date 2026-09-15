@@ -2,7 +2,7 @@
 
 import { useCallback } from "react";
 import { DispatchRecord } from "@/types/dispatch";
-import { formatTime12Hour, toTitleCase, formatEmployeeName } from "@/lib/utils/stringFormat";
+import { formatTime12Hour, toTitleCase, formatEmployeeName, splitRoute } from "@/lib/utils/stringFormat";
 import { getDepartureInGarageTime } from "./useTablePrint";
 
 export interface ExportColumn {
@@ -36,17 +36,8 @@ function getFormattedValue(record: DispatchRecord, colKey: string): string {
     return formatEmployeeName(typeof val === "string" ? val : String(val ?? ""));
   }
   if (colKey === "pickLocation" || colKey === "dropOffLocation") {
-    const rawRuta = record.ruta ? String(record.ruta).trim() : "";
-    if (rawRuta) {
-      if (/\s+TO\s+/i.test(rawRuta)) {
-        const parts = rawRuta.split(/\s+TO\s+/i);
-        return colKey === "pickLocation" ? parts[0].trim() : parts.slice(1).join(" - ").trim();
-      }
-      if (rawRuta.includes("-")) {
-        const parts = rawRuta.split("-");
-        return colKey === "pickLocation" ? parts[0].trim() : parts.slice(1).join(" - ").trim();
-      }
-    }
+    const route = splitRoute(record.ruta, record.pickLocation, record.dropOffLocation);
+    return colKey === "pickLocation" ? route.pickup : route.dropoff;
   }
   if (TIME_KEYS.includes(colKey) && typeof val === "string" && val.trim().length > 0) {
     return formatTime12Hour(val);

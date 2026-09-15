@@ -1,3 +1,5 @@
+"use client";
+
 import { useState, useCallback } from "react";
 import { notifications } from "@mantine/notifications";
 import { IconZip, IconX } from "@tabler/icons-react";
