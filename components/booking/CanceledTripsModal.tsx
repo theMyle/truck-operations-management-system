@@ -26,7 +26,7 @@ import {
   IconEdit,
   IconTrash,
 } from "@tabler/icons-react";
-import { DispatchRecord } from "@/app/(app)/constant";
+import { DispatchRecord } from "@/types/dispatch";
 
 interface CanceledTripsModalProps {
   opened: boolean;

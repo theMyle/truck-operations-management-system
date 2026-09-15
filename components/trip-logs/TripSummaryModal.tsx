@@ -28,7 +28,7 @@ import {
 import { BookingWithRelations } from "@/lib/db/schema/booking";
 import { EXPENSE_CATEGORIES } from "./ExpensesTab";
 import { generateLiquidationPDF } from "@/lib/utils/pdf";
-import { DispatchRecord } from "@/app/(app)/constant";
+import { DispatchRecord } from "@/types/dispatch";
 
 import { getTripRefNumber, toTitleCase } from "@/lib/utils/stringFormat";
 

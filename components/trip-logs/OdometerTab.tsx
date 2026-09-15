@@ -16,7 +16,7 @@ import {
 import { IconTrash, IconPlus, IconRefresh, IconAlertTriangle } from "@tabler/icons-react";
 import { UseFormReturnType } from "@mantine/form";
 import { NewTripDetailsFormData } from "./TripDetailsModal";
-import { DispatchRecord } from "@/app/(app)/constant";
+import { DispatchRecord } from "@/types/dispatch";
 
 interface NewOdometerTabProps {
   form: UseFormReturnType<NewTripDetailsFormData>;

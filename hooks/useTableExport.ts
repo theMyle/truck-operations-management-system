@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback } from "react";
-import { DispatchRecord } from "@/app/(app)/constant";
+import { DispatchRecord } from "@/types/dispatch";
 import { formatTime12Hour, toTitleCase, formatEmployeeName } from "@/lib/utils/stringFormat";
 import { getDepartureInGarageTime } from "./useTablePrint";
 

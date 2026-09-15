@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback } from "react";
-import { DispatchRecord } from "@/app/(app)/constant";
+import { DispatchRecord } from "@/types/dispatch";
 
 const COLUMNS = [
   { key: "id", label: "#" },
