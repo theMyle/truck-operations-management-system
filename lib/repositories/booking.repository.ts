@@ -1,4 +1,4 @@
-import { eq, inArray, and, ne, sql, ilike } from "drizzle-orm";
+import { eq, inArray, and, ne, sql, ilike, desc, gte, lte } from "drizzle-orm";
 import { db } from "../db";
 import { syncTruckStatusForPlate } from "../services/syncFleetStatus";
 import {
@@ -14,21 +14,42 @@ import { tripOdoDetails } from "../db/schema/tripOdo";
 import { tripExpenses } from "../db/schema/tripExpense";
 import { deleteFileFromUrl } from "../actions/file-upload";
 
+export interface GetAllBookingParams {
+  deliveryStatus?: string;
+  excludeCompleted?: boolean;
+  startDate?: string;
+  endDate?: string;
+  limit?: number;
+}
+
 export const makeBookingRepository = (database = db) => {
   return {
     getAll: async function (
-      deliveryStatus?: string,
+      paramsOrStatus?: string | GetAllBookingParams,
     ): Promise<BookingWithRelations[]> {
+      const params: GetAllBookingParams =
+        typeof paramsOrStatus === "string"
+          ? { deliveryStatus: paramsOrStatus }
+          : (paramsOrStatus ?? {});
+
+      const { deliveryStatus, excludeCompleted, startDate, endDate, limit } = params;
+
+      const conditions = [];
+      if (deliveryStatus) conditions.push(eq(booking.deliveryStatus, deliveryStatus));
+      if (excludeCompleted) conditions.push(ne(booking.deliveryStatus, "Completed"));
+      if (startDate) conditions.push(gte(booking.pickupDate, startDate));
+      if (endDate) conditions.push(lte(booking.pickupDate, endDate));
+
       const bookings = await database.query.booking.findMany({
-        where: deliveryStatus
-          ? eq(booking.deliveryStatus, deliveryStatus)
-          : undefined,
+        where: conditions.length ? and(...conditions) : undefined,
         with: {
           drops: true,
           helpers: { with: { helper: true } },
           odoDetails: true,
           expenses: true,
         },
+        orderBy: [desc(booking.pickupDate), desc(booking.displayBookingNo)],
+        limit: limit ?? undefined,
       });
 
       return bookings.map((b) => ({

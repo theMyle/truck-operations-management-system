@@ -59,11 +59,19 @@ export const createBookingAction = actionClient
     }
   });
 
+const GetAllBookingSchema = z.object({
+  deliveryStatus: z.string().optional(),
+  excludeCompleted: z.boolean().optional(),
+  startDate: z.string().optional(),
+  endDate: z.string().optional(),
+  limit: z.number().int().positive().optional(),
+}).optional();
+
 export const getAllBookingAction = actionClient
-  .inputSchema(z.object({ deliveryStatus: z.string().optional() }).optional())
+  .inputSchema(GetAllBookingSchema)
   .action(async ({ parsedInput }) => {
     try {
-      const bookings = await bookingRepository.getAll(parsedInput?.deliveryStatus);
+      const bookings = await bookingRepository.getAll(parsedInput);
       return bookings;
     } catch (error) {
       console.log(error);
