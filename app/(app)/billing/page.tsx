@@ -63,7 +63,7 @@ import { usePodDownload, type PodRecord } from "@/app/hooks/usePodDownload";
 import { SummaryCard } from "@/components/billing/SummaryCard";
 import { StatementOfAccountModal } from "@/components/billing/StatementOfAccountModal";
 import { EditBillingTripModal } from "@/components/billing/EditBillingTripModal";
-import { getBillingRecordsAction, updateBillingStatusAction, updateBillingTripRateAction } from "@/lib/actions/billing";
+import { batchUpdateBillingStatusAction, getBillingRecordsAction, updateBillingStatusAction, updateBillingTripRateAction } from "@/lib/actions/billing";
 import { deleteBookingAction } from "@/lib/actions/booking";
 import { getAllClientsAction } from "@/lib/actions/clients";
 import { getTruckAction } from "@/lib/actions/trucks";
@@ -404,14 +404,23 @@ export default function BillingModule() {
           amountToAssign = batchManualAmounts[String(record.id)] ?? String(record.amountPaid || "0.00");
         }
         assignedMap[String(record.id)] = amountToAssign;
+      }
 
-        await updateBillingStatusAction({
-          bookingIds: [String(record.id)],
-          soaNumber: selectedBatchSoa,
-          invoiceDate: batchInvoiceDate || null,
-          dueDate: batchDueDate || null,
-          amountPaid: amountToAssign,
-        });
+      // Single atomic batch action in 1 network round-trip
+      const updates = batchSoaRecords.map((record) => ({
+        bookingId: String(record.id),
+        amountPaid: assignedMap[String(record.id)] ?? "0.00",
+      }));
+
+      const result = await batchUpdateBillingStatusAction({
+        updates,
+        soaNumber: selectedBatchSoa,
+        invoiceDate: batchInvoiceDate || null,
+        dueDate: batchDueDate || null,
+      });
+
+      if (result?.serverError || (result?.data && !result.data.success)) {
+        throw new Error(result?.serverError || result?.data?.error || "Batch payment failed");
       }
 
       // Optimistically update records in state so table and tabs reflect payment immediately

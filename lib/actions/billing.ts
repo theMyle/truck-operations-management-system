@@ -4,7 +4,7 @@ import { actionClient } from "@/lib/safe-action";
 import { db } from "@/lib/db";
 import { booking } from "@/lib/db/schema";
 import { z } from "zod";
-import { and, eq, gte, lte, isNotNull, or, desc, like } from "drizzle-orm";
+import { and, eq, gte, lte, isNotNull, or, desc, like, inArray } from "drizzle-orm";
 import { formatTime12Hour, formatTimeHHMM, generateClientCode } from "@/lib/utils/stringFormat";
 
 const GetBillingSchema = z.object({
@@ -208,6 +208,58 @@ export const getIncomeRecordsAction = actionClient
     }));
   });
 
+async function getSubconPlateSet(): Promise<Set<string>> {
+  const subconTrucks = await db.query.trucks.findMany({
+    columns: { plateNumber: true },
+    where: (t, { or, eq, ilike }) =>
+      or(
+        eq(t.isSubcon, true),
+        ilike(t.unitType, "%subcon%"),
+        ilike(t.fleetType, "%subcon%"),
+      ),
+  });
+  return new Set(subconTrucks.map((t) => t.plateNumber.trim().toUpperCase()));
+}
+
+function computeBillingStatus(
+  current: {
+    clientRate: string | null;
+    truckerRate: string | null;
+    soaNumber: string | null;
+    dueDate: string | null;
+  },
+  isSub: boolean,
+  amountPaidVal: number,
+  soaNumber?: string,
+  dueDate?: string | null,
+): string {
+  const clientRateVal = Number(current.clientRate) || 0;
+  const truckerRateVal = Number(current.truckerRate) || 0;
+  const basisRateVal = isSub ? truckerRateVal : clientRateVal;
+  const effectiveSoa = (soaNumber !== undefined ? soaNumber : current.soaNumber) || "";
+
+  if (amountPaidVal >= basisRateVal && basisRateVal > 0) {
+    return "paid";
+  } else if (amountPaidVal > 0 && amountPaidVal < basisRateVal) {
+    return "partially_paid";
+  } else {
+    const checkDueDate = dueDate !== undefined ? dueDate : current.dueDate;
+    if (checkDueDate) {
+      const due = new Date(checkDueDate);
+      const today = new Date();
+      due.setHours(0, 0, 0, 0);
+      today.setHours(0, 0, 0, 0);
+      if (today > due && amountPaidVal < basisRateVal) {
+        return "overdue";
+      } else {
+        return effectiveSoa.trim().length > 0 ? "pending" : "unbilled";
+      }
+    } else {
+      return effectiveSoa.trim().length > 0 ? "pending" : "unbilled";
+    }
+  }
+}
+
 const UpdateBillingStatusSchema = z.object({
   bookingIds: z.array(z.string().uuid()),
   soaNumber: z.string().optional(),
@@ -223,77 +275,91 @@ export const updateBillingStatusAction = actionClient
 
     if (!bookingIds.length) return { success: false, error: "No booking IDs provided" };
 
-    // Fetch all trucks once for subcon plate checking
-    const allTrucks = await db.query.trucks.findMany();
-    const subconPlateSet = new Set(
-      allTrucks
-        .filter(
-          (t) =>
-            t.isSubcon ||
-            (t.unitType || "").toLowerCase().includes("subcon") ||
-            (t.fleetType || "").toLowerCase().includes("subcon"),
-        )
-        .map((t) => t.plateNumber.trim().toUpperCase()),
-    );
+    const [subconPlateSet, currentBookings] = await Promise.all([
+      getSubconPlateSet(),
+      db.query.booking.findMany({
+        where: (b, { inArray }) => inArray(b.id, bookingIds),
+      }),
+    ]);
 
-    for (const id of bookingIds) {
-      const current = await db.query.booking.findFirst({
-        where: (b, { eq }) => eq(b.id, id),
-      });
+    await db.transaction(async (tx) => {
+      for (const current of currentBookings) {
+        const isSub =
+          subconPlateSet.has((current.plateNumber || "").trim().toUpperCase()) ||
+          (current.trucker && current.trucker.toLowerCase().includes("subcon")) ||
+          (current.fleetType && current.fleetType.toLowerCase().includes("subcon")) ||
+          false;
 
-      if (!current) continue;
+        const amountPaidVal = amountPaid !== undefined ? Number(amountPaid) : (Number(current.amountPaid) || 0);
+        const billingStatus = computeBillingStatus(current, isSub, amountPaidVal, soaNumber, dueDate);
 
-      const isSub =
-        subconPlateSet.has((current.plateNumber || "").trim().toUpperCase()) ||
-        (current.trucker && current.trucker.toLowerCase().includes("subcon")) ||
-        (current.fleetType && current.fleetType.toLowerCase().includes("subcon")) ||
-        false;
+        const updateData: Record<string, any> = { billingStatus };
+        if (soaNumber !== undefined) updateData.soaNumber = soaNumber || null;
+        if (invoiceDate !== undefined) updateData.invoiceDate = invoiceDate || null;
+        if (dueDate !== undefined) updateData.dueDate = dueDate || null;
+        if (amountPaid !== undefined) updateData.amountPaid = amountPaid;
 
-      const clientRateVal = Number(current.clientRate) || 0;
-      const truckerRateVal = Number(current.truckerRate) || 0;
-      const basisRateVal = isSub ? truckerRateVal : clientRateVal;
-      const amountPaidVal = amountPaid !== undefined ? Number(amountPaid) : (Number(current.amountPaid) || 0);
-
-      let billingStatus = "unbilled";
-      const effectiveSoa = (soaNumber !== undefined ? soaNumber : current.soaNumber) || "";
-
-      if (amountPaidVal >= basisRateVal && basisRateVal > 0) {
-        billingStatus = "paid";
-      } else if (amountPaidVal > 0 && amountPaidVal < basisRateVal) {
-        billingStatus = "partially_paid";
-      } else {
-        const checkDueDate = dueDate !== undefined ? dueDate : current.dueDate;
-        if (checkDueDate) {
-          const due = new Date(checkDueDate);
-          const today = new Date();
-          due.setHours(0, 0, 0, 0);
-          today.setHours(0, 0, 0, 0);
-          if (today > due && amountPaidVal < basisRateVal) {
-            billingStatus = "overdue";
-          } else {
-            billingStatus = effectiveSoa.trim().length > 0 ? "pending" : "unbilled";
-          }
-        } else {
-          billingStatus = effectiveSoa.trim().length > 0 ? "pending" : "unbilled";
-        }
+        await tx.update(booking).set(updateData).where(eq(booking.id, current.id));
       }
-
-      const updateData: Record<string, any> = {
-        billingStatus,
-      };
-
-      if (soaNumber !== undefined) updateData.soaNumber = soaNumber || null;
-      if (invoiceDate !== undefined) updateData.invoiceDate = invoiceDate || null;
-      if (dueDate !== undefined) updateData.dueDate = dueDate || null;
-      if (amountPaid !== undefined) updateData.amountPaid = amountPaid;
-
-      await db
-        .update(booking)
-        .set(updateData)
-        .where(eq(booking.id, id));
-    }
+    });
 
     return { success: true };
+  });
+
+const BatchUpdateBillingStatusSchema = z.object({
+  updates: z.array(
+    z.object({
+      bookingId: z.string().uuid(),
+      amountPaid: z.string(),
+    })
+  ),
+  soaNumber: z.string().optional(),
+  invoiceDate: z.string().nullable().optional(),
+  dueDate: z.string().nullable().optional(),
+});
+
+export const batchUpdateBillingStatusAction = actionClient
+  .schema(BatchUpdateBillingStatusSchema)
+  .action(async ({ parsedInput }) => {
+    const { updates, soaNumber, invoiceDate, dueDate } = parsedInput;
+
+    if (!updates.length) return { success: false, error: "No updates provided" };
+
+    const bookingIds = updates.map((u) => u.bookingId);
+    const amountMap = new Map(updates.map((u) => [u.bookingId, u.amountPaid]));
+
+    // Fetch targeted subcons and target bookings concurrently in 1 round-trip
+    const [subconPlateSet, currentBookings] = await Promise.all([
+      getSubconPlateSet(),
+      db.query.booking.findMany({
+        where: (b, { inArray }) => inArray(b.id, bookingIds),
+      }),
+    ]);
+
+    // Atomic SQL transaction — all updates commit together or roll back on error
+    await db.transaction(async (tx) => {
+      for (const current of currentBookings) {
+        const isSub =
+          subconPlateSet.has((current.plateNumber || "").trim().toUpperCase()) ||
+          (current.trucker && current.trucker.toLowerCase().includes("subcon")) ||
+          (current.fleetType && current.fleetType.toLowerCase().includes("subcon")) ||
+          false;
+
+        const amountPaidStr = amountMap.get(current.id);
+        const amountPaidVal = amountPaidStr !== undefined ? Number(amountPaidStr) : (Number(current.amountPaid) || 0);
+        const billingStatus = computeBillingStatus(current, isSub, amountPaidVal, soaNumber, dueDate);
+
+        const updateData: Record<string, any> = { billingStatus };
+        if (soaNumber !== undefined) updateData.soaNumber = soaNumber || null;
+        if (invoiceDate !== undefined) updateData.invoiceDate = invoiceDate || null;
+        if (dueDate !== undefined) updateData.dueDate = dueDate || null;
+        if (amountPaidStr !== undefined) updateData.amountPaid = amountPaidStr;
+
+        await tx.update(booking).set(updateData).where(eq(booking.id, current.id));
+      }
+    });
+
+    return { success: true, count: currentBookings.length };
   });
 
 export const getNextSoaNumberAction = actionClient
