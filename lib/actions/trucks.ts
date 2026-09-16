@@ -3,16 +3,34 @@
 import { insertTruckSchema, updateTruckSchema } from "@/lib/db/schema";
 import { truckRepository } from "@/lib/repositories/truck.repository";
 import { actionClient } from "@/lib/safe-action";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, unstable_cache, updateTag, revalidateTag } from "next/cache";
 import z from "zod";
+
+function safeUpdateTag(tag: string) {
+    try {
+        updateTag(tag);
+    } catch {
+        try {
+            revalidateTag(tag, "max");
+        } catch {
+            // Ignore if outside Next.js request context
+        }
+    }
+}
 
 const truckInputSchema = insertTruckSchema.omit({
     createdAt: true,
     updatedAt: true,
 });
 
+const getCachedTrucks = unstable_cache(
+    async () => truckRepository.getAll(),
+    ["trucks-master"],
+    { tags: ["trucks"], revalidate: 3600 }
+);
+
 export const getTruckAction = actionClient.action(async () => {
-    return await truckRepository.getAll();
+    return await getCachedTrucks();
 });
 
 export const getLatestTruckOdometersAction = actionClient.action(async () => {
@@ -26,6 +44,7 @@ export const updateTruckAction = actionClient
     .action(async ({ parsedInput }) => {
         const { plateNumber, ...updateData } = parsedInput
         const updated = await truckRepository.update(plateNumber, updateData);
+        safeUpdateTag("trucks");
         revalidatePath("/registration");
         revalidatePath("/dashboard")
         return updated;
@@ -35,6 +54,7 @@ export const createTruckAction = actionClient
     .inputSchema(truckInputSchema)
     .action(async ({ parsedInput }) => {
         const newTruck = await truckRepository.add(parsedInput);
+        safeUpdateTag("trucks");
         revalidatePath("/registration");
         revalidatePath("/dashboard")
         return { success: true, data: newTruck };
@@ -54,6 +74,7 @@ export const deleteTruckAction = actionClient
             throw new Error("Incorrect password.");
         }
         const deleted = await truckRepository.delete(plateNumber);
+        safeUpdateTag("trucks");
         revalidatePath("/registration");
         return deleted;
     });

@@ -25,8 +25,8 @@ import { TruckSection } from "@/components/dispatch/TruckSection";
 import { PersonnelSection } from "@/components/dispatch/PersonnelSection";
 
 import { DispatchFormValues } from "@/types/dispatch";
-import { getTruckAction } from "@/lib/actions/trucks";
-import { getClientAction } from "@/lib/actions/clients";
+import { useQueryClient } from "@tanstack/react-query";
+import { CLIENTS_QUERY_KEY, TRUCKS_QUERY_KEY, fetchMasterClients, fetchMasterTrucks } from "@/hooks/useMasterData";
 import { getDriverAction } from "@/lib/actions/drivers";
 import { getHelperAction } from "@/lib/actions/helpers";
 import { useUser } from "@clerk/nextjs";
@@ -62,6 +62,7 @@ export const inputStyles = {
 
 export default function DispatchPage() {
   const { user } = useUser();
+  const queryClient = useQueryClient();
   const userRole = (user?.publicMetadata?.role as string) || "";
 
   const [isLoading, setIsLoading] = useState(true);
@@ -186,18 +187,26 @@ export default function DispatchPage() {
   // On Load
   useEffect(() => {
     async function fetchDispatchersData() {
-      const [trucksRes, clientsRes, driversRes, helpersRes, bookingsRes] = await Promise.all(
+      const [trucks, clients, driversRes, helpersRes, bookingsRes] = await Promise.all(
         [
-          getTruckAction(),
-          getClientAction(),
+          queryClient.fetchQuery({
+            queryKey: TRUCKS_QUERY_KEY,
+            queryFn: fetchMasterTrucks,
+            staleTime: 5 * 60 * 1000,
+          }),
+          queryClient.fetchQuery({
+            queryKey: CLIENTS_QUERY_KEY,
+            queryFn: fetchMasterClients,
+            staleTime: 5 * 60 * 1000,
+          }),
           getDriverAction(),
           getHelperAction(),
           getAllBookingAction({}),
         ],
       );
 
-      if (trucksRes.data) setTrucks(trucksRes.data);
-      if (clientsRes.data) setClients(clientsRes.data);
+      if (trucks) setTrucks(trucks as any);
+      if (clients) setClients(clients as any);
       if (driversRes.data) setDrivers(driversRes.data);
       if (helpersRes.data) setHelpers(helpersRes.data);
       if (bookingsRes?.data) setAllBookings(bookingsRes.data);

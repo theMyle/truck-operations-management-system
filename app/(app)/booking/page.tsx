@@ -27,7 +27,8 @@ import {
 import { formatTime12Hour, formatTimeHHMM } from "@/lib/utils/stringFormat";
 import { computeTripNumbersAndSort } from "@/lib/utils/tripNumbering";
 import { BookingModuleSkeleton } from "@/components/ui/ModuleSkeletons";
-import { getAllClientsAction } from "@/lib/actions/clients";
+import { useQueryClient } from "@tanstack/react-query";
+import { CLIENTS_QUERY_KEY, fetchMasterClients } from "@/hooks/useMasterData";
 
 const PAGE_SIZE = 10;
 
@@ -77,16 +78,21 @@ export default function BookingRecordsPage() {
   const [tripRecord, setTripRecord] = useState<DispatchRecord | null>(null);
   const [tripOpened, setTripOpened] = useState(false);
   const [canceledOpened, setCanceledOpened] = useState(false);
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     async function loadBookings() {
-      const [res, clientsRes] = await Promise.all([
+      const [res, clients] = await Promise.all([
         getAllBookingAction({}),
-        getAllClientsAction(),
+        queryClient.fetchQuery({
+          queryKey: CLIENTS_QUERY_KEY,
+          queryFn: fetchMasterClients,
+          staleTime: 5 * 60 * 1000,
+        }),
       ]);
 
       const podMap = new Map(
-        (clientsRes?.data ?? []).map((c) => [c.clientName, c.podRequired]),
+        (clients ?? []).map((c: any) => [c.clientName, c.podRequired]),
       );
       if (res?.data) {
         const mapped = res.data.map((b) => ({

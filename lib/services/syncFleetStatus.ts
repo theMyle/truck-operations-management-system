@@ -1,3 +1,4 @@
+import { revalidateTag } from "next/cache";
 import { eq } from "drizzle-orm";
 import { db } from "../db";
 import { booking } from "../db/schema/booking";
@@ -59,5 +60,10 @@ export async function syncTruckStatusForPlate(
 
   if (nextStatus !== truck.status) {
     await truckRepository.update(plateNumber, { status: nextStatus });
+    try {
+      revalidateTag("trucks", "max");
+    } catch {
+      // Safe fallback if called outside Next.js request context
+    }
   }
 }

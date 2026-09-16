@@ -39,6 +39,8 @@ import {
   IconFileTypeXls,
 } from "@tabler/icons-react";
 import { useDispatch } from "../context/dispatch-context";
+import { useQueryClient } from "@tanstack/react-query";
+import { TRUCKS_QUERY_KEY, fetchMasterTrucks } from "@/hooks/useMasterData";
 import { TripDetailsModal } from "@/components/trip-logs/TripDetailsModal";
 import type { NewTripDetailsFormData } from "@/components/trip-logs/TripDetailsModal";
 import { DispatchRecord } from "@/types/dispatch";
@@ -47,7 +49,7 @@ import {
   deleteBookingAction,
   updateTripDetailAction,
 } from "@/lib/actions/booking";
-import { getTruckAction, getLatestTruckOdometersAction } from "@/lib/actions/trucks";
+import { getLatestTruckOdometersAction } from "@/lib/actions/trucks";
 import { formatTime12Hour, formatTimeHHMM } from "@/lib/utils/stringFormat";
 import { TripLogsTable } from "@/components/trip-logs/TripLogsTable";
 import { TripLogsModuleSkeleton } from "@/components/ui/ModuleSkeletons";
@@ -393,17 +395,22 @@ export default function DispatchRecordsPage() {
     });
   };
   const { setEditingRecord } = useDispatch();
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     async function loadBookings() {
-      const [res, trucksRes, odoMapRes] = await Promise.all([
+      const [res, trucks, odoMapRes] = await Promise.all([
         getAllBookingAction({ activeTripLogsOnly: true }),
-        getTruckAction(),
+        queryClient.fetchQuery({
+          queryKey: TRUCKS_QUERY_KEY,
+          queryFn: fetchMasterTrucks,
+          staleTime: 5 * 60 * 1000,
+        }),
         getLatestTruckOdometersAction(),
       ]);
 
       const subconPlateMap = new Set(
-        (trucksRes?.data ?? [])
+        (trucks ?? [])
           .filter(
             (t: any) =>
               t.isSubcon ||

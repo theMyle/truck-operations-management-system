@@ -38,7 +38,8 @@ import { notifications } from "@mantine/notifications";
 import * as XLSX from "xlsx-js-style";
 import { BillingRecord, isSubconRecord } from "@/app/(app)/billing/page";
 import { updateBillingStatusAction, getNextSoaNumberAction, updateBillingTripRateAction } from "@/lib/actions/billing";
-import { getAllClientsAction } from "@/lib/actions/clients";
+import { useQueryClient } from "@tanstack/react-query";
+import { CLIENTS_QUERY_KEY, fetchMasterClients } from "@/hooks/useMasterData";
 import { generateSoaNumber } from "@/lib/utils/stringFormat";
 import { SOA_AVAILABLE_COLUMNS, DEFAULT_ENABLED_COLUMN_KEYS } from "@/lib/utils/soaColumns";
 import { EditBillingTripModal } from "./EditBillingTripModal";
@@ -63,6 +64,7 @@ export function StatementOfAccountModal({
   preparedBy = "Billing Clerk",
   preparedByRole = "Billing Officer",
 }: StatementOfAccountModalProps) {
+  const queryClient = useQueryClient();
   const [soaNumber, setSoaNumber] = useState("");
   const [invoiceDate, setInvoiceDate] = useState(
     new Date().toISOString().split("T")[0]
@@ -176,10 +178,13 @@ export function StatementOfAccountModal({
   // Auto-load client SOA configuration (Orientation, Columns, Tax preferences)
   React.useEffect(() => {
     if (opened && clientName && targetType === "client") {
-      getAllClientsAction().then((res) => {
-        const clientList = res?.data || [];
-        const matching = clientList.find(
-          (c) => c.clientName.trim().toLowerCase() === clientName.trim().toLowerCase()
+      queryClient.fetchQuery({
+        queryKey: CLIENTS_QUERY_KEY,
+        queryFn: fetchMasterClients,
+        staleTime: 5 * 60 * 1000,
+      }).then((clientList: any) => {
+        const matching = (clientList as any[])?.find(
+          (c: any) => c.clientName.trim().toLowerCase() === clientName.trim().toLowerCase()
         );
         if (matching?.soaConfig) {
           if (matching.soaConfig.orientation) {
