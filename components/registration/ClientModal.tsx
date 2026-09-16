@@ -21,6 +21,8 @@ import { useForm } from "@mantine/form";
 import { useAction } from "next-safe-action/hooks";
 import { createClientAction, updateClientAction } from "@/lib/actions/clients";
 import { notifications } from "@mantine/notifications";
+import { useQueryClient } from "@tanstack/react-query";
+import { CLIENTS_QUERY_KEY } from "@/hooks/useMasterData";
 import type { ClientWithRoutes } from "@/lib/db/schema/clients";
 import {
   IconPlus,
@@ -41,6 +43,7 @@ interface Props {
 
 export function ClientModal({ opened, onClose, client }: Props) {
   const isEditMode = !!client;
+  const queryClient = useQueryClient();
   const form = useForm({
     initialValues: {
       clientName: client?.clientName ?? "",
@@ -68,6 +71,7 @@ export function ClientModal({ opened, onClose, client }: Props) {
 
   const createAction = useAction(createClientAction, {
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: CLIENTS_QUERY_KEY });
       notifications.show({ message: "Client added!", color: "green" });
       form.reset();
       onClose();
@@ -81,6 +85,7 @@ export function ClientModal({ opened, onClose, client }: Props) {
 
   const updateAction = useAction(updateClientAction, {
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: CLIENTS_QUERY_KEY });
       notifications.show({ message: "Client updated!", color: "green" });
       onClose();
     },

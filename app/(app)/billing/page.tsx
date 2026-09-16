@@ -70,8 +70,8 @@ import { BatchPaymentModal } from "@/components/billing/BatchPaymentModal";
 import { EditBillingTripModal } from "@/components/billing/EditBillingTripModal";
 import { batchUpdateBillingStatusAction, getBillingRecordsAction, updateBillingStatusAction, updateBillingTripRateAction } from "@/lib/actions/billing";
 import { deleteBookingAction } from "@/lib/actions/booking";
-import { getAllClientsAction } from "@/lib/actions/clients";
-import { getTruckAction } from "@/lib/actions/trucks";
+import { useQueryClient } from "@tanstack/react-query";
+import { CLIENTS_QUERY_KEY, TRUCKS_QUERY_KEY, fetchMasterClients, fetchMasterTrucks } from "@/hooks/useMasterData";
 import { DeleteConfirmModal } from "@/components/booking/DeleteConfirmModal";
 import { BILLING_TABLE_HEADERS } from "@/components/ui/ModuleSkeletons";
 import { TableSkeleton } from "@/components/ui/TableSkeleton";
@@ -256,6 +256,7 @@ function PodCell({
 export default function BillingModule() {
   const { downloadPODs, downloading, progress } = usePodDownload();
   const { user } = useUser();
+  const queryClient = useQueryClient();
   const preparedByName = user?.fullName || "Billing Clerk";
   const rawRole = (user?.publicMetadata?.role as string) || "";
   const preparedByRole = rawRole ? capitalizeWords(rawRole) : "Billing Officer";
@@ -507,16 +508,24 @@ export default function BillingModule() {
   useEffect(() => {
     async function loadFilterOptions() {
       try {
-        const [clientsRes, trucksRes] = await Promise.all([
-          getAllClientsAction(),
-          getTruckAction(),
+        const [clients, trucks] = await Promise.all([
+          queryClient.fetchQuery({
+            queryKey: CLIENTS_QUERY_KEY,
+            queryFn: fetchMasterClients,
+            staleTime: 5 * 60 * 1000,
+          }),
+          queryClient.fetchQuery({
+            queryKey: TRUCKS_QUERY_KEY,
+            queryFn: fetchMasterTrucks,
+            staleTime: 5 * 60 * 1000,
+          }),
         ]);
-        if (clientsRes?.data) {
-          setDbClients(clientsRes.data);
+        if (clients) {
+          setDbClients(clients as any);
         }
-        if (trucksRes?.data) {
+        if (trucks) {
           const subconSet = new Set(
-            trucksRes.data
+            (trucks as any[])
               .filter(
                 (t) =>
                   t.isSubcon ||
@@ -529,7 +538,7 @@ export default function BillingModule() {
 
           const uniqueFleets = Array.from(
             new Set(
-              trucksRes.data
+              (trucks as any[])
                 .map((t) => t.fleetType)
                 .filter(
                   (f): f is string =>

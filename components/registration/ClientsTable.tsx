@@ -10,6 +10,8 @@ import { notifications } from "@mantine/notifications";
 import { useRouter } from "next/navigation";
 import type { ClientWithRoutes } from "@/lib/db/schema/clients";
 import { deleteClientAction } from "@/lib/actions/clients";
+import { useQueryClient } from "@tanstack/react-query";
+import { CLIENTS_QUERY_KEY } from "@/hooks/useMasterData";
 import { TableHeader } from "./TableHeader";
 import { ClientModal } from "./ClientModal";
 import { ViewClientModal } from "./ViewClientModal";
@@ -24,6 +26,7 @@ const UNIFORM_TABLE_HEIGHT = "21rem";
 
 export function ClientsTable({ data }: Props) {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [addOpened, { open: openAdd, close: closeAdd }] = useDisclosure(false);
   const [editClient, setEditClient] = useState<ClientWithRoutes | null>(null);
   const [viewClient, setViewClient] = useState<ClientWithRoutes | null>(null);
@@ -48,6 +51,7 @@ export function ClientsTable({ data }: Props) {
       });
       return result;
     } else {
+      queryClient.invalidateQueries({ queryKey: CLIENTS_QUERY_KEY });
       notifications.show({
         title: "Success",
         message: "Client deleted successfully",

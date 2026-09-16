@@ -3,8 +3,20 @@
 import { insertClientSchema } from "@/lib/db/schema";
 import { clientRepository } from "@/lib/repositories/client.repository";
 import { actionClient } from "@/lib/safe-action";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, unstable_cache, updateTag, revalidateTag } from "next/cache";
 import { z } from "zod";
+
+function safeUpdateTag(tag: string) {
+  try {
+    updateTag(tag);
+  } catch {
+    try {
+      revalidateTag(tag, "max");
+    } catch {
+      // Ignore if outside Next.js request context
+    }
+  }
+}
 
 const clientInputSchema = insertClientSchema
   .omit({
@@ -29,9 +41,17 @@ const clientInputSchema = insertClientSchema
       .default([]),
   });
 
+const getCachedClients = unstable_cache(
+  async () => clientRepository.getAll(),
+  ["clients-master"],
+  { tags: ["clients"], revalidate: 3600 }
+);
+
 export const getClientAction = actionClient.action(async () => {
-  return await clientRepository.getAll();
+  return await getCachedClients();
 });
+
+export const getAllClientsAction = getClientAction;
 
 export const createClientAction = actionClient
   .inputSchema(clientInputSchema)
@@ -48,6 +68,7 @@ export const createClientAction = actionClient
     }
 
     const newClient = await clientRepository.add(clientData, routes ?? []);
+    safeUpdateTag("clients");
     revalidatePath("/registration");
     return { success: true, data: newClient };
   });
@@ -61,6 +82,7 @@ export const updateClientAction = actionClient
   .action(async ({ parsedInput }) => {
     const { id, routes, ...updateData } = parsedInput;
     const updated = await clientRepository.update(id, updateData, routes);
+    safeUpdateTag("clients");
     revalidatePath("/registration");
     return updated;
   });
@@ -81,10 +103,9 @@ export const deleteClientAction = actionClient
       throw new Error("Incorrect password.");
     }
     const deleted = await clientRepository.delete(id);
+    safeUpdateTag("clients");
     revalidatePath("/registration");
     return deleted;
   });
 
-export const getAllClientsAction = actionClient.action(async () => {
-  return clientRepository.getAll();
-});
+// getAllClientsAction is aliased to getClientAction above

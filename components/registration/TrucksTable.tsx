@@ -10,6 +10,8 @@ import { notifications } from "@mantine/notifications";
 import { useRouter } from "next/navigation";
 import type { Truck } from "@/lib/db/schema/trucks";
 import { deleteTruckAction } from "@/lib/actions/trucks";
+import { useQueryClient } from "@tanstack/react-query";
+import { TRUCKS_QUERY_KEY } from "@/hooks/useMasterData";
 import { TableHeader } from "./TableHeader";
 import { TruckModal } from "./TruckModal";
 import { getTruckStatusLabel } from "@/lib/utils/truckStatus";
@@ -31,6 +33,7 @@ const truckStatusColors: Record<string, string> = {
 
 export function TrucksTable({ data }: Props) {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [addOpened, { open: openAdd, close: closeAdd }] = useDisclosure(false);
   const [editTruck, setEditTruck] = useState<Truck | null>(null);
   const [deleteTruck, setDeleteTruck] = useState<Truck | null>(null);
@@ -58,6 +61,7 @@ export function TrucksTable({ data }: Props) {
       });
       return result;
     } else {
+      queryClient.invalidateQueries({ queryKey: TRUCKS_QUERY_KEY });
       notifications.show({
         title: "Success",
         message: "Truck deleted successfully",

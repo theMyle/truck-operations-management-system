@@ -13,6 +13,8 @@ import { useForm } from "@mantine/form";
 import { useAction } from "next-safe-action/hooks";
 import { createTruckAction, updateTruckAction } from "@/lib/actions/trucks";
 import { notifications } from "@mantine/notifications";
+import { useQueryClient } from "@tanstack/react-query";
+import { TRUCKS_QUERY_KEY } from "@/hooks/useMasterData";
 import type { Truck } from "@/lib/db/schema/trucks";
 import {
   TRUCK_STATUS_OPTIONS,
@@ -27,6 +29,7 @@ interface Props {
 
 export function TruckModal({ opened, onClose, truck }: Props) {
   const isEditMode = !!truck;
+  const queryClient = useQueryClient();
 
   const form = useForm({
     initialValues: {
@@ -46,6 +49,7 @@ export function TruckModal({ opened, onClose, truck }: Props) {
 
   const createAction = useAction(createTruckAction, {
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: TRUCKS_QUERY_KEY });
       notifications.show({ message: "Truck added!", color: "green" });
       form.reset();
       onClose();
@@ -57,6 +61,7 @@ export function TruckModal({ opened, onClose, truck }: Props) {
 
   const updateAction = useAction(updateTruckAction, {
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: TRUCKS_QUERY_KEY });
       notifications.show({ message: "Truck updated!", color: "green" });
       onClose();
     },
