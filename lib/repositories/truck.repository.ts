@@ -1,10 +1,30 @@
-import { count, eq } from "drizzle-orm";
+import { count, desc, eq, sql } from "drizzle-orm";
 import { db } from "../db";
-import { booking, dispatch as dispatchRecords, NewTruck, Truck, trucks, UpdateTruck } from "../db/schema";
+import { booking, dispatch as dispatchRecords, NewTruck, Truck, trucks, tripOdoDetails, UpdateTruck } from "../db/schema";
 import { throwIfDeleteBlocked } from "./delete-guards";
 
 export const makeTruckRepository = (database = db) => {
     return {
+                getLatestOdometers: async function (): Promise<Record<string, number>> {
+            const rows = await database
+                .selectDistinctOn([booking.plateNumber], {
+                    plateNumber: booking.plateNumber,
+                    lastOdoEnd: sql<number>`CAST(${tripOdoDetails.odoEnd} AS NUMERIC)`,
+                })
+                .from(booking)
+                .innerJoin(tripOdoDetails, eq(tripOdoDetails.bookingId, booking.id))
+                .where(sql`CAST(${tripOdoDetails.odoEnd} AS NUMERIC) > 0`)
+                .orderBy(booking.plateNumber, desc(booking.pickupDate), desc(tripOdoDetails.tripIndex));
+
+            const odoMap: Record<string, number> = {};
+            for (const row of rows) {
+                if (row.plateNumber) {
+                    odoMap[row.plateNumber.trim().toUpperCase()] = Number(row.lastOdoEnd) || 0;
+                }
+            }
+            return odoMap;
+        },
+
         getAll: async function (): Promise<Truck[]> {
             return await database.select().from(trucks);
         },
