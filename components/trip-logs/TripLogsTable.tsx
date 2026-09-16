@@ -22,6 +22,7 @@ import {
 } from "@tabler/icons-react";
 import { DispatchRecord } from "@/types/dispatch";
 import { toTitleCase } from "@/lib/utils/stringFormat";
+import { PodCell } from "@/components/billing/PodCell";
 
 const STATUS_COLOR: Record<string, string> = {
   Completed: "green",
@@ -64,6 +65,7 @@ export const COLUMNS = [
   { key: "ruta", label: "Route" },
   { key: "bookingDr", label: "Booking / DR#" },
   { key: "bookedBy", label: "Booked By" },
+  { key: "pod", label: "POD / Receipt" },
 ];
 
 interface TripLogsTableProps {
@@ -76,6 +78,7 @@ interface TripLogsTableProps {
   onView: (record: DispatchRecord) => void;
   onEdit: (record: DispatchRecord) => void;
   onDelete: (record: DispatchRecord) => void;
+  onViewPod?: (record: DispatchRecord) => void;
 }
 
 export function TripLogsTable({
@@ -88,6 +91,7 @@ export function TripLogsTable({
   onView,
   onEdit,
   onDelete,
+  onViewPod,
 }: TripLogsTableProps) {
   return (
     <Paper withBorder radius="md" p={0} style={{ overflow: "hidden" }}>
@@ -248,6 +252,13 @@ export function TripLogsTable({
                   </Table.Td>
                   <Table.Td style={cellStyle}>
                     {toTitleCase(record.bookedBy)}
+                  </Table.Td>
+                  <Table.Td style={cellStyle} onClick={(e) => e.stopPropagation()}>
+                    {onViewPod ? (
+                      <PodCell record={record} onView={onViewPod} />
+                    ) : (
+                      record.podFile || "—"
+                    )}
                   </Table.Td>
                 </Table.Tr>
               ))

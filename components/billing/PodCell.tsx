@@ -1,15 +1,14 @@
-import { BillingRecord } from "@/app/(app)/billing/page";
 import { Group, Text, Box } from "@mantine/core";
 import { IconFileInvoice, IconPhotoOff } from "@tabler/icons-react";
 
-export function PodCell({
+export function PodCell<T extends { podFile?: string | null; podFileUrl?: string | null }>({
   record,
   onView,
 }: {
-  record: BillingRecord;
-  onView: (record: BillingRecord) => void;
+  record: T;
+  onView: (record: T) => void;
 }) {
-  if (!record.podFile) {
+  if (!record.podFile && !record.podFileUrl) {
     return (
       <Group gap={4} wrap="nowrap">
         <IconPhotoOff size={11} color="var(--mantine-color-gray-4)" />
@@ -23,7 +22,10 @@ export function PodCell({
   return (
     <Box
       component="button"
-      onClick={() => onView(record)}
+      onClick={(e) => {
+        e.stopPropagation();
+        onView(record);
+      }}
       style={{
         fontSize: "10px",
         fontWeight: 700,
@@ -39,7 +41,7 @@ export function PodCell({
       }}
     >
       <IconFileInvoice size={11} />
-      {record.podFile}
+      {record.podFile || "View POD"}
     </Box>
   );
 }
