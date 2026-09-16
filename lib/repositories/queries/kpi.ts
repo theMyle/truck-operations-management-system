@@ -1,6 +1,6 @@
 import { parseScheduledDateTime } from "@/lib/utils/dateTime";
 import { db } from "@/lib/db";
-import { booking, trucks } from "@/lib/db/schema";
+import { booking, trucks, monthlyOperationsSummary } from "@/lib/db/schema";
 import { eq, and, sql, gte, lte } from "drizzle-orm";
 import { pmsRepository } from "../pms.repository";
 import { demeritRepository } from "../demerit.repository";
@@ -325,6 +325,31 @@ export async function getKrisdomingoKpiReport(targetYear?: number): Promise<KpiR
   );
 
   const monthlyMap: Record<number, MonthlyKpiData> = Object.fromEntries(monthEntries);
+
+  // Overlay frozen monthly summaries from monthly_operations_summary if any exist
+  const frozenKpiSummaries = await db
+    .select()
+    .from(monthlyOperationsSummary)
+    .where(eq(monthlyOperationsSummary.year, year));
+
+  for (const row of frozenKpiSummaries) {
+    monthlyMap[row.month] = {
+      month: MONTH_NAMES[row.month - 1],
+      monthNum: row.month,
+      successfulTrips: row.completedDeliveries,
+      totalTrips: row.totalTrips,
+      onTimeTrips: row.onTimeDeliveries,
+      onTimeEligibleTrips: row.completedDeliveries,
+      fleetUtilization: Number(row.fleetUtilization),
+      onTimeDelivery: Number(row.onTimeDelivery),
+      onTimePayment: Number(row.onTimePayment),
+      maintenanceCompliance: Number(row.maintenanceCompliance),
+      manpowerRating: Number(row.manpowerRating),
+      overallScore: Number(row.overallScore),
+      overallRating: (row.overallRating as any) || "Satisfactory",
+      hasData: row.totalTrips > 0,
+    };
+  }
 
   // Calculate Full Year Average for months with data
   const monthsWithData = Object.values(monthlyMap).filter((m) => m.hasData);

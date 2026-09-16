@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React, { useState, useMemo } from "react";
 import {
@@ -16,8 +16,7 @@ import {
   Alert,
   Tooltip,
   ActionIcon,
-  Loader,
-  Center,
+  SegmentedControl,
 } from "@mantine/core";
 import {
   IconTrash,
@@ -26,13 +25,14 @@ import {
   IconExternalLink,
   IconPhoto,
   IconCheck,
-  IconRefresh,
+  IconDatabase,
+  IconFileText,
 } from "@tabler/icons-react";
 import { notifications } from "@mantine/notifications";
 import {
   ExpiredPodItem,
   ExpiredPodsSummary,
-  deleteExpiredPodsAction,
+  deleteExpiredBookingsAction,
 } from "@/lib/actions/pod-cleanup";
 
 interface PodCleanupModalProps {
@@ -54,7 +54,8 @@ export function PodCleanupModal({
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [isDeleting, setIsDeleting] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
-  const [deleteMode, setDeleteMode] = useState<"selected" | "all">("selected");
+  const [deleteScope, setDeleteScope] = useState<"selected" | "all">("selected");
+  const [cleanupMode, setCleanupMode] = useState<"full_bookings" | "pods_only">("full_bookings");
 
   const records = summary?.records ?? [];
 
@@ -77,10 +78,6 @@ export function PodCleanupModal({
     filteredRecords.length > 0 &&
     filteredRecords.every((r) => selectedIds.includes(r.id));
 
-  const someFilteredSelected =
-    filteredRecords.some((r) => selectedIds.includes(r.id)) &&
-    !allFilteredSelected;
-
   const toggleSelectAll = () => {
     if (allFilteredSelected) {
       const filteredIdSet = new Set(filteredRecords.map((r) => r.id));
@@ -102,8 +99,8 @@ export function PodCleanupModal({
     }
   };
 
-  const handleTriggerDelete = (mode: "selected" | "all") => {
-    setDeleteMode(mode);
+  const handleTriggerDelete = (scope: "selected" | "all") => {
+    setDeleteScope(scope);
     setConfirmOpen(true);
   };
 
@@ -111,15 +108,25 @@ export function PodCleanupModal({
     setIsDeleting(true);
     try {
       const idsToDelete =
-        deleteMode === "selected" ? selectedIds : undefined;
-      const res = await deleteExpiredPodsAction(idsToDelete);
+        deleteScope === "selected" ? selectedIds : undefined;
+
+      const res = await deleteExpiredBookingsAction({
+        bookingIds: idsToDelete,
+        deleteMode: cleanupMode,
+      });
 
       if (res.success) {
+        const msg =
+          cleanupMode === "full_bookings"
+            ? `Successfully cleaned up ${res.deletedCount} old booking(s) and their files. Past monthly summaries and KPI scores have been permanently frozen and preserved in the database.`
+            : `Successfully deleted ${res.deletedCount} old POD file(s) from storage.`;
+
         notifications.show({
-          title: "PODs Deleted",
-          message: `Successfully deleted ${res.deletedCount} old POD file${res.deletedCount === 1 ? "" : "s"} to free up storage.`,
+          title: cleanupMode === "full_bookings" ? "Bookings Cleaned Up" : "PODs Deleted",
+          message: msg,
           color: "teal",
           icon: <IconCheck size={16} />,
+          autoClose: 6000,
         });
         setSelectedIds([]);
         setConfirmOpen(false);
@@ -129,8 +136,8 @@ export function PodCleanupModal({
         }
       } else {
         notifications.show({
-          title: "Deletion Failed",
-          message: res.error || "Could not delete PODs.",
+          title: "Cleanup Failed",
+          message: res.error || "Could not delete records.",
           color: "red",
         });
       }
@@ -154,16 +161,16 @@ export function PodCleanupModal({
           <Group gap={8}>
             <IconAlertCircle size={20} color="var(--mantine-color-orange-6)" />
             <Text fw={700} size="sm" tt="uppercase" lts={0.5}>
-              POD Storage Cleanup (2+ Months Old)
+              2-Month Data & Storage Cleanup
             </Text>
             {summary && summary.totalCount > 0 && (
               <Badge color="orange" variant="light" size="sm">
-                {summary.totalCount} Expired
+                {summary.totalCount} Eligible (2+ Mos)
               </Badge>
             )}
           </Group>
         }
-        size="85rem"
+        size="88rem"
         radius="md"
         centered
         styles={{
@@ -181,236 +188,255 @@ export function PodCleanupModal({
             styles={{ message: { fontSize: "12px" } }}
           >
             {summary && summary.totalCount > 0 ? (
-              <Text size="xs" fw={500}>
-                There {summary.totalCount === 1 ? "is" : "are"}{" "}
-                <Text span fw={700}>
-                  {summary.totalCount} Proof of Delivery (POD) file
-                  {summary.totalCount === 1 ? "" : "s"}
-                </Text>{" "}
-                uploaded over 2 months ago (before {summary.cutoffDate}) from{" "}
-                <Text span fw={700}>
-                  {summary.clientNames.join(", ")}
+              <Stack gap={4}>
+                <Text size="xs" fw={500}>
+                  There are{" "}
+                  <Text span fw={700}>
+                    {summary.totalCount} booking{summary.totalCount === 1 ? "" : "s"}
+                  </Text>{" "}
+                  created over 2 months ago (before {summary.cutoffDate}).
                 </Text>
-                . You can safely delete them to free up cloud storage while
-                keeping all booking info and trip logs intact.
-              </Text>
+                <Text size="xs" c="dimmed">
+                  ℹ️ When deleting full bookings, the system{" "}
+                  <Text span fw={700} c="dark">
+                    automatically saves that month&apos;s operational totals, dashboard charts, and KPI scores into the summary database
+                  </Text>{" "}
+                  before deleting, and preserves each truck&apos;s latest odometer reading.
+                </Text>
+              </Stack>
             ) : (
               <Text size="xs" fw={500}>
-                All POD files in the system are currently up to date (less than 2
-                months old). Storage is clean!
+                All booking records are currently recent (under 2 months old). Database & storage are clean!
               </Text>
             )}
           </Alert>
 
-          {/* Search & Actions Bar */}
-          <Group justify="space-between" align="center">
-            <TextInput
-              placeholder="Search by client, DR#, plate, driver, or route..."
-              leftSection={<IconSearch size={14} />}
-              value={search}
-              onChange={(e) => setSearch(e.currentTarget.value)}
-              size="xs"
-              style={{ minWidth: 320 }}
-              radius="sm"
-            />
-
-            <Group gap={8}>
-              <ActionIcon
-                variant="default"
-                size="sm"
-                onClick={onRefresh}
-                loading={isLoading}
-                title="Refresh list"
-              >
-                <IconRefresh size={14} />
-              </ActionIcon>
-
-              {selectedIds.length > 0 && (
-                <Button
-                  color="red"
+          {/* Cleanup Mode Selector */}
+          <Paper p="xs" withBorder radius="sm" bg="var(--mantine-color-gray-0)">
+            <Group justify="space-between" align="center" wrap="wrap" gap="sm">
+              <Group gap="xs">
+                <Text size="xs" fw={700} c="dimmed" tt="uppercase">
+                  Cleanup Action:
+                </Text>
+                <SegmentedControl
                   size="xs"
-                  leftSection={<IconTrash size={14} />}
-                  onClick={() => handleTriggerDelete("selected")}
-                  loading={isDeleting}
-                >
-                  Delete Selected ({selectedIds.length})
-                </Button>
-              )}
+                  value={cleanupMode}
+                  onChange={(val: string) => setCleanupMode(val as "full_bookings" | "pods_only")}
+                  data={[
+                    {
+                      value: "full_bookings",
+                      label: (
+                        <Group gap={6}>
+                          <IconDatabase size={14} />
+                          <span>Delete Full Bookings & Files (Save Monthly Summary)</span>
+                        </Group>
+                      ),
+                    },
+                    {
+                      value: "pods_only",
+                      label: (
+                        <Group gap={6}>
+                          <IconPhoto size={14} />
+                          <span>Delete POD Files Only (Keep Bookings)</span>
+                        </Group>
+                      ),
+                    },
+                  ]}
+                />
+              </Group>
 
-              {records.length > 0 && (
-                <Button
-                  color="red"
-                  variant="light"
-                  size="xs"
-                  leftSection={<IconTrash size={14} />}
-                  onClick={() => handleTriggerDelete("all")}
-                  loading={isDeleting}
-                >
-                  Delete All ({records.length})
-                </Button>
-              )}
+              {/* Search Bar */}
+              <TextInput
+                size="xs"
+                placeholder="Search plate, client, DR #..."
+                leftSection={<IconSearch size={14} />}
+                value={search}
+                onChange={(e) => setSearch(e.currentTarget.value)}
+                w={260}
+              />
             </Group>
-          </Group>
+          </Paper>
 
-          {/* Read-Only Table */}
+          {/* Table Container */}
           <Paper withBorder radius="sm" style={{ overflow: "hidden" }}>
-            <ScrollArea h={380} scrollbarSize={6}>
-              {isLoading ? (
-                <Center h={200}>
-                  <Loader size="sm" color="orange" />
-                </Center>
-              ) : filteredRecords.length === 0 ? (
-                <Center h={180}>
-                  <Text size="xs" c="dimmed">
-                    {search
-                      ? "No POD records match your search."
-                      : "No 2-month-old PODs found to clean up."}
-                  </Text>
-                </Center>
-              ) : (
-                <Table
-                  striped
-                  highlightOnHover
-                  withColumnBorders
-                  styles={{
-                    th: {
-                      fontSize: "11px",
-                      textTransform: "uppercase",
-                      backgroundColor: "var(--mantine-color-gray-1)",
-                      padding: "8px 10px",
-                      whiteSpace: "nowrap",
-                    },
-                    td: {
-                      fontSize: "11px",
-                      padding: "6px 10px",
-                      whiteSpace: "nowrap",
-                    },
+            <ScrollArea h={380} type="auto">
+              <Table striped highlightOnHover withTableBorder={false} fz={11}>
+                <Table.Thead
+                  style={{
+                    position: "sticky",
+                    top: 0,
+                    backgroundColor: "var(--mantine-color-gray-1)",
+                    zIndex: 2,
                   }}
                 >
-                  <Table.Thead>
-                    <Table.Tr>
-                      <Table.Th style={{ width: 40, textAlign: "center" }}>
-                        <Checkbox
-                          size="xs"
-                          checked={allFilteredSelected}
-                          indeterminate={someFilteredSelected}
-                          onChange={toggleSelectAll}
-                        />
-                      </Table.Th>
-                      <Table.Th style={{ minWidth: 90 }}>Trip #</Table.Th>
-                      <Table.Th style={{ minWidth: 120 }}>Booking / DR #</Table.Th>
-                      <Table.Th style={{ minWidth: 140 }}>Client</Table.Th>
-                      <Table.Th style={{ minWidth: 100 }}>Trip Date</Table.Th>
-                      <Table.Th style={{ minWidth: 100 }}>Age</Table.Th>
-                      <Table.Th style={{ minWidth: 120 }}>Plate / Unit</Table.Th>
-                      <Table.Th style={{ minWidth: 140 }}>Driver</Table.Th>
-                      <Table.Th style={{ minWidth: 160 }}>Route</Table.Th>
-                      <Table.Th style={{ minWidth: 110, textAlign: "center" }}>
-                        POD Preview
-                      </Table.Th>
-                    </Table.Tr>
-                  </Table.Thead>
-                  <Table.Tbody>
-                    {filteredRecords.map((record) => {
-                      const isSelected = selectedIds.includes(record.id);
+                  <Table.Tr>
+                    <Table.Th w={40}>
+                      <Checkbox
+                        size="xs"
+                        checked={allFilteredSelected}
+                        indeterminate={
+                          selectedIds.length > 0 && !allFilteredSelected
+                        }
+                        onChange={toggleSelectAll}
+                        disabled={filteredRecords.length === 0}
+                      />
+                    </Table.Th>
+                    <Table.Th>Booking #</Table.Th>
+                    <Table.Th>DR #</Table.Th>
+                    <Table.Th>Client</Table.Th>
+                    <Table.Th>Pickup Date</Table.Th>
+                    <Table.Th>Route (Ruta)</Table.Th>
+                    <Table.Th>Plate Number</Table.Th>
+                    <Table.Th>Driver</Table.Th>
+                    <Table.Th>Delivery Status</Table.Th>
+                    <Table.Th>Billing Status</Table.Th>
+                    <Table.Th>POD File</Table.Th>
+                  </Table.Tr>
+                </Table.Thead>
+                <Table.Tbody>
+                  {filteredRecords.length > 0 ? (
+                    filteredRecords.map((r) => {
+                      const isSelected = selectedIds.includes(r.id);
                       return (
                         <Table.Tr
-                          key={record.id}
+                          key={r.id}
                           bg={
                             isSelected
-                              ? "var(--mantine-color-red-0)"
+                              ? "var(--mantine-color-orange-0)"
                               : undefined
                           }
                         >
-                          <Table.Td style={{ textAlign: "center" }}>
+                          <Table.Td>
                             <Checkbox
                               size="xs"
                               checked={isSelected}
-                              onChange={() => toggleSelectRow(record.id)}
+                              onChange={() => toggleSelectRow(r.id)}
                             />
                           </Table.Td>
+                          <Table.Td fw={600}>#{r.displayBookingNo}</Table.Td>
+                          <Table.Td>{r.bookingDRNo}</Table.Td>
+                          <Table.Td fw={500}>{r.clientName}</Table.Td>
                           <Table.Td>
-                            <Badge variant="outline" color="dark" size="xs">
-                              #{record.displayBookingNo}
+                            <Group gap={4}>
+                              <Text size="11px">{r.pickupDate}</Text>
+                              <Badge size="xs" color="gray" variant="light">
+                                {r.ageInDays}d old
+                              </Badge>
+                            </Group>
+                          </Table.Td>
+                          <Table.Td style={{ maxWidth: 140, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                            <Tooltip label={r.ruta} position="top" withArrow fz={10}>
+                              <span>{r.ruta}</span>
+                            </Tooltip>
+                          </Table.Td>
+                          <Table.Td>
+                            <Badge size="xs" variant="outline" color="blue">
+                              {r.plateNumber}
                             </Badge>
                           </Table.Td>
-                          <Table.Td fw={600}>
-                            {record.bookingDRNo}
-                          </Table.Td>
-                          <Table.Td fw={600} c="blue.7">
-                            {record.clientName}
-                          </Table.Td>
-                          <Table.Td>{record.pickupDate}</Table.Td>
+                          <Table.Td>{r.driverName}</Table.Td>
                           <Table.Td>
                             <Badge
                               size="xs"
-                              color={record.ageInDays > 90 ? "red" : "orange"}
+                              color={
+                                r.deliveryStatus.toLowerCase() === "completed"
+                                  ? "teal"
+                                  : "blue"
+                              }
                               variant="light"
                             >
-                              {record.ageInDays} days old
+                              {r.deliveryStatus}
                             </Badge>
                           </Table.Td>
                           <Table.Td>
-                            <Text size="11px" fw={600}>
-                              {record.plateNumber}
-                            </Text>
-                            <Text size="9px" c="dimmed">
-                              {record.fleetType}
-                            </Text>
+                            <Badge
+                              size="xs"
+                              color={
+                                r.billingStatus.toLowerCase() === "paid"
+                                  ? "teal"
+                                  : r.billingStatus.toLowerCase() === "overdue"
+                                  ? "red"
+                                  : "gray"
+                              }
+                              variant="light"
+                            >
+                              {r.billingStatus}
+                            </Badge>
                           </Table.Td>
-                          <Table.Td>{record.driverName}</Table.Td>
-                          <Table.Td
-                            style={{
-                              maxWidth: 180,
-                              overflow: "hidden",
-                              textOverflow: "ellipsis",
-                            }}
-                            title={record.ruta}
-                          >
-                            {record.ruta}
-                          </Table.Td>
-                          <Table.Td style={{ textAlign: "center" }}>
-                            {record.podUrl ? (
-                              <Tooltip label="View uploaded POD image" withArrow fz={10}>
-                                <Button
-                                  component="a"
-                                  href={record.podUrl}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  size="compact-xs"
-                                  variant="light"
-                                  color="teal"
-                                  leftSection={<IconPhoto size={12} />}
-                                  rightSection={<IconExternalLink size={10} />}
-                                >
-                                  View POD
-                                </Button>
-                              </Tooltip>
+                          <Table.Td>
+                            {r.hasPod ? (
+                              <Button
+                                component="a"
+                                href={r.podUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                variant="subtle"
+                                size="compact-xs"
+                                color="blue"
+                                leftSection={<IconExternalLink size={11} />}
+                              >
+                                View POD
+                              </Button>
                             ) : (
                               <Text size="10px" c="dimmed">
-                                No file
+                                None
                               </Text>
                             )}
                           </Table.Td>
                         </Table.Tr>
                       );
-                    })}
-                  </Table.Tbody>
-                </Table>
-              )}
+                    })
+                  ) : (
+                    <Table.Tr>
+                      <Table.Td colSpan={11} style={{ textAlign: "center", padding: "24px" }}>
+                        <Text size="xs" c="dimmed">
+                          {search ? "No records match your search." : "No records older than 2 months."}
+                        </Text>
+                      </Table.Td>
+                    </Table.Tr>
+                  )}
+                </Table.Tbody>
+              </Table>
             </ScrollArea>
           </Paper>
 
-          {/* Footer Controls */}
+          {/* Action Footer */}
           <Group justify="space-between" align="center" pt="xs">
             <Text size="xs" c="dimmed">
-              Showing {filteredRecords.length} of {records.length} records
-              {selectedIds.length > 0 && ` • ${selectedIds.length} selected`}
+              Selected:{" "}
+              <Text span fw={700} c="dark">
+                {selectedIds.length}
+              </Text>{" "}
+              of {filteredRecords.length} records
             </Text>
 
             <Group gap={8}>
-              <Button variant="default" size="xs" onClick={onClose}>
+              <Button
+                variant="default"
+                size="xs"
+                onClick={onClose}
+                disabled={isDeleting}
+              >
                 Close
+              </Button>
+              <Button
+                color="red"
+                variant="light"
+                size="xs"
+                leftSection={<IconTrash size={14} />}
+                onClick={() => handleTriggerDelete("selected")}
+                disabled={selectedIds.length === 0 || isDeleting}
+              >
+                Delete Selected ({selectedIds.length})
+              </Button>
+              <Button
+                color="red"
+                size="xs"
+                leftSection={<IconTrash size={14} />}
+                onClick={() => handleTriggerDelete("all")}
+                disabled={records.length === 0 || isDeleting}
+              >
+                Delete All Over 2 Months ({records.length})
               </Button>
             </Group>
           </Group>
@@ -425,40 +451,56 @@ export function PodCleanupModal({
           <Group gap={6}>
             <IconTrash size={18} color="var(--mantine-color-red-6)" />
             <Text fw={700} size="sm" c="red.7">
-              Confirm POD Deletion
+              {cleanupMode === "full_bookings"
+                ? "Confirm Bookings & Storage Cleanup"
+                : "Confirm POD Deletion"}
             </Text>
           </Group>
         }
-        size="sm"
+        size="md"
         radius="md"
         centered
       >
         <Stack gap="md">
           <Text size="xs">
-            {deleteMode === "selected" ? (
+            {deleteScope === "selected" ? (
               <>
-                Are you sure you want to permanently delete the POD image files
-                for the{" "}
+                Are you sure you want to delete the{" "}
                 <Text span fw={700} c="red.7">
-                  {selectedIds.length} selected booking(s)
+                  {selectedIds.length} selected record(s)
                 </Text>
                 ?
               </>
             ) : (
               <>
-                Are you sure you want to permanently delete{" "}
+                Are you sure you want to delete{" "}
                 <Text span fw={700} c="red.7">
-                  all {records.length} POD files
+                  all {records.length} booking record(s)
                 </Text>{" "}
                 that are older than 2 months?
               </>
             )}
           </Text>
-          <Text size="10px" c="dimmed">
-            ⚠️ This will delete the image files from cloud storage to save space.
-            The trip details, driver logs, and billing entries will remain
-            completely safe and intact.
-          </Text>
+
+          {cleanupMode === "full_bookings" ? (
+            <Alert color="blue" variant="light" radius="xs" p="xs">
+              <Stack gap={4}>
+                <Text size="11px" fw={700} c="blue.8">
+                  🛡️ Automatic Data Preservation Guarantee:
+                </Text>
+                <Text size="10px" c="dimmed">
+                  1. All monthly operations totals, charts, and KPI scores for these past months will be <b>automatically frozen into the database</b> before deletion so your Dashboard never loses past data.
+                </Text>
+                <Text size="10px" c="dimmed">
+                  2. Each truck&apos;s highest odometer reading will be locked in so odometer auto-chaining in Trip Logs remains intact.
+                </Text>
+              </Stack>
+            </Alert>
+          ) : (
+            <Text size="10px" c="dimmed">
+              ⚠️ This will only delete image files from cloud storage. All booking details, trip logs, and billing entries will remain completely intact.
+            </Text>
+          )}
 
           <Group justify="flex-end" gap={8} pt="xs">
             <Button
