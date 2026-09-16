@@ -17,6 +17,7 @@ import {
   Pagination,
   Select,
   PasswordInput,
+  Progress,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { useRouter } from "next/navigation";
@@ -29,6 +30,9 @@ import {
   IconClipboardList,
   IconEdit,
   IconDownload,
+  IconFolderDown,
+  IconPhotoOff,
+  IconFileInvoice,
   IconFileTypeDoc,
   IconFileTypeJpg,
   IconFileTypePdf,
@@ -50,6 +54,7 @@ import { TripLogsModuleSkeleton } from "@/components/ui/ModuleSkeletons";
 import { useTableExport } from "@/hooks/useTableExport";
 import { formatEmployeeName } from "@/lib/utils/stringFormat";
 import { useTablePrint } from "@/hooks/useTablePrint";
+import { usePodDownload } from "@/hooks/usePodDownload";
 
 /* ── Status badge helper ── */
 const statusColor: Record<DispatchRecord["status"], string> = {
@@ -371,6 +376,22 @@ export default function DispatchRecordsPage() {
     Record<string | number, NewTripDetailsFormData>
   >({});
   const [page, setPage] = useState(1);
+  const [podPreview, setPodPreview] = useState<DispatchRecord | null>(null);
+  const { downloadPODs, downloading, progress } = usePodDownload();
+
+  const handleDownloadPODs = () => {
+    const podRecords = filtered
+      .filter((r) => r.podFileUrl)
+      .map((r) => ({
+        id: String(r.id),
+        bookingDr: r.bookingDr || String(r.id),
+        podFileUrl: r.podFileUrl,
+      }));
+
+    downloadPODs(podRecords, {
+      client: "TripLogs",
+    });
+  };
   const { setEditingRecord } = useDispatch();
 
   useEffect(() => {
@@ -802,6 +823,59 @@ export default function DispatchRecordsPage() {
         record={deleteRecord}
       />
 
+      {/* POD Viewer Modal */}
+      <Modal
+        opened={!!podPreview}
+        onClose={() => setPodPreview(null)}
+        title={
+          <Group gap={8}>
+            <IconFileInvoice size={16} color="var(--mantine-color-blue-6)" />
+            <Text fw={700} size="sm">
+              {podPreview?.podFile || "POD Preview"}
+            </Text>
+          </Group>
+        }
+        centered
+        size="lg"
+      >
+        {podPreview?.podFileUrl ? (
+          podPreview.podFile?.toLowerCase().endsWith(".pdf") ||
+          podPreview.podFileUrl.toLowerCase().includes(".pdf") ? (
+            <iframe
+              src={podPreview.podFileUrl}
+              title="POD PDF Preview"
+              style={{
+                width: "100%",
+                height: 500,
+                border: "1px solid var(--mantine-color-gray-3)",
+                borderRadius: 8,
+              }}
+            />
+          ) : (
+            <Box
+              component="img"
+              src={podPreview.podFileUrl}
+              alt={podPreview.podFile ?? "POD"}
+              style={{
+                maxWidth: "100%",
+                maxHeight: "70vh",
+                objectFit: "contain",
+                borderRadius: 8,
+                display: "block",
+                margin: "0 auto",
+              }}
+            />
+          )
+        ) : (
+          <Stack align="center" gap="sm" py="xl">
+            <IconPhotoOff size={40} color="var(--mantine-color-gray-4)" />
+            <Text size="sm" c="dimmed" fw={500}>
+              No POD file available
+            </Text>
+          </Stack>
+        )}
+      </Modal>
+
       {detailsOpened && seletectedTrip && (
         <TripDetailsModal
           key={seletectedTrip.id}
@@ -839,6 +913,31 @@ export default function DispatchRecordsPage() {
             </Group>
 
             <Group gap={8}>
+              <Tooltip
+                label={
+                  downloading
+                    ? `Zipping… ${progress}%`
+                    : `Download ${filtered.filter((r) => r.podFileUrl).length} POD(s) as ZIP`
+                }
+                withArrow
+              >
+                <Button
+                  size="xs"
+                  color="violet"
+                  leftSection={
+                    downloading ? undefined : <IconFolderDown size={13} />
+                  }
+                  styles={{
+                    root: { height: 28 },
+                    label: { fontSize: "10px", fontWeight: 700 },
+                  }}
+                  onClick={handleDownloadPODs}
+                  loading={downloading}
+                  disabled={!filtered.some((r) => r.podFileUrl)}
+                >
+                  {downloading ? `${progress}%` : "Download PODs"}
+                </Button>
+              </Tooltip>
               <Select
                 placeholder="Download"
                 leftSection={
@@ -917,6 +1016,16 @@ export default function DispatchRecordsPage() {
             </Group>
           </Group>
 
+          {downloading && (
+            <Progress
+              value={progress}
+              size="xs"
+              radius="xl"
+              color="violet"
+              animated
+            />
+          )}
+
           {/* Search Bar */}
           <Group gap="sm">
             <TextInput
@@ -951,6 +1060,7 @@ export default function DispatchRecordsPage() {
             onView={handleView}
             onEdit={handleEdit}
             onDelete={handleDeleteClick}
+            onViewPod={setPodPreview}
           />
         </Stack>
       </ScrollArea>
