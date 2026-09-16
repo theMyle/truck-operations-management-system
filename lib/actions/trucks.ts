@@ -13,7 +13,11 @@ const truckInputSchema = insertTruckSchema.omit({
 
 export const getTruckAction = actionClient.action(async () => {
     return await truckRepository.getAll();
-})
+});
+
+export const getLatestTruckOdometersAction = actionClient.action(async () => {
+    return await truckRepository.getLatestOdometers();
+});
 
 export const updateTruckAction = actionClient
     .inputSchema(truckInputSchema.partial().extend({

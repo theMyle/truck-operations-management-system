@@ -47,7 +47,7 @@ import {
   deleteBookingAction,
   updateTripDetailAction,
 } from "@/lib/actions/booking";
-import { getTruckAction } from "@/lib/actions/trucks";
+import { getTruckAction, getLatestTruckOdometersAction } from "@/lib/actions/trucks";
 import { formatTime12Hour, formatTimeHHMM } from "@/lib/utils/stringFormat";
 import { TripLogsTable } from "@/components/trip-logs/TripLogsTable";
 import { TripLogsModuleSkeleton } from "@/components/ui/ModuleSkeletons";
@@ -396,9 +396,10 @@ export default function DispatchRecordsPage() {
 
   useEffect(() => {
     async function loadBookings() {
-      const [res, trucksRes] = await Promise.all([
-        getAllBookingAction({ deliveryStatus: "Completed" }),
+      const [res, trucksRes, odoMapRes] = await Promise.all([
+        getAllBookingAction({ activeTripLogsOnly: true }),
         getTruckAction(),
+        getLatestTruckOdometersAction(),
       ]);
 
       const subconPlateMap = new Set(
@@ -412,60 +413,16 @@ export default function DispatchRecordsPage() {
           .map((t: any) => t.plateNumber.trim().toUpperCase()),
       );
 
+      const latestTruckOdometers: Record<string, number> = odoMapRes?.data ?? {};
+
       if (res?.data) {
-        // Build map of previous odoEnds per truck plate number across bookings
+        // Map latest known odometer per truck to active bookings
         const lastOdoEndForBooking: Record<string | number, number> = {};
-        const plateOdoTracker: Record<string, number> = {};
 
-        // Sort bookings chronologically by pickupDate / bookingDate / completion
-        const sortedForOdo = [...res.data].sort((a: any, b: any) => {
-          const dateA = new Date(a.pickupDate || a.bookingDate || "").getTime();
-          const dateB = new Date(b.pickupDate || b.bookingDate || "").getTime();
-          if (dateA !== dateB) return dateA - dateB;
-
-          const hasCompletedOdoA = (a.odoDetails ?? []).some((o: any) => Number(o.odoEnd) > 0);
-          const hasCompletedOdoB = (b.odoDetails ?? []).some((o: any) => Number(o.odoEnd) > 0);
-
-          // 1. Completed trips on the same date must be processed before pending trips
-          if (hasCompletedOdoA && !hasCompletedOdoB) return -1;
-          if (!hasCompletedOdoA && hasCompletedOdoB) return 1;
-
-          // 2. If both completed, sort by lower odoStart (earlier trip)
-          if (hasCompletedOdoA && hasCompletedOdoB) {
-            const odoA = a.odoDetails?.[0]?.odoStart || 0;
-            const odoB = b.odoDetails?.[0]?.odoStart || 0;
-            if (odoA !== odoB) return odoA - odoB;
-          }
-
-          // 3. Fallback tiebreaker: sort by pickup time or booking DR/ID
-          const timeA = a.pickupTime || "";
-          const timeB = b.pickupTime || "";
-          if (timeA !== timeB) return timeA.localeCompare(timeB);
-
-          return String(a.bookingDRNo || a.id).localeCompare(String(b.bookingDRNo || b.id));
-        });
-
-        sortedForOdo.forEach((b: any) => {
-          const isSub =
-            subconPlateMap.has((b.plateNumber || "").trim().toUpperCase()) ||
-            (b.trucker && b.trucker.toLowerCase().includes("subcon")) ||
-            (b.fleetType && b.fleetType.toLowerCase().includes("subcon")) ||
-            false;
-          const plate = b.plateNumber?.trim().toUpperCase();
-
-          if (!isSub && plate && plateOdoTracker[plate] !== undefined) {
-            lastOdoEndForBooking[b.id] = plateOdoTracker[plate];
-          }
-
-          if (!isSub && plate && b.odoDetails && b.odoDetails.length > 0) {
-            const validEnds = b.odoDetails
-              .map((o: any) => Number(o.odoEnd) || 0)
-              .filter((v: number) => v > 0);
-            if (validEnds.length > 0) {
-              // Take the latest trip's ending odometer chronologically rather than mathematical MAX
-              // to prevent historical typos from corrupting subsequent booking starting odometers.
-              plateOdoTracker[plate] = validEnds[validEnds.length - 1];
-            }
+        res.data.forEach((b: any) => {
+          const plate = (b.plateNumber || "").trim().toUpperCase();
+          if (plate && latestTruckOdometers[plate] !== undefined) {
+            lastOdoEndForBooking[b.id] = latestTruckOdometers[plate];
           }
         });
 

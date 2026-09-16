@@ -20,6 +20,7 @@ export interface GetAllBookingParams {
   startDate?: string;
   endDate?: string;
   limit?: number;
+  activeTripLogsOnly?: boolean;
 }
 
 export const makeBookingRepository = (database = db) => {
@@ -32,11 +33,33 @@ export const makeBookingRepository = (database = db) => {
           ? { deliveryStatus: paramsOrStatus }
           : (paramsOrStatus ?? {});
 
-      const { deliveryStatus, excludeCompleted, startDate, endDate, limit } = params;
+      const { deliveryStatus, excludeCompleted, startDate, endDate, limit, activeTripLogsOnly } = params;
 
       const conditions = [];
-      if (deliveryStatus) conditions.push(eq(booking.deliveryStatus, deliveryStatus));
-      if (excludeCompleted) conditions.push(ne(booking.deliveryStatus, "Completed"));
+      if (activeTripLogsOnly) {
+        conditions.push(eq(booking.deliveryStatus, "Completed"));
+        conditions.push(
+          sql`NOT EXISTS (
+            SELECT 1 FROM "tripOdoDetails" o 
+            WHERE o."bookingId" = ${booking.id} AND CAST(o."odoEnd" AS NUMERIC) > 0
+          )`
+        );
+        conditions.push(
+          sql`NOT EXISTS (
+            SELECT 1 FROM "trucks" t 
+            WHERE t."plate_number" = ${booking.plateNumber} AND t."is_subcon" IS TRUE
+          )`
+        );
+        conditions.push(
+          sql`(${booking.trucker} IS NULL OR LOWER(${booking.trucker}) NOT LIKE '%subcon%')`
+        );
+        conditions.push(
+          sql`(${booking.fleetType} IS NULL OR LOWER(${booking.fleetType}) NOT LIKE '%subcon%')`
+        );
+      } else {
+        if (deliveryStatus) conditions.push(eq(booking.deliveryStatus, deliveryStatus));
+        if (excludeCompleted) conditions.push(ne(booking.deliveryStatus, "Completed"));
+      }
       if (startDate) conditions.push(gte(booking.pickupDate, startDate));
       if (endDate) conditions.push(lte(booking.pickupDate, endDate));
 

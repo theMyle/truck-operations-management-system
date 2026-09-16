@@ -65,6 +65,7 @@ const GetAllBookingSchema = z.object({
   startDate: z.string().optional(),
   endDate: z.string().optional(),
   limit: z.number().int().positive().optional(),
+  activeTripLogsOnly: z.boolean().optional(),
 }).optional();
 
 export const getAllBookingAction = actionClient
