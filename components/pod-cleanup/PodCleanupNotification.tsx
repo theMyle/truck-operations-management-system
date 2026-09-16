@@ -79,7 +79,7 @@ export function PodCleanupNotification() {
             size="md"
             radius="md"
             onClick={open}
-            aria-label="POD Storage Cleanup Notification"
+            aria-label="2-Month Data & Storage Cleanup Notification"
           >
             {count > 0 ? (
               <IconFileAlert size={18} />

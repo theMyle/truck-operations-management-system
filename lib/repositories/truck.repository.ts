@@ -22,6 +22,23 @@ export const makeTruckRepository = (database = db) => {
                     odoMap[row.plateNumber.trim().toUpperCase()] = Number(row.lastOdoEnd) || 0;
                 }
             }
+
+            // Fall back to trucks.currentOdo or lastPmsOdo if historical trips were purged
+            const allTrucks = await database
+                .select({
+                    plateNumber: trucks.plateNumber,
+                    currentOdo: trucks.currentOdo,
+                    lastPmsOdo: trucks.lastPmsOdo,
+                })
+                .from(trucks);
+
+            for (const t of allTrucks) {
+                const plate = t.plateNumber.trim().toUpperCase();
+                if (!odoMap[plate] || odoMap[plate] === 0) {
+                    odoMap[plate] = t.currentOdo || t.lastPmsOdo || 0;
+                }
+            }
+
             return odoMap;
         },
 

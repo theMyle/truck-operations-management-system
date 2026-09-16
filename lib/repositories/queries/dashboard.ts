@@ -2,6 +2,7 @@ import { parseScheduledDateTime } from "@/lib/utils/dateTime";
 import { db } from "@/lib/db";
 import { booking } from "@/lib/db/schema/booking";
 import { trucks } from "@/lib/db/schema/trucks";
+import { monthlyOperationsSummary } from "@/lib/db/schema/monthlySummary";
 import { eq, and, sql, gte, lte } from "drizzle-orm";
 import { formatTime12Hour } from "@/lib/utils/stringFormat";
 import { getActiveDaysInMonth } from "@/lib/utils/dateUtils";
@@ -323,6 +324,24 @@ export async function getMonthlyOperations(
   // Calculate activeDays for each month using shared helper
   for (let m = 1; m <= 12; m++) {
     byMonth[m].activeDays = getActiveDaysInMonth(year, m, resolvedStartDate);
+  }
+
+  // Overlay frozen monthly summaries from monthly_operations_summary if any exist
+  const frozenSummaries = await db
+    .select()
+    .from(monthlyOperationsSummary)
+    .where(eq(monthlyOperationsSummary.year, year));
+
+  for (const row of frozenSummaries) {
+    byMonth[row.month] = {
+      kts: row.ktsTrips,
+      subcon: row.subconTrips,
+      ktsTrucks: row.ktsTrucks,
+      subconTrucks: row.subconTrucks,
+      activeDays: row.activeDays,
+      completedDeliveries: row.completedDeliveries,
+      onTimeDeliveries: row.onTimeDeliveries,
+    };
   }
 
   return byMonth;

@@ -13,3 +13,4 @@ export * from "./pmsLogs";
 export * from "./violationTypes";
 export * from "./demeritRecords";
 
+export * from "./monthlySummary";
