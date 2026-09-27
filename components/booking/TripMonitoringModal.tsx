@@ -29,6 +29,7 @@ import {
   useRef,
   type ChangeEvent,
   type DragEvent,
+  useEffect,
 } from "react";
 import {
   IconAlertTriangle,
@@ -50,6 +51,7 @@ import { uploadFile, replaceFile, getSignedUploadUrlAction, deleteFileFromUrl } 
 import { compressImage, mergeImagesToPdf } from "@/lib/utils/imageUtils";
 import { compressPdf } from "@/lib/utils/pdfCompression";
 import { inputStyles } from "@/app/(app)/dispatch/page";
+import { isIpiClient } from "@/lib/utils/soaColumns";
 
 export interface TripMonitoringForm {
   pickUpTime: string;
@@ -417,6 +419,26 @@ export function TripMonitoringModal({
   );
 
   const [form, setForm] = useState<TripDetailsForm>(initial);
+
+  useEffect(() => {
+    if (opened && record) {
+      setForm({
+        pickUpTime: record.pickUpTime ?? "",
+        arrivalPickup: record.arrivalPickup ?? "",
+        loadingStart: record.loadingStart ?? "",
+        loadingEnd: record.loadingEnd ?? "",
+        departurePickup: record.departurePickup ?? "",
+        finishDelivery: record.finishDelivery ?? "",
+        deliveryStatus: record.deliveryStatus ?? "",
+        podFile: record.podFile ?? "",
+        podFileUrl: record.podFileUrl ?? "",
+        podFileType: record.podFileType ?? "",
+        tripRemarks: record.tripRemarks ?? "",
+        bookingDRNo: record.bookingDRNo || record.bookingDr || "",
+      });
+    }
+  }, [opened, record]);
+  const isIpi = isIpiClient(record?.clientName || record?.client);
   const scheduledTime = record?.pickUpTime || record?.rawPickupTime;
 
   const arrivalStatus = useMemo(() => {
@@ -796,10 +818,10 @@ export function TripMonitoringModal({
               c="blue.6"
               mb="sm"
             >
-              Booking DR / #
+              {isIpi ? "DCR #" : "Booking DR / #"}
             </Text>
             <TextInput
-              placeholder="Enter booking DR / #"
+              placeholder={isIpi ? "Enter DCR# (e.g. 504033)" : "Enter booking DR / #"}
               style={{ inputStyles }}
               value={form.bookingDRNo}
               onChange={(e) => set("bookingDRNo", e.currentTarget.value)}
@@ -860,6 +882,32 @@ export function TripMonitoringModal({
               }}
               radius="md"
             />
+
+            {isIpi ? (
+              <TextInput
+                label="Invoice #"
+                placeholder="Enter invoice number (e.g. 8031085390)"
+                value={form.tripRemarks}
+                onChange={(e) => set("tripRemarks", e.currentTarget.value)}
+                mt="sm"
+                styles={{
+                  label: { fontSize: "11px", fontWeight: 700 },
+                  input: { fontSize: "12px", fontWeight: 600 },
+                }}
+                radius="md"
+              />
+            ) : (
+              <Textarea
+                label="Trip Remarks"
+                placeholder="Any notes about this trip..."
+                value={form.tripRemarks}
+                onChange={(e) => set("tripRemarks", e.currentTarget.value)}
+                minRows={3}
+                mt="sm"
+                styles={{ label: { fontSize: "11px", fontWeight: 600 } }}
+                radius="md"
+              />
+            )}
             <input
               ref={podInputRef}
               type="file"
@@ -894,16 +942,6 @@ export function TripMonitoringModal({
               </Alert>
             )}
 
-            <Textarea
-              label="Trip Remarks"
-              placeholder="Any notes about this trip..."
-              value={form.tripRemarks}
-              onChange={(e) => set("tripRemarks", e.currentTarget.value)}
-              minRows={3}
-              mt="sm"
-              styles={{ label: { fontSize: "11px", fontWeight: 600 } }}
-              radius="md"
-            />
           </Paper>
 
           <Divider />

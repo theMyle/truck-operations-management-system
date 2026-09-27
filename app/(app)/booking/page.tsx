@@ -293,7 +293,7 @@ export default function BookingRecordsPage() {
       departurePickup: form.departurePickup || undefined,
       finishDelivery: form.finishDelivery || undefined,
       deliveryStatus: form.deliveryStatus,
-      tripRemarks: form.tripRemarks || undefined,
+      tripRemarks: form.tripRemarks ?? "",
       PODLink: form.podFileUrl || undefined,
       bookingDRNo: form.bookingDRNo || undefined,
     });

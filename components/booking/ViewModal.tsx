@@ -13,6 +13,7 @@ import {
   Text,
 } from "@mantine/core";
 import { IconEdit, IconEye } from "@tabler/icons-react";
+import { isIpiClient } from "@/lib/utils/soaColumns";
 
 export function ViewModal({
   opened,
@@ -27,13 +28,16 @@ export function ViewModal({
 }) {
   if (!record) return null;
 
+  const isIpi = isIpiClient(record.client || record.clientName);
+
   const sections = [
     {
       title: "Trip Booking Details",
       rows: [
         { label: "Client (Kliyente)", value: record.client || record.clientName },
         { label: "Route (Ruta)", value: record.ruta },
-        { label: "Booking / DR#", value: record.bookingDr || record.bookingDRNo },
+        { label: isIpi ? "DCR#" : "Booking / DR#", value: record.bookingDr || record.bookingDRNo },
+        ...(isIpi ? [{ label: "Invoice #", value: record.tripRemarks || "—" }] : []),
         { label: "Pickup Location", value: record.pickLocation },
         { label: "Drop-off Location", value: record.dropOffLocation },
         { label: "No. of Drops", value: String(record.noOfDrops) },

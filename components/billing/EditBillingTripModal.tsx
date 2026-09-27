@@ -44,6 +44,11 @@ export function EditBillingTripModal({
   const [amountPaid, setAmountPaid] = useState("");
   const [remarks, setRemarks] = useState("");
 
+  const isIpi = React.useMemo(() => {
+    const c = ((record?.client || record?.clientName || "") as string).toLowerCase();
+    return c.includes("ipi") || c.includes("international");
+  }, [record]);
+
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -159,13 +164,22 @@ export function EditBillingTripModal({
             Trip Encoding Inputs
           </Text>
 
-          <SimpleGrid cols={4} spacing="xs">
+          <SimpleGrid cols={{ base: 1, sm: isIpi ? 5 : 4 }} spacing="xs">
             <TextInput
-              label="Booking / DR #"
+              label={isIpi ? "DCR #" : "Booking / DR #"}
               size="xs"
               value={bookingDr}
               onChange={(e) => setBookingDr(e.currentTarget.value)}
             />
+            {isIpi && (
+              <TextInput
+                label="Invoice #"
+                size="xs"
+                placeholder="e.g. 8031085390"
+                value={remarks}
+                onChange={(e) => setRemarks(e.currentTarget.value)}
+              />
+            )}
             <TextInput
               label="Client Trip Rate (₱)"
               type="number"
@@ -241,14 +255,16 @@ export function EditBillingTripModal({
             onChange={(e) => setAmountPaid(e.currentTarget.value)}
           />
 
-          <Textarea
-            label="Trip Remarks"
-            size="xs"
-            rows={2}
-            placeholder="Add any remarks or billing notes..."
-            value={remarks}
-            onChange={(e) => setRemarks(e.currentTarget.value)}
-          />
+          {!isIpi && (
+            <Textarea
+              label="Trip Remarks"
+              size="xs"
+              rows={2}
+              placeholder="Add any remarks or billing notes..."
+              value={remarks}
+              onChange={(e) => setRemarks(e.currentTarget.value)}
+            />
+          )}
 
           <Group justify="flex-end" mt="sm">
             <Button variant="light" color="gray" size="xs" onClick={onClose}>
