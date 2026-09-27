@@ -89,11 +89,12 @@ export default function DispatchPage() {
       ],
       pickupLocation: "",
       bookingDr: "",
+      invoiceNo: "",
       noOfDrops: "",
       pickupDate: null,
       pickupTime: "",
       dropOffs: [
-        { id: 1, location: "", contactPerson: "", contactNo: "" },
+        { id: 1, location: "", storeName: "", invoiceNo: "", contactPerson: "", contactNo: "" },
       ],
       plateNo: null,
       truckerRate: "",
@@ -303,14 +304,26 @@ export default function DispatchPage() {
     )!;
 
     const helpers = form.values.helpers.map((helper) => helper.id);
+
+    const isIpi =
+      selectedClient.clientName.toLowerCase().includes("ipi") ||
+      selectedClient.clientName.toLowerCase().includes("international");
+
     const drops = form.values.dropOffs
-      .filter((drop) => drop.location.trim().length > 0)
+      .filter((drop) => drop.location.trim().length > 0 || (drop.storeName && drop.storeName.trim().length > 0))
       .map((drop, index) => {
+        const store = drop.storeName?.trim();
+        const loc = drop.location.trim();
+        const combined = isIpi && store ? `${store} - ${loc}` : (loc || store || "");
         return {
           sequenceNumber: index + 1,
-          locationName: drop.location.trim().toUpperCase(),
+          locationName: combined.toUpperCase(),
         };
       });
+
+    const dropInvoices = isIpi
+      ? (form.values.invoiceNo?.trim() || form.values.dropOffs.map((d) => d.invoiceNo?.trim()).filter(Boolean)[0] || "")
+      : "";
 
     const payload: CreateBookingInput = {
       bookingDate: new Date().toISOString().split("T")[0],
@@ -337,6 +350,7 @@ export default function DispatchPage() {
       numberOfDrops: form.values.noOfDrops as number,
       helpers: helpers,
       drops: drops,
+      tripRemarks: dropInvoices || undefined,
     };
 
     let result;
@@ -425,15 +439,34 @@ export default function DispatchPage() {
       helperNames.includes(h.helperName),
     );
 
+    const isEditIpi =
+      (editingRecord.clientName ?? "").toLowerCase().includes("ipi") ||
+      (editingRecord.clientName ?? "").toLowerCase().includes("international");
+
+    const invoicesList = isEditIpi && editingRecord.tripRemarks
+      ? editingRecord.tripRemarks.split("\n").map((s) => s.trim())
+      : [];
+
     const drops =
       (editingRecord.rawDrops ?? []).length > 0
-        ? editingRecord.rawDrops!.map((d, i) => ({
-            id: Date.now() + i,
-            location: d.locationName,
-            contactPerson: "",
-            contactNo: "",
-          }))
-        : [{ id: Date.now(), location: "", contactPerson: "", contactNo: "" }];
+        ? editingRecord.rawDrops!.map((d, i) => {
+            let storeName = "";
+            let location = d.locationName;
+            if (isEditIpi && d.locationName.includes(" - ")) {
+              const parts = d.locationName.split(" - ");
+              storeName = parts[0].trim();
+              location = parts.slice(1).join(" - ").trim();
+            }
+            return {
+              id: Date.now() + i,
+              storeName,
+              invoiceNo: invoicesList[i] || "",
+              location,
+              contactPerson: "",
+              contactNo: "",
+            };
+          })
+        : [{ id: Date.now(), location: "", storeName: "", invoiceNo: "", contactPerson: "", contactNo: "" }];
 
     const driverNames = (editingRecord.driverName ?? "")
       .split(",")
@@ -465,6 +498,7 @@ export default function DispatchPage() {
           : [{ id: Date.now() + 100, location: editingRecord.pickLocation ?? "" }],
       pickupLocation: editingRecord.pickLocation ?? "",
       bookingDr: editingRecord.bookingDRNo ?? "",
+      invoiceNo: editingRecord.tripRemarks ?? "",
       noOfDrops: editingRecord.noOfDrops ?? "",
       pickupDate: editingRecord.pickUpDate
         ? new Date(editingRecord.pickUpDate)

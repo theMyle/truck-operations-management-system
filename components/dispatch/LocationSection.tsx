@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import {
   Grid,
   Stack,
@@ -32,6 +32,10 @@ export function LocationSection({
   isGeneratingDr?: boolean;
 }) {
   const [popoverOpened, setPopoverOpened] = useState(false);
+  const isIpi = useMemo(() => {
+    const c = (form.values.clientName || "").toLowerCase();
+    return c.includes("ipi") || c.includes("international");
+  }, [form.values.clientName]);
   const minDate = new Date();
   minDate.setDate(minDate.getDate() - 3);
 
@@ -52,6 +56,8 @@ export function LocationSection({
     form.insertListItem("dropOffs", {
       id: Date.now(),
       location: "",
+      storeName: "",
+      invoiceNo: "",
       contactPerson: "",
       contactNo: "",
     });
@@ -135,10 +141,10 @@ export function LocationSection({
             </Stack>
 
             <Grid gap="sm">
-              <Grid.Col span={6}>
+              <Grid.Col span={isIpi ? 4 : 6}>
                 <TextInput
-                  label="Booking / DR#"
-                  placeholder="Enter booking or DR number"
+                  label={isIpi ? "DCR#" : "Booking / DR#"}
+                  placeholder={isIpi ? "Enter DCR number (e.g. 51010386)" : "Enter booking or DR number"}
                   styles={inputStyles}
                   tt="capitalize"
                   rightSection={
@@ -148,7 +154,18 @@ export function LocationSection({
                 />
               </Grid.Col>
 
-              <Grid.Col span={6}>
+              {isIpi && (
+                <Grid.Col span={4}>
+                  <TextInput
+                    label="Invoice # (Optional)"
+                    placeholder="e.g. 8031085390"
+                    styles={inputStyles}
+                    {...form.getInputProps("invoiceNo")}
+                  />
+                </Grid.Col>
+              )}
+
+              <Grid.Col span={isIpi ? 4 : 6}>
                 <NumberInput
                   label="No. of Drops"
                   placeholder="Enter number of drops"
@@ -156,7 +173,7 @@ export function LocationSection({
                   styles={inputStyles}
                   value={
                     form.values.dropOffs.filter(
-                      (drop) => drop.location.trim().length > 0
+                      (drop) => drop.location.trim().length > 0 || (drop.storeName && drop.storeName.trim().length > 0)
                     ).length
                   }
                   readOnly
@@ -236,9 +253,20 @@ export function LocationSection({
             <Stack gap={6}>
               {form.values.dropOffs.map((drop, index) => (
                 <Paper key={drop.id} withBorder radius="sm" p="xs">
+                  {isIpi && (
+                    <Box mb={6}>
+                      <TextInput
+                        label="Store Name"
+                        placeholder="e.g. SUPER SHOPPING MARKET INC."
+                        styles={inputStyles}
+                        size="xs"
+                        {...form.getInputProps(`dropOffs.${index}.storeName`)}
+                      />
+                    </Box>
+                  )}
                   <LocationSearch
-                    label={`Drop ${index + 1}`}
-                    placeholder="Search drop-off address..."
+                    label={isIpi ? `Drop ${index + 1} Address / Short Location` : `Drop ${index + 1}`}
+                    placeholder="Search drop-off address (e.g. SM CITY TAYTAY)..."
                     {...form.getInputProps(`dropOffs.${index}.location`)}
                     leftSection={
                       <IconMapPin

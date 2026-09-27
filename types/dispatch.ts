@@ -8,6 +8,8 @@ export interface PickupLocation {
 export interface DropOff {
   id: number;
   location: string;
+  storeName?: string;
+  invoiceNo?: string;
   contactPerson: string;
   contactNo: string;
 }
@@ -19,6 +21,7 @@ export interface DispatchFormValues {
   pickupLocations: PickupLocation[];
   pickupLocation: string;
   bookingDr?: string;
+  invoiceNo?: string;
   noOfDrops: string | number;
   pickupDate: Date | null;
   pickupTime: string;

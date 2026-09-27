@@ -51,6 +51,7 @@ import {
 } from "@/lib/actions/booking";
 import { getLatestTruckOdometersAction } from "@/lib/actions/trucks";
 import { formatTime12Hour, formatTimeHHMM } from "@/lib/utils/stringFormat";
+import { isIpiClient } from "@/lib/utils/soaColumns";
 import { TripLogsTable } from "@/components/trip-logs/TripLogsTable";
 import { TripLogsModuleSkeleton } from "@/components/ui/ModuleSkeletons";
 import { useTableExport } from "@/hooks/useTableExport";
@@ -79,13 +80,16 @@ function ViewModal({
 }) {
   if (!record) return null;
 
+  const isIpi = isIpiClient(record.client || record.clientName);
+
   const sections = [
     {
       title: "Trip Booking Details",
       rows: [
         { label: "Client (Kliyente)", value: record.client },
         { label: "Route (Ruta)", value: record.ruta },
-        { label: "Booking / DR#", value: record.bookingDr },
+        { label: isIpi ? "DCR#" : "Booking / DR#", value: record.bookingDr },
+        ...(isIpi ? [{ label: "Invoice #", value: record.tripRemarks || "—" }] : []),
         { label: "No. of Drops", value: String(record.noOfDrops) },
         { label: "Booked By", value: record.bookedBy },
         { label: "Date", value: record.date },
@@ -170,7 +174,27 @@ function ViewModal({
                               : "var(--mantine-color-gray-4)",
                           }}
                         >
-                          {row.value || "—"}
+                          {typeof row.value === "string" && row.value.includes("\n") ? (
+                            <Stack gap={4}>
+                              {row.value.split("\n").filter(Boolean).map((item: string, idx: number) => (
+                                <Group key={idx} gap={6} wrap="nowrap" align="center">
+                                  <Badge
+                                    size="xs"
+                                    variant="light"
+                                    color="blue"
+                                    styles={{ root: { height: 16, padding: "0 4px", fontSize: "9px" } }}
+                                  >
+                                    #{idx + 1}
+                                  </Badge>
+                                  <Text size="11px" fw={600}>
+                                    {item}
+                                  </Text>
+                                </Group>
+                              ))}
+                            </Stack>
+                          ) : (
+                            row.value || "—"
+                          )}
                         </Table.Td>
                       </Table.Tr>
                     ))}

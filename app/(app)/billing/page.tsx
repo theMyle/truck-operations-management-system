@@ -1742,7 +1742,7 @@ export default function BillingModule() {
           handleGenerate();
         }}
         preparedBy={preparedByName}
-        preparedByRole={preparedByRole}
+        preparedByRole={preparedByRole ? (preparedByRole.startsWith("KTS") ? preparedByRole : `KTS - ${preparedByRole}`) : "KTS - Billing Officer"}
       />
 
       {/* ══ EXISTING SOA WARNING MODAL ══ */}

@@ -51,7 +51,11 @@ export function ReviewModal({
       .join("\n");
   };
 
+  const isIpi = (values.clientName || "").toLowerCase().includes("ipi") || (values.clientName || "").toLowerCase().includes("international pharmaceutical");
+  const invoiceNumber = isIpi ? (values.invoiceNo?.trim() || (values.dropOffs || []).map((d) => d.invoiceNo?.trim()).filter(Boolean)[0] || "") : "";
+
   const displayData: Record<string, string> = {
+    ...(invoiceNumber ? { invoice: invoiceNumber.toUpperCase() } : {}),
     client: (values.clientName ?? "").toUpperCase(),
     ruta: (values.ruta ?? "").toUpperCase(),
     bookingDr: (values.bookingDr ?? "").toUpperCase(),
@@ -72,7 +76,8 @@ export function ReviewModal({
       rows: [
         { label: "Client (Kliyente)", key: "client" },
         { label: "Route (Ruta)", key: "ruta" },
-        { label: "Booking / DR#", key: "bookingDr" },
+        { label: isIpi ? "DCR#" : "Booking / DR#", key: "bookingDr" },
+        ...(invoiceNumber ? [{ label: "Invoice #", key: "invoice" }] : []),
         { label: "Pickup Location", key: "pickupLocation" },
         { label: "Drop-off Points", key: "dropOffs" },
         { label: "No. of Drops", key: "noOfDrops" },
