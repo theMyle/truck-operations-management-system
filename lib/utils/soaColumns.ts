@@ -1,4 +1,4 @@
-import { calculateExcessDropFee } from "./excessDrop";
+﻿import { calculateExcessDropFee } from "./excessDrop";
 import { BillingRecord } from "@/app/(app)/billing/page";
 
 export interface SoaColumnDefinition {
@@ -137,20 +137,19 @@ export const SOA_AVAILABLE_COLUMNS: SoaColumnDefinition[] = [
     defaultEnabled: false,
     align: "center",
     getValue: (r) => {
-      const isIpi = isIpiClient(r.client || r.clientName);
       if (r.rawDrops && r.rawDrops.length > 0) {
         const hasAny = r.rawDrops.some((d) => Boolean(d.invoice && d.invoice.trim()));
         if (hasAny) {
-          const routeHeader = isIpi && r.ruta ? r.ruta.trim() : "";
+          const routeHeader = r.ruta ? r.ruta.trim() : "";
           const dropInvoices = r.rawDrops.flatMap((d) => {
             const invs = d.invoice ? String(d.invoice).split(/[\n,]/).map((s: string) => s.trim()).filter(Boolean) : [];
-            return invs.length > 0 ? invs : ["-"];
+            return invs.length > 0 ? invs : ["—"];
           });
           return routeHeader ? ("\n" + dropInvoices.join("\n")) : dropInvoices.join("\n");
         }
       }
       const val = ("invoices" in r && typeof r.invoices === "string" ? r.invoices : r.tripRemarks) || "";
-      return val ? String(val).trim() : "-";
+      return val ? String(val).trim() : "—";
     },
   },
   {
