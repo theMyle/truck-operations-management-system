@@ -38,7 +38,6 @@ import { BillingRecord, isSubconRecord } from "@/app/(app)/billing/page";
 import {
   updateBillingStatusAction,
   getNextSoaNumberAction,
-  updateBillingTripRateAction,
 } from "@/lib/actions/billing";
 import { useQueryClient } from "@tanstack/react-query";
 import { CLIENTS_QUERY_KEY, fetchMasterClients } from "@/hooks/useMasterData";
@@ -48,6 +47,7 @@ import {
   DEFAULT_ENABLED_COLUMN_KEYS,
   IPI_SOA_COLUMN_KEYS,
   SoaColumnDefinition,
+  isIpiClient as checkIsIpiClient,
 } from "@/lib/utils/soaColumns";
 import { EditBillingTripModal } from "./EditBillingTripModal";
 import { calculateExcessDropFee } from "@/lib/utils/excessDrop";
@@ -126,8 +126,7 @@ export function StatementOfAccountModal({
     : (displayRecords[0]?.client || displayRecords[0]?.clientName || "CLIENT");
 
   const isIpiClient = useMemo(() => {
-    const name = (clientName || "").toLowerCase();
-    return name.includes("international pharmaceutical") || name.includes("ipi");
+    return checkIsIpiClient(clientName);
   }, [clientName]);
 
   // Maintain exact column order based on activeColumns array
@@ -208,10 +207,8 @@ export function StatementOfAccountModal({
     let excessDropTotal = 0;
 
     displayRecords.forEach((r) => {
-      const isSub = isSubconRecord(r);
-      const rawRate = targetType === "subcon"
-        ? Number(r.truckerRate || r.tripRate || 0)
-        : Number(r.tripRate || 0);
+      const rawStr = targetType === "subcon" ? (r.truckerRate || r.tripRate || 0) : (r.tripRate || 0);
+      const rawRate = Number(String(rawStr).replace(/,/g, "").trim()) || 0;
       const rate = isIpiClient && targetType !== "subcon"
         ? Number((rawRate / 1.12).toFixed(2))
         : rawRate;
@@ -588,10 +585,17 @@ export function StatementOfAccountModal({
             const rawVal = col.getValue(r, targetType, idx);
 
             if (col.key === "ipiDropOff") {
-              const rawStr = String(rawVal || "");
-              const lines = rawStr.split("\n").map((s) => s.trim()).filter(Boolean);
-              const routeHdr = lines[0] || "";
-              const drops = lines.slice(1);
+              const isIpi = checkIsIpiClient(r.client || r.clientName);
+              const routeHdr = isIpi && r.ruta ? r.ruta.trim().toUpperCase() : "";
+              const drops =
+                r.rawDrops && r.rawDrops.length > 0
+                  ? r.rawDrops.map((d: any) => d.locationName.trim()).filter(Boolean)
+                  : r.dropOffLocation
+                  ? r.dropOffLocation
+                      .split(/[\n,]/)
+                      .map((s) => s.trim())
+                      .filter(Boolean)
+                  : [];
               return `
                 <td style="text-align: left; vertical-align: top; border: 1px solid #111; padding: 4px 6px;">
                   ${routeHdr ? `<div style="color: #b91c1c; font-weight: bold; font-size: 9.5px; margin-bottom: 2px;">${routeHdr}</div>` : ""}
@@ -601,10 +605,18 @@ export function StatementOfAccountModal({
             }
 
             if (col.key === "invoices") {
-              const rawStr = String(rawVal || "");
-              const lines = rawStr.split(/[\n,]/).map((s) => s.trim()).filter(Boolean);
+              const isIpi = checkIsIpiClient(r.client || r.clientName);
+              const routeHdr = isIpi && r.ruta ? r.ruta.trim().toUpperCase() : "";
+              const hasDropInvoices = r.rawDrops && r.rawDrops.some((d: any) => Boolean(d.invoice?.trim()));
+              const lines = hasDropInvoices && r.rawDrops
+                ? r.rawDrops.flatMap((d: any) => {
+                    const invs = d.invoice ? String(d.invoice).split(/[\n,]/).map((s: string) => s.trim()).filter(Boolean) : [];
+                    return invs.length > 0 ? invs : ["—"];
+                  })
+                : String(rawVal || "").split(/[\n,]/).map((s) => s.trim()).filter(Boolean);
               return `
                 <td style="text-align: center; vertical-align: top; border: 1px solid #111; padding: 4px 6px; font-family: monospace; font-size: 9px;">
+                  ${routeHdr ? `<div style="visibility: hidden; font-weight: bold; font-size: 9.5px; margin-bottom: 2px;">&nbsp;</div>` : ""}
                   ${lines.map((inv) => `<div style="line-height: 1.25; margin-bottom: 1px;">${inv}</div>`).join("")}
                 </td>
               `;
@@ -965,10 +977,17 @@ export function StatementOfAccountModal({
                           const val = col.getValue(r, targetType, idx);
 
                           if (col.key === "ipiDropOff") {
-                            const rawStr = String(val || "");
-                            const lines = rawStr.split("\n").map((s) => s.trim()).filter(Boolean);
-                            const routeHdr = lines[0] || "";
-                            const drops = lines.slice(1);
+                            const isIpi = checkIsIpiClient(r.client || r.clientName);
+                            const routeHdr = isIpi && r.ruta ? r.ruta.trim().toUpperCase() : "";
+                            const drops =
+                              r.rawDrops && r.rawDrops.length > 0
+                                ? r.rawDrops.map((d: any) => d.locationName.trim()).filter(Boolean)
+                                : r.dropOffLocation
+                                ? r.dropOffLocation
+                                    .split(/[\n,]/)
+                                    .map((s) => s.trim())
+                                    .filter(Boolean)
+                                : [];
                             return (
                               <Table.Td key={col.key} style={{ fontSize: "10px", textAlign: "left", verticalAlign: "top", minWidth: 220 }}>
                                 {routeHdr && (
@@ -990,10 +1009,22 @@ export function StatementOfAccountModal({
                           }
 
                           if (col.key === "invoices") {
-                            const rawStr = String(val || "");
-                            const lines = rawStr.split(/[\n,]/).map((s) => s.trim()).filter(Boolean);
+                            const isIpi = checkIsIpiClient(r.client || r.clientName);
+                            const routeHdr = isIpi && r.ruta ? r.ruta.trim().toUpperCase() : "";
+                            const hasDropInvoices = r.rawDrops && r.rawDrops.some((d: any) => Boolean(d.invoice?.trim()));
+                            const lines = hasDropInvoices && r.rawDrops
+                              ? r.rawDrops.flatMap((d: any) => {
+                                  const invs = d.invoice ? String(d.invoice).split(/[\n,]/).map((s: string) => s.trim()).filter(Boolean) : [];
+                                  return invs.length > 0 ? invs : ["—"];
+                                })
+                              : String(val || "").split(/[\n,]/).map((s) => s.trim()).filter(Boolean);
                             return (
                               <Table.Td key={col.key} style={{ fontSize: "10px", textAlign: "center", verticalAlign: "top", minWidth: 100 }}>
+                                {routeHdr && (
+                                  <Text size="xs" fw={800} style={{ visibility: "hidden" }} mb={2}>
+                                    &nbsp;
+                                  </Text>
+                                )}
                                 {lines.length > 0 ? (
                                   lines.map((inv, iIdx) => (
                                     <Text key={iIdx} size="xs" ff="monospace" c="dark.4" style={{ lineHeight: 1.25 }}>

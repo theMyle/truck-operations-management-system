@@ -4,7 +4,7 @@ import { actionClient } from "@/lib/safe-action";
 import { db } from "@/lib/db";
 import { booking, bookingDrops } from "@/lib/db/schema";
 import { z } from "zod";
-import { and, eq, gte, lte, isNotNull, or, desc, like, inArray } from "drizzle-orm";
+import { and, eq, gte, lte, desc, like } from "drizzle-orm";
 import { formatTime12Hour, formatTimeHHMM, generateClientCode } from "@/lib/utils/stringFormat";
 
 const GetBillingSchema = z.object({
@@ -145,7 +145,7 @@ export const getBillingRecordsAction = actionClient
         truckerRate: b.truckerRate ?? "",
         isSubcon: isSub,
         rawPickupTime: b.pickupTime,
-        rawDrops: b.drops.map((d) => ({ locationName: d.locationName })),
+        rawDrops: b.drops.map((d) => ({ locationName: d.locationName, invoice: d.invoice ?? "" })),
         arrivalPickup: formatTimeHHMM(b.pickupArrivalTime),
         loadingStart: formatTimeHHMM(b.loadingStartTime),
         loadingEnd: formatTimeHHMM(b.loadingEndTime),
@@ -401,16 +401,18 @@ const UpdateBillingTripRateSchema = z.object({
   tripRemarks: z.string().optional(),
   numberOfDrops: z.number().min(0).optional(),
   excessDropRate: z.string().optional(),
+  ruta: z.string().optional(),
   drops: z.array(z.object({
     sequenceNumber: z.number(),
     locationName: z.string(),
+    invoice: z.string().optional(),
   })).optional(),
 });
 
 export const updateBillingTripRateAction = actionClient
   .schema(UpdateBillingTripRateSchema)
   .action(async ({ parsedInput }) => {
-    const { bookingId, clientRate, truckerRate, bookingDRNo, tripRemarks, numberOfDrops, excessDropRate, drops } = parsedInput;
+    const { bookingId, clientRate, truckerRate, bookingDRNo, tripRemarks, numberOfDrops, excessDropRate, ruta, drops } = parsedInput;
 
     const current = await db.query.booking.findFirst({
       where: (b, { eq }) => eq(b.id, bookingId),
@@ -426,6 +428,7 @@ export const updateBillingTripRateAction = actionClient
     if (tripRemarks !== undefined) updateData.tripRemarks = tripRemarks;
     if (numberOfDrops !== undefined) updateData.numberOfDrops = numberOfDrops;
     if (excessDropRate !== undefined) updateData.excessDropRate = excessDropRate;
+    if (ruta !== undefined) updateData.ruta = ruta;
 
     // Recalculate billing status against correct basis rate (trucker rate for subcon, client rate for KTS)
     const truck = current.plateNumber
@@ -477,6 +480,7 @@ export const updateBillingTripRateAction = actionClient
               bookingId,
               sequenceNumber: idx + 1,
               locationName: d.locationName.trim().toUpperCase(),
+              invoice: d.invoice?.trim() || null,
             }))
           );
         }

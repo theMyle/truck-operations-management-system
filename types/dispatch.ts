@@ -62,6 +62,7 @@ export interface DispatchRecord {
   pickLocation?: string;
   dropOffLocation?: string;
   noOfDrops: number;
+  numberOfDrops?: number;
   tripRate?: string;
   bookedBy?: string;
   status: "Completed" | "In Transit" | "Pending";
@@ -72,7 +73,7 @@ export interface DispatchRecord {
   finishDelivery?: string;
   deliveryStatus?: string;
   tripRemarks?: string;
-  rawDrops?: { locationName: string }[];
+  rawDrops?: { locationName: string; invoice?: string }[];
   rawHelpers?: { id: string; helperName: string }[];
   truckerRate?: string;
   podRequired?: boolean;

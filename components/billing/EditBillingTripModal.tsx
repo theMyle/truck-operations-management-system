@@ -11,6 +11,7 @@ import {
   Textarea,
   Button,
   SimpleGrid,
+  Grid,
   Paper,
   Divider,
   Badge,
@@ -34,8 +35,9 @@ interface EditBillingTripModalProps {
 
 interface DropItem {
   id: number;
-  storeName: string;
+  stores: string[];
   location: string;
+  invoices: string[];
 }
 
 export function EditBillingTripModal({
@@ -54,6 +56,7 @@ export function EditBillingTripModal({
   const [dueDate, setDueDate] = useState("");
   const [amountPaid, setAmountPaid] = useState("");
   const [remarks, setRemarks] = useState("");
+  const [ruta, setRuta] = useState("");
   const [drops, setDrops] = useState<DropItem[]>([]);
 
   const isIpi = React.useMemo(() => {
@@ -67,7 +70,7 @@ export function EditBillingTripModal({
       setBookingDr(record.bookingDr || record.bookingDRNo || "");
       setClientRate(record.tripRate !== undefined && record.tripRate !== null ? String(record.tripRate) : "0.00");
       setTruckerRate(record.truckerRate !== undefined && record.truckerRate !== null ? String(record.truckerRate) : "0.00");
-      const dropsVal = Number(record.noOfDrops || (record as any).numberOfDrops || 1);
+      const dropsVal = Number(record.noOfDrops || record.numberOfDrops || 1);
       setNoOfDrops(dropsVal);
       const fee = calculateExcessDropFee(
         dropsVal,
@@ -79,66 +82,82 @@ export function EditBillingTripModal({
       setInvoiceDate(record.invoiceDate || "");
       setDueDate(record.dueDate || "");
       setAmountPaid(record.amountPaid !== undefined && record.amountPaid !== null ? String(record.amountPaid) : "0.00");
-      setTripRemarksState();
+      setRuta(record.ruta || "");
+      setRemarks(record.tripRemarks || "");
 
       // Initialize drop-off locations
       let initialDrops: DropItem[] = [];
       if (record.rawDrops && record.rawDrops.length > 0) {
-        initialDrops = record.rawDrops.map((d: any, idx: number) => {
-          let storeName = "";
+        initialDrops = record.rawDrops.map((d: { locationName: string; invoice?: string }, idx: number) => {
+          let stores: string[] = [""];
           let location = d.locationName || "";
           if (isIpi && location.includes(" - ")) {
             const parts = location.split(" - ");
-            storeName = parts[0].trim();
+            const storePart = parts[0].trim();
             location = parts.slice(1).join(" - ").trim();
+            if (storePart) {
+              const parsedStores = storePart.split(/[/,]/).map((s: string) => s.trim()).filter(Boolean);
+              stores = parsedStores.length > 0 ? parsedStores : [""];
+            }
+          }
+          let invoices: string[] = [""];
+          if (d.invoice) {
+            const parsedInvoices = String(d.invoice).split(/[\n,]/).map((s: string) => s.trim()).filter(Boolean);
+            invoices = parsedInvoices.length > 0 ? parsedInvoices : [""];
+          } else if (idx === 0 && record.tripRemarks && /^\d+$/.test(record.tripRemarks.trim())) {
+            // Legacy fallback if invoice was previously saved in tripRemarks
+            invoices = [record.tripRemarks.trim()];
           }
           return {
             id: Date.now() + idx,
-            storeName,
+            stores,
             location,
+            invoices,
           };
         });
       } else if (record.dropOffLocation && record.dropOffLocation !== "—") {
         const locParts = record.dropOffLocation.split(",").map((s) => s.trim()).filter(Boolean);
         initialDrops = locParts.map((loc, idx) => {
-          let storeName = "";
+          let stores: string[] = [""];
           let location = loc;
           if (isIpi && location.includes(" - ")) {
             const parts = location.split(" - ");
-            storeName = parts[0].trim();
+            const storePart = parts[0].trim();
             location = parts.slice(1).join(" - ").trim();
+            if (storePart) {
+              const parsedStores = storePart.split(/[/,]/).map((s: string) => s.trim()).filter(Boolean);
+              stores = parsedStores.length > 0 ? parsedStores : [""];
+            }
+          }
+          let invoices: string[] = [""];
+          if (idx === 0 && record.tripRemarks && /^\d+$/.test(record.tripRemarks.trim())) {
+            invoices = [record.tripRemarks.trim()];
           }
           return {
             id: Date.now() + idx,
-            storeName,
+            stores,
             location,
+            invoices,
           };
         });
       }
 
       if (initialDrops.length === 0) {
-        initialDrops = [{ id: Date.now(), storeName: "", location: "" }];
-      }
-
-      const finalDropsVal = Math.max(dropsVal, initialDrops.length);
-      while (initialDrops.length < finalDropsVal) {
-        initialDrops.push({ id: Date.now() + initialDrops.length, storeName: "", location: "" });
+        let invoices: string[] = [""];
+        if (record.tripRemarks && /^\d+$/.test(record.tripRemarks.trim())) {
+          invoices = [record.tripRemarks.trim()];
+        }
+        initialDrops = [{ id: Date.now(), stores: [""], location: "", invoices }];
       }
 
       setDrops(initialDrops);
-      setNoOfDrops(initialDrops.length);
+      setNoOfDrops(dropsVal || initialDrops.length || 1);
     }
   }, [record, isIpi]);
 
-  function setTripRemarksState() {
-    if (record) {
-      setRemarks(record.tripRemarks || "");
-    }
-  }
-
   const handleAddDrop = () => {
     setDrops((prev) => {
-      const next = [...prev, { id: Date.now() + Math.random(), storeName: "", location: "" }];
+      const next = [...prev, { id: Date.now() + Math.random(), stores: [""], location: "", invoices: [""] }];
       setNoOfDrops(next.length);
       const fee = calculateExcessDropFee(next.length, false);
       setExcessDropRate(String(fee));
@@ -157,10 +176,82 @@ export function EditBillingTripModal({
     });
   };
 
-  const handleDropChange = (index: number, field: "storeName" | "location", value: string) => {
+  const handleLocationChange = (index: number, value: string) => {
     setDrops((prev) => {
       const next = [...prev];
-      next[index] = { ...next[index], [field]: value };
+      next[index] = { ...next[index], location: value };
+      return next;
+    });
+  };
+
+  const handleAddStore = (dropIdx: number) => {
+    setDrops((prev) => {
+      const next = [...prev];
+      const drop = { ...next[dropIdx] };
+      drop.stores = [...drop.stores, ""];
+      next[dropIdx] = drop;
+      return next;
+    });
+  };
+
+  const handleRemoveStore = (dropIdx: number, storeIdx: number) => {
+    setDrops((prev) => {
+      const next = [...prev];
+      const drop = { ...next[dropIdx] };
+      if (drop.stores.length <= 1) {
+        drop.stores = [""];
+      } else {
+        drop.stores = drop.stores.filter((_, i) => i !== storeIdx);
+      }
+      next[dropIdx] = drop;
+      return next;
+    });
+  };
+
+  const handleStoreChange = (dropIdx: number, storeIdx: number, value: string) => {
+    setDrops((prev) => {
+      const next = [...prev];
+      const drop = { ...next[dropIdx] };
+      const newStores = [...drop.stores];
+      newStores[storeIdx] = value;
+      drop.stores = newStores;
+      next[dropIdx] = drop;
+      return next;
+    });
+  };
+
+  const handleAddInvoice = (dropIdx: number) => {
+    setDrops((prev) => {
+      const next = [...prev];
+      const drop = { ...next[dropIdx] };
+      drop.invoices = [...drop.invoices, ""];
+      next[dropIdx] = drop;
+      return next;
+    });
+  };
+
+  const handleRemoveInvoice = (dropIdx: number, invIdx: number) => {
+    setDrops((prev) => {
+      const next = [...prev];
+      const drop = { ...next[dropIdx] };
+      if (drop.invoices.length <= 1) {
+        drop.invoices = [""];
+      } else {
+        drop.invoices = drop.invoices.filter((_, i) => i !== invIdx);
+      }
+      next[dropIdx] = drop;
+      return next;
+    });
+  };
+
+  const handleInvoiceChange = (dropIdx: number, invIdx: number, value: string) => {
+    setDrops((prev) => {
+      const next = [...prev];
+      const drop = { ...next[dropIdx] };
+      const newInvoices = [...drop.invoices];
+      newInvoices[invIdx] = value;
+      drop.invoices = newInvoices;
+      next[dropIdx] = drop;
       return next;
     });
   };
@@ -174,25 +265,33 @@ export function EditBillingTripModal({
       const payloadDrops = drops
         .map((d, idx) => {
           const loc = d.location.trim();
-          const store = d.storeName.trim();
+          const cleanStores = (d.stores || []).map((s) => s.trim()).filter(Boolean);
+          const storeStr = cleanStores.join(" / ");
           let finalLocationName = loc;
-          if (isIpi && store) {
-            finalLocationName = loc ? `${store} - ${loc}` : store;
+          if (isIpi && storeStr) {
+            finalLocationName = loc ? `${storeStr} - ${loc}` : storeStr;
           }
+          const cleanInvoices = (d.invoices || []).map((inv) => inv.trim()).filter(Boolean);
+          const invoiceStr = cleanInvoices.join(", ");
+
           return {
             sequenceNumber: idx + 1,
             locationName: finalLocationName,
+            invoice: isIpi && invoiceStr ? invoiceStr : undefined,
           };
         })
         .filter((d) => d.locationName.length > 0);
 
-      // 1. Update trip rates, DR #, No. of Drops, Excess Drop Charge, and Drops
+      const effectiveRuta = ruta.trim().toUpperCase();
+
+      // 1. Update trip rates, DR #, No. of Drops, Excess Drop Charge, Route, and Drops
       await updateBillingTripRateAction({
         bookingId: String(record.id),
         clientRate: String(clientRate),
         truckerRate: String(truckerRate),
         bookingDRNo: bookingDr,
         tripRemarks: remarks,
+        ruta: effectiveRuta || undefined,
         numberOfDrops: noOfDrops,
         excessDropRate: String(excessDropRate),
         drops: payloadDrops.length > 0 ? payloadDrops : undefined,
@@ -218,6 +317,7 @@ export function EditBillingTripModal({
         payloadDrops.length > 0
           ? payloadDrops.map((d) => ({
               locationName: d.locationName.toUpperCase(),
+              invoice: d.invoice || "",
             }))
           : record.rawDrops || [];
 
@@ -229,6 +329,7 @@ export function EditBillingTripModal({
       onSuccess({
         bookingDr,
         bookingDRNo: bookingDr,
+        ruta: effectiveRuta || record.ruta,
         tripRate: clientRate,
         truckerRate: truckerRate,
         noOfDrops: noOfDrops,
@@ -243,10 +344,11 @@ export function EditBillingTripModal({
       });
 
       onClose();
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Failed to update trip record.";
       notifications.show({
         title: "Update Failed",
-        message: err?.message || "Failed to update trip record.",
+        message,
         color: "red",
       });
     } finally {
@@ -267,7 +369,7 @@ export function EditBillingTripModal({
         </Group>
       }
       radius="md"
-      size="lg"
+      size="xl"
       centered
     >
       {record && (
@@ -286,74 +388,86 @@ export function EditBillingTripModal({
             Trip Encoding Inputs
           </Text>
 
-          <SimpleGrid cols={{ base: 1, sm: isIpi ? 5 : 4 }} spacing="xs">
-            <TextInput
-              label={isIpi ? "DCR #" : "Booking / DR #"}
-              size="xs"
-              value={bookingDr}
-              onChange={(e) => setBookingDr(e.currentTarget.value)}
-            />
-            {isIpi && (
+          {/* Row 1: DR # & Route */}
+          <Grid gap="sm">
+            <Grid.Col span={{ base: 12, sm: 4 }}>
               <TextInput
-                label="Invoice #"
+                label={isIpi ? "DCR #" : "Booking / DR #"}
                 size="xs"
-                placeholder="e.g. 8031085390"
-                value={remarks}
-                onChange={(e) => setRemarks(e.currentTarget.value)}
+                placeholder="e.g. 51011200"
+                value={bookingDr}
+                onChange={(e) => setBookingDr(e.currentTarget.value)}
               />
-            )}
-            <TextInput
-              label="Client Trip Rate (₱)"
-              type="number"
-              size="xs"
-              value={clientRate}
-              onChange={(e) => setClientRate(e.currentTarget.value)}
-            />
-            <NumberInput
-              label="No. of Drops"
-              description={noOfDrops > 3 ? `+${noOfDrops - 3} excess (₱300/drop)` : "3 drops included"}
-              size="xs"
-              min={1}
-              value={noOfDrops}
-              onChange={(val) => {
-                const newDrops = Math.max(1, Number(val) || 1);
-                setNoOfDrops(newDrops);
-                const fee = calculateExcessDropFee(newDrops, false);
-                setExcessDropRate(String(fee));
-                setDrops((prev) => {
-                  if (newDrops > prev.length) {
-                    const added = Array.from({ length: newDrops - prev.length }, (_, i) => ({
-                      id: Date.now() + prev.length + i,
-                      storeName: "",
-                      location: "",
-                    }));
-                    return [...prev, ...added];
-                  } else if (newDrops < prev.length) {
-                    return prev.slice(0, newDrops);
-                  }
-                  return prev;
-                });
-              }}
-            />
-            <TextInput
-              label="Excess Drop Charge (₱)"
-              type="number"
-              size="xs"
-              placeholder="0.00"
-              value={excessDropRate}
-              onChange={(e) => setExcessDropRate(e.currentTarget.value)}
-            />
-          </SimpleGrid>
+            </Grid.Col>
+            <Grid.Col span={{ base: 12, sm: 8 }}>
+              <TextInput
+                label="Route"
+                size="xs"
+                placeholder="e.g. ANGONO - QUEZON CITY 4 DROPS"
+                value={ruta}
+                onChange={(e) => setRuta(e.currentTarget.value.toUpperCase())}
+              />
+            </Grid.Col>
+          </Grid>
 
-          {record.isSubcon && (
-            <TextInput
-              label="Trucker Rate (₱)"
-              type="number"
-              size="xs"
-              value={truckerRate}
-              onChange={(e) => setTruckerRate(e.currentTarget.value)}
-            />
-          )}
+          {/* Row 2: Rates & Drops Count */}
+          <Grid gap="sm" align="flex-end">
+            <Grid.Col span={{ base: 12, sm: record.isSubcon ? 3 : 4 }}>
+              <TextInput
+                label="Client Trip Rate (₱)"
+                type="number"
+                size="xs"
+                placeholder="0.00"
+                value={clientRate}
+                onChange={(e) => setClientRate(e.currentTarget.value)}
+              />
+            </Grid.Col>
+            {record.isSubcon && (
+              <Grid.Col span={{ base: 12, sm: 3 }}>
+                <TextInput
+                  label="Trucker Rate (₱)"
+                  type="number"
+                  size="xs"
+                  placeholder="0.00"
+                  value={truckerRate}
+                  onChange={(e) => setTruckerRate(e.currentTarget.value)}
+                />
+              </Grid.Col>
+            )}
+            <Grid.Col span={{ base: 12, sm: record.isSubcon ? 3 : 4 }}>
+              <NumberInput
+                label={
+                  <Group justify="space-between" gap={4} wrap="nowrap" style={{ width: "100%" }}>
+                    <span>No. of Drops</span>
+                    {noOfDrops > 3 && (
+                      <Badge size="xs" color="orange" variant="light" style={{ textTransform: "none", fontWeight: 600 }}>
+                        +{noOfDrops - 3} excess
+                      </Badge>
+                    )}
+                  </Group>
+                }
+                size="xs"
+                min={1}
+                value={noOfDrops}
+                onChange={(val) => {
+                  const newDrops = Math.max(1, Number(val) || 1);
+                  setNoOfDrops(newDrops);
+                  const fee = calculateExcessDropFee(newDrops, false);
+                  setExcessDropRate(String(fee));
+                }}
+              />
+            </Grid.Col>
+            <Grid.Col span={{ base: 12, sm: record.isSubcon ? 3 : 4 }}>
+              <TextInput
+                label="Excess Drop Charge (₱)"
+                type="number"
+                size="xs"
+                placeholder="0.00"
+                value={excessDropRate}
+                onChange={(e) => setExcessDropRate(e.currentTarget.value)}
+              />
+            </Grid.Col>
+          </Grid>
 
           {/* Drop-off Locations */}
           <Divider
@@ -378,43 +492,104 @@ export function EditBillingTripModal({
                     variant="filled"
                     color="blue"
                     circle
-                    style={{ flexShrink: 0, marginTop: 20 }}
+                    style={{ flexShrink: 0, marginTop: 4 }}
                   >
                     {idx + 1}
                   </Badge>
 
                   <Box style={{ flexGrow: 1 }}>
-                    {isIpi ? (
-                      <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="xs">
-                        <TextInput
-                          label="Store Name"
-                          placeholder="e.g. SUPER 8 / ROBINSONS"
-                          size="xs"
-                          value={drop.storeName}
-                          onChange={(e) =>
-                            handleDropChange(idx, "storeName", e.currentTarget.value)
-                          }
-                        />
-                        <TextInput
-                          label="Drop Address / Location"
-                          placeholder="e.g. SAN PEDRO, LAGUNA"
-                          size="xs"
-                          value={drop.location}
-                          onChange={(e) =>
-                            handleDropChange(idx, "location", e.currentTarget.value)
-                          }
-                        />
-                      </SimpleGrid>
-                    ) : (
-                      <TextInput
-                        label={`Drop Location #${idx + 1}`}
-                        placeholder="e.g. Warehouse A, Cavite"
-                        size="xs"
-                        value={drop.location}
-                        onChange={(e) =>
-                          handleDropChange(idx, "location", e.currentTarget.value)
-                        }
-                      />
+                    <TextInput
+                      label={isIpi ? `Drop #${idx + 1} Location / Area` : `Drop Location #${idx + 1}`}
+                      placeholder={isIpi ? "e.g. SAN PEDRO, LAGUNA or NOVALICHES" : "e.g. Warehouse A, Cavite"}
+                      size="xs"
+                      value={drop.location}
+                      onChange={(e) => handleLocationChange(idx, e.currentTarget.value)}
+                    />
+
+                    {isIpi && (
+                      <>
+                        {/* Stores in this Drop */}
+                        <Box mt="xs" p="xs" style={{ backgroundColor: "#ffffff", borderRadius: "4px", border: "1px solid var(--mantine-color-gray-3)" }}>
+                          <Group justify="space-between" mb={4}>
+                            <Text size="xs" fw={700} c="gray.7">
+                              Stores at Drop #{idx + 1} ({drop.stores.filter(Boolean).length || 1})
+                            </Text>
+                            <Button
+                              variant="subtle"
+                              color="blue"
+                              size="compact-xs"
+                              leftSection={<IconPlus size={12} />}
+                              onClick={() => handleAddStore(idx)}
+                            >
+                              Add Another Store
+                            </Button>
+                          </Group>
+                          <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="xs">
+                            {drop.stores.map((store, sIdx) => (
+                              <Group key={sIdx} gap={4} wrap="nowrap">
+                                <TextInput
+                                  placeholder={`Store ${sIdx + 1} (e.g. SUPER 8)`}
+                                  size="xs"
+                                  style={{ flex: 1 }}
+                                  value={store}
+                                  onChange={(e) => handleStoreChange(idx, sIdx, e.currentTarget.value.toUpperCase())}
+                                />
+                                {drop.stores.length > 1 && (
+                                  <ActionIcon
+                                    color="red"
+                                    variant="subtle"
+                                    size="xs"
+                                    onClick={() => handleRemoveStore(idx, sIdx)}
+                                  >
+                                    <IconTrash size={13} />
+                                  </ActionIcon>
+                                )}
+                              </Group>
+                            ))}
+                          </SimpleGrid>
+                        </Box>
+
+                        {/* Invoices for this Drop */}
+                        <Box mt="xs" p="xs" style={{ backgroundColor: "#ffffff", borderRadius: "4px", border: "1px solid var(--mantine-color-gray-3)" }}>
+                          <Group justify="space-between" mb={4}>
+                            <Text size="xs" fw={700} c="gray.7">
+                              Invoices for Drop #{idx + 1} ({drop.invoices.filter(Boolean).length || 0})
+                            </Text>
+                            <Button
+                              variant="subtle"
+                              color="blue"
+                              size="compact-xs"
+                              leftSection={<IconPlus size={12} />}
+                              onClick={() => handleAddInvoice(idx)}
+                            >
+                              Add Invoice #
+                            </Button>
+                          </Group>
+                          <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="xs">
+                            {drop.invoices.map((inv, invIdx) => (
+                              <Group key={invIdx} gap={4} wrap="nowrap">
+                                <TextInput
+                                  placeholder={`Invoice # (e.g. 8031085390)`}
+                                  size="xs"
+                                  style={{ flex: 1 }}
+                                  value={inv}
+                                  onChange={(e) => handleInvoiceChange(idx, invIdx, e.currentTarget.value.trim())}
+                                />
+                                {drop.invoices.length > 1 && (
+                                  <ActionIcon
+                                    color="red"
+                                    variant="subtle"
+                                    size="xs"
+                                    onClick={() => handleRemoveInvoice(idx, invIdx)}
+                                  >
+                                    <IconTrash size={13} />
+                                  </ActionIcon>
+                                )}
+                              </Group>
+                            ))}
+                          </SimpleGrid>
+                        </Box>
+                      </>
                     )}
                   </Box>
 
@@ -422,7 +597,7 @@ export function EditBillingTripModal({
                     label={
                       drops.length <= 1
                         ? "At least one drop is required"
-                        : "Remove drop"
+                        : "Remove drop stop"
                     }
                   >
                     <ActionIcon
@@ -431,7 +606,7 @@ export function EditBillingTripModal({
                       size="sm"
                       disabled={drops.length <= 1}
                       onClick={() => handleRemoveDrop(idx)}
-                      style={{ marginTop: 20 }}
+                      style={{ marginTop: 4 }}
                     >
                       <IconTrash size={15} />
                     </ActionIcon>
@@ -455,7 +630,7 @@ export function EditBillingTripModal({
 
           <Divider label="SOA & Payment Details" labelPosition="center" my={4} />
 
-          <SimpleGrid cols={3} spacing="xs">
+          <SimpleGrid cols={{ base: 1, sm: 4 }} spacing="sm">
             <TextInput
               label="SOA #"
               size="xs"
@@ -477,16 +652,15 @@ export function EditBillingTripModal({
               value={dueDate}
               onChange={(e) => setDueDate(e.currentTarget.value)}
             />
+            <TextInput
+              label="Amount Paid (₱)"
+              type="number"
+              size="xs"
+              placeholder="0.00"
+              value={amountPaid}
+              onChange={(e) => setAmountPaid(e.currentTarget.value)}
+            />
           </SimpleGrid>
-
-          <TextInput
-            label="Amount Paid (₱)"
-            type="number"
-            size="xs"
-            placeholder="0.00"
-            value={amountPaid}
-            onChange={(e) => setAmountPaid(e.currentTarget.value)}
-          />
 
           {!isIpi && (
             <Textarea
