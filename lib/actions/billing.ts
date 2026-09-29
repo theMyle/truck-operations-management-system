@@ -2,7 +2,7 @@
 
 import { actionClient } from "@/lib/safe-action";
 import { db } from "@/lib/db";
-import { booking } from "@/lib/db/schema";
+import { booking, bookingDrops } from "@/lib/db/schema";
 import { z } from "zod";
 import { and, eq, gte, lte, isNotNull, or, desc, like, inArray } from "drizzle-orm";
 import { formatTime12Hour, formatTimeHHMM, generateClientCode } from "@/lib/utils/stringFormat";
@@ -401,12 +401,16 @@ const UpdateBillingTripRateSchema = z.object({
   tripRemarks: z.string().optional(),
   numberOfDrops: z.number().min(0).optional(),
   excessDropRate: z.string().optional(),
+  drops: z.array(z.object({
+    sequenceNumber: z.number(),
+    locationName: z.string(),
+  })).optional(),
 });
 
 export const updateBillingTripRateAction = actionClient
   .schema(UpdateBillingTripRateSchema)
   .action(async ({ parsedInput }) => {
-    const { bookingId, clientRate, truckerRate, bookingDRNo, tripRemarks, numberOfDrops, excessDropRate } = parsedInput;
+    const { bookingId, clientRate, truckerRate, bookingDRNo, tripRemarks, numberOfDrops, excessDropRate, drops } = parsedInput;
 
     const current = await db.query.booking.findFirst({
       where: (b, { eq }) => eq(b.id, bookingId),
@@ -462,7 +466,22 @@ export const updateBillingTripRateAction = actionClient
       }
     }
 
-    await db.update(booking).set(updateData).where(eq(booking.id, bookingId));
+    await db.transaction(async (tx) => {
+      await tx.update(booking).set(updateData).where(eq(booking.id, bookingId));
+
+      if (drops !== undefined) {
+        await tx.delete(bookingDrops).where(eq(bookingDrops.bookingId, bookingId));
+        if (drops.length > 0) {
+          await tx.insert(bookingDrops).values(
+            drops.map((d, idx) => ({
+              bookingId,
+              sequenceNumber: idx + 1,
+              locationName: d.locationName.trim().toUpperCase(),
+            }))
+          );
+        }
+      }
+    });
 
     return { success: true, updatedRecord: updateData };
   });

@@ -139,10 +139,11 @@ export const SOA_AVAILABLE_COLUMNS: SoaColumnDefinition[] = [
     defaultEnabled: true,
     align: "right",
     isCurrency: true,
-    getValue: (r, targetType) =>
-      targetType === "subcon"
-        ? Number(r.truckerRate || r.tripRate || 0)
-        : Number(r.tripRate || 0),
+    getValue: (r, targetType) => {
+      const isIpi = isIpiClient(r.client || r.clientName);
+      const raw = targetType === "subcon" ? Number(r.truckerRate || r.tripRate || 0) : Number(r.tripRate || 0);
+      return isIpi && targetType !== "subcon" ? Number((raw / 1.12).toFixed(2)) : raw;
+    },
   },
   {
     key: "rate",
@@ -150,10 +151,11 @@ export const SOA_AVAILABLE_COLUMNS: SoaColumnDefinition[] = [
     defaultEnabled: false,
     align: "right",
     isCurrency: true,
-    getValue: (r, targetType) =>
-      targetType === "subcon"
-        ? Number(r.truckerRate || r.tripRate || 0)
-        : Number(r.tripRate || 0),
+    getValue: (r, targetType) => {
+      const isIpi = isIpiClient(r.client || r.clientName);
+      const raw = targetType === "subcon" ? Number(r.truckerRate || r.tripRate || 0) : Number(r.tripRate || 0);
+      return isIpi && targetType !== "subcon" ? Number((raw / 1.12).toFixed(2)) : raw;
+    },
   },
   {
     key: "excessDrop",
@@ -161,12 +163,16 @@ export const SOA_AVAILABLE_COLUMNS: SoaColumnDefinition[] = [
     defaultEnabled: true,
     align: "right",
     isCurrency: true,
-    getValue: (r, targetType) =>
-      calculateExcessDropFee(
-        r.noOfDrops || (r.rawDrops ? r.rawDrops.length : 1),
-        targetType === "subcon" || Boolean(r.isSubcon),
-        r.excessDropRate
-      ),
+    getValue: (r, targetType) => {
+      const isSub = targetType === "subcon";
+      const isIpi = isIpiClient(r.client || r.clientName);
+      const drops = r.noOfDrops || (r.rawDrops ? r.rawDrops.length : 1);
+      return calculateExcessDropFee(
+        drops,
+        isSub,
+        isIpi && !isSub && r.excessDropRate && Number(r.excessDropRate) < 300 ? undefined : r.excessDropRate
+      );
+    },
   },
   {
     key: "excessDropAmount",
@@ -174,12 +180,16 @@ export const SOA_AVAILABLE_COLUMNS: SoaColumnDefinition[] = [
     defaultEnabled: false,
     align: "right",
     isCurrency: true,
-    getValue: (r, targetType) =>
-      calculateExcessDropFee(
-        r.noOfDrops || (r.rawDrops ? r.rawDrops.length : 1),
-        targetType === "subcon" || Boolean(r.isSubcon),
-        r.excessDropRate
-      ),
+    getValue: (r, targetType) => {
+      const isSub = targetType === "subcon";
+      const isIpi = isIpiClient(r.client || r.clientName);
+      const drops = r.noOfDrops || (r.rawDrops ? r.rawDrops.length : 1);
+      return calculateExcessDropFee(
+        drops,
+        isSub,
+        isIpi && !isSub && r.excessDropRate && Number(r.excessDropRate) < 300 ? undefined : r.excessDropRate
+      );
+    },
   },
   {
     key: "amount",
@@ -188,16 +198,17 @@ export const SOA_AVAILABLE_COLUMNS: SoaColumnDefinition[] = [
     align: "right",
     isCurrency: true,
     getValue: (r, targetType) => {
-      const rate =
-        targetType === "subcon"
-          ? Number(r.truckerRate || r.tripRate || 0)
-          : Number(r.tripRate || 0);
+      const isSub = targetType === "subcon";
+      const isIpi = isIpiClient(r.client || r.clientName);
+      const raw = isSub ? Number(r.truckerRate || r.tripRate || 0) : Number(r.tripRate || 0);
+      const baseRate = isIpi && !isSub ? Number((raw / 1.12).toFixed(2)) : raw;
+      const drops = r.noOfDrops || (r.rawDrops ? r.rawDrops.length : 1);
       const excess = calculateExcessDropFee(
-        r.noOfDrops || (r.rawDrops ? r.rawDrops.length : 1),
-        targetType === "subcon" || Boolean(r.isSubcon),
-        r.excessDropRate
+        drops,
+        isSub,
+        isIpi && !isSub && r.excessDropRate && Number(r.excessDropRate) < 300 ? undefined : r.excessDropRate
       );
-      return rate + excess;
+      return Number((baseRate + excess).toFixed(2));
     },
   },
   {
@@ -207,16 +218,17 @@ export const SOA_AVAILABLE_COLUMNS: SoaColumnDefinition[] = [
     align: "right",
     isCurrency: true,
     getValue: (r, targetType) => {
-      const rate =
-        targetType === "subcon"
-          ? Number(r.truckerRate || r.tripRate || 0)
-          : Number(r.tripRate || 0);
+      const isSub = targetType === "subcon";
+      const isIpi = isIpiClient(r.client || r.clientName);
+      const raw = isSub ? Number(r.truckerRate || r.tripRate || 0) : Number(r.tripRate || 0);
+      const baseRate = isIpi && !isSub ? Number((raw / 1.12).toFixed(2)) : raw;
+      const drops = r.noOfDrops || (r.rawDrops ? r.rawDrops.length : 1);
       const excess = calculateExcessDropFee(
-        r.noOfDrops || (r.rawDrops ? r.rawDrops.length : 1),
-        targetType === "subcon" || Boolean(r.isSubcon),
-        r.excessDropRate
+        drops,
+        isSub,
+        isIpi && !isSub && r.excessDropRate && Number(r.excessDropRate) < 300 ? undefined : r.excessDropRate
       );
-      return rate + excess;
+      return Number((baseRate + excess).toFixed(2));
     },
   },
 ];
