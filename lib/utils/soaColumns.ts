@@ -22,6 +22,14 @@ function formatShortDate(val: string | undefined | null): string {
   }
 }
 
+function parseNumericRate(val: unknown): number {
+  if (val === null || val === undefined) return 0;
+  if (typeof val === "number") return isNaN(val) ? 0 : val;
+  const cleaned = String(val).replace(/,/g, "").trim();
+  const num = Number(cleaned);
+  return isNaN(num) ? 0 : num;
+}
+
 export const SOA_AVAILABLE_COLUMNS: SoaColumnDefinition[] = [
   {
     key: "index",
@@ -129,8 +137,20 @@ export const SOA_AVAILABLE_COLUMNS: SoaColumnDefinition[] = [
     defaultEnabled: false,
     align: "center",
     getValue: (r) => {
-      const val = (r as any).invoices || r.tripRemarks || "";
-      return val ? String(val).trim() : "—";
+      const isIpi = isIpiClient(r.client || r.clientName);
+      if (r.rawDrops && r.rawDrops.length > 0) {
+        const hasAny = r.rawDrops.some((d) => Boolean(d.invoice && d.invoice.trim()));
+        if (hasAny) {
+          const routeHeader = isIpi && r.ruta ? r.ruta.trim() : "";
+          const dropInvoices = r.rawDrops.flatMap((d) => {
+            const invs = d.invoice ? String(d.invoice).split(/[\n,]/).map((s: string) => s.trim()).filter(Boolean) : [];
+            return invs.length > 0 ? invs : ["-"];
+          });
+          return routeHeader ? ("\n" + dropInvoices.join("\n")) : dropInvoices.join("\n");
+        }
+      }
+      const val = ("invoices" in r && typeof r.invoices === "string" ? r.invoices : r.tripRemarks) || "";
+      return val ? String(val).trim() : "-";
     },
   },
   {
@@ -141,7 +161,7 @@ export const SOA_AVAILABLE_COLUMNS: SoaColumnDefinition[] = [
     isCurrency: true,
     getValue: (r, targetType) => {
       const isIpi = isIpiClient(r.client || r.clientName);
-      const raw = targetType === "subcon" ? Number(r.truckerRate || r.tripRate || 0) : Number(r.tripRate || 0);
+      const raw = targetType === "subcon" ? parseNumericRate(r.truckerRate || r.tripRate) : parseNumericRate(r.tripRate);
       return isIpi && targetType !== "subcon" ? Number((raw / 1.12).toFixed(2)) : raw;
     },
   },
@@ -153,7 +173,7 @@ export const SOA_AVAILABLE_COLUMNS: SoaColumnDefinition[] = [
     isCurrency: true,
     getValue: (r, targetType) => {
       const isIpi = isIpiClient(r.client || r.clientName);
-      const raw = targetType === "subcon" ? Number(r.truckerRate || r.tripRate || 0) : Number(r.tripRate || 0);
+      const raw = targetType === "subcon" ? parseNumericRate(r.truckerRate || r.tripRate) : parseNumericRate(r.tripRate);
       return isIpi && targetType !== "subcon" ? Number((raw / 1.12).toFixed(2)) : raw;
     },
   },
@@ -200,7 +220,7 @@ export const SOA_AVAILABLE_COLUMNS: SoaColumnDefinition[] = [
     getValue: (r, targetType) => {
       const isSub = targetType === "subcon";
       const isIpi = isIpiClient(r.client || r.clientName);
-      const raw = isSub ? Number(r.truckerRate || r.tripRate || 0) : Number(r.tripRate || 0);
+      const raw = isSub ? parseNumericRate(r.truckerRate || r.tripRate) : parseNumericRate(r.tripRate);
       const baseRate = isIpi && !isSub ? Number((raw / 1.12).toFixed(2)) : raw;
       const drops = r.noOfDrops || (r.rawDrops ? r.rawDrops.length : 1);
       const excess = calculateExcessDropFee(
@@ -220,7 +240,7 @@ export const SOA_AVAILABLE_COLUMNS: SoaColumnDefinition[] = [
     getValue: (r, targetType) => {
       const isSub = targetType === "subcon";
       const isIpi = isIpiClient(r.client || r.clientName);
-      const raw = isSub ? Number(r.truckerRate || r.tripRate || 0) : Number(r.tripRate || 0);
+      const raw = isSub ? parseNumericRate(r.truckerRate || r.tripRate) : parseNumericRate(r.tripRate);
       const baseRate = isIpi && !isSub ? Number((raw / 1.12).toFixed(2)) : raw;
       const drops = r.noOfDrops || (r.rawDrops ? r.rawDrops.length : 1);
       const excess = calculateExcessDropFee(

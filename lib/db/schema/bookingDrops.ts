@@ -9,6 +9,7 @@ export const bookingDrops = pgTable('bookingDrops', {
     bookingId: uuid('bookingId').notNull().references(() => booking.id, { onDelete: 'cascade' }),
     sequenceNumber: integer('sequenceNumber').notNull(),
     locationName: text('locationName').notNull(),
+    invoice: text('invoice'),
 })
 
 export const bookingDropsRelations = relations(bookingDrops, ({ one }) => ({
