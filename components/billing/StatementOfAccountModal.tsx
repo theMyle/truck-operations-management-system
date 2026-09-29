@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useState, useMemo } from "react";
 import {
@@ -340,7 +340,7 @@ export function StatementOfAccountModal({
 
     const dataCellCenter = {
       font: { name: "Calibri", sz: 10, color: { rgb: "1E293B" } },
-      alignment: { horizontal: "center", vertical: "top" },
+      alignment: { horizontal: "center", vertical: "top", wrapText: true },
       border: borderThin,
     };
 
@@ -427,8 +427,7 @@ export function StatementOfAccountModal({
     setCell(7, lastColIndex, cutOffFormatted);
 
     setCell(8, 0, "SOA No:", labelBoldStyle);
-    setCell(8, 2, soaNumber.toUpperCase(), labelBoldStyle);
-    setCell(8, Math.max(lastColIndex - 3, 3), "Invoice No:", labelBoldStyle);
+    setCell(8, 2, soaNumber.toUpperCase(), labelBoldStyle);1
     setCell(8, lastColIndex, "");
 
     // Dynamic Table Headers
@@ -531,12 +530,12 @@ export function StatementOfAccountModal({
     };
 
     setCell(currentRow, 1, preparedBy || "Billing Officer", signatureUnderlineStyle);
-    setCell(currentRow, 4, "Kris B. Galan", signatureUnderlineStyle);
+    setCell(currentRow, 4, "Kris R. Galon", signatureUnderlineStyle);
     setCell(currentRow, Math.max(lastColIndex - 2, 6), "", signatureUnderlineStyle);
     currentRow++;
 
     setCell(currentRow, 1, preparedByRole || "KTS - Billing Officer", roleStyle);
-    setCell(currentRow, 4, "Checked By", roleStyle);
+    setCell(currentRow, 4, "Checked By: President/Owner", roleStyle);
     setCell(currentRow, Math.max(lastColIndex - 2, 6), "Received By", roleStyle);
 
     ws["!ref"] = XLSX.utils.encode_range({ r: 0, c: 0 }, { r: currentRow, c: lastColIndex });
@@ -676,9 +675,9 @@ export function StatementOfAccountModal({
           .summary-row { display: flex; justify-content: space-between; padding: 2px 0; }
           .summary-row.total { border-top: 1.5px solid #111; border-bottom: 3px double #111; font-weight: 800; font-size: 11.5px; margin-top: 4px; padding: 3px 0; }
           .signatories { clear: both; margin-top: 30px; }
-          .sig-row { display: flex; justify-content: space-between; align-items: flex-end; text-align: center; font-size: 10px; }
+          .sig-row { display: flex; justify-content: space-between; align-items: flex-start; text-align: center; font-size: 10px; }
           .sig-col { width: 28%; }
-          .sig-line { border-bottom: 1px solid #111; padding-bottom: 3px; font-weight: bold; min-height: 16px; }
+          .sig-line { border-bottom: 1px solid #111; padding-bottom: 3px; font-weight: bold; min-height: 16px; line-height: 16px; }
           .sig-role { font-size: 9.5px; color: #444; margin-top: 2px; }
         </style>
       </head>
@@ -709,7 +708,6 @@ export function StatementOfAccountModal({
             <td style="width: 50%;">
               <strong>Billing Date:</strong> ${invoiceDate}<br/>
               <strong>Cut off Date:</strong> ${cutOffFormatted}<br/>
-              <strong>Invoice No:</strong>
             </td>
           </tr>
         </table>
@@ -755,8 +753,9 @@ export function StatementOfAccountModal({
               <div class="sig-role">${preparedByRole || "KTS - Billing Officer"}</div>
             </div>
             <div class="sig-col">
-              <div class="sig-line">Kris B. Galan</div>
-              <div class="sig-role">Checked By</div>
+              <div class="sig-line">Kris R. Galon</div>
+              <div class="sig-role">Checked By:</div>
+              <div class="sig-role">President/Owner</div>
             </div>
             <div class="sig-col">
               <div class="sig-line">&nbsp;</div>
