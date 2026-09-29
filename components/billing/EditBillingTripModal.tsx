@@ -13,18 +13,29 @@ import {
   SimpleGrid,
   Paper,
   Divider,
+  Badge,
+  ActionIcon,
+  Tooltip,
+  Box,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
-import { IconCheck, IconEdit, IconX } from "@tabler/icons-react";
+import { IconCheck, IconEdit, IconPlus, IconTrash, IconMapPin } from "@tabler/icons-react";
 import { BillingRecord } from "@/app/(app)/billing/page";
 import { updateBillingTripRateAction, updateBillingStatusAction } from "@/lib/actions/billing";
 import { calculateExcessDropFee } from "@/lib/utils/excessDrop";
+import { isIpiClient } from "@/lib/utils/soaColumns";
 
 interface EditBillingTripModalProps {
   opened: boolean;
   onClose: () => void;
   record: BillingRecord | null;
   onSuccess: (updatedRecord: Partial<BillingRecord>) => void;
+}
+
+interface DropItem {
+  id: number;
+  storeName: string;
+  location: string;
 }
 
 export function EditBillingTripModal({
@@ -43,10 +54,10 @@ export function EditBillingTripModal({
   const [dueDate, setDueDate] = useState("");
   const [amountPaid, setAmountPaid] = useState("");
   const [remarks, setRemarks] = useState("");
+  const [drops, setDrops] = useState<DropItem[]>([]);
 
   const isIpi = React.useMemo(() => {
-    const c = ((record?.client || record?.clientName || "") as string).toLowerCase();
-    return c.includes("ipi") || c.includes("international");
+    return isIpiClient(record?.client || record?.clientName);
   }, [record]);
 
   const [saving, setSaving] = useState(false);
@@ -58,15 +69,66 @@ export function EditBillingTripModal({
       setTruckerRate(record.truckerRate !== undefined && record.truckerRate !== null ? String(record.truckerRate) : "0.00");
       const dropsVal = Number(record.noOfDrops || (record as any).numberOfDrops || 1);
       setNoOfDrops(dropsVal);
-      const fee = calculateExcessDropFee(dropsVal, !!record.isSubcon, record.excessDropRate);
+      const fee = calculateExcessDropFee(
+        dropsVal,
+        false,
+        isIpi && record.excessDropRate && Number(record.excessDropRate) < 300 ? undefined : record.excessDropRate
+      );
       setExcessDropRate(String(fee));
       setSoaNumber(record.soaNumber || "");
       setInvoiceDate(record.invoiceDate || "");
       setDueDate(record.dueDate || "");
       setAmountPaid(record.amountPaid !== undefined && record.amountPaid !== null ? String(record.amountPaid) : "0.00");
       setTripRemarksState();
+
+      // Initialize drop-off locations
+      let initialDrops: DropItem[] = [];
+      if (record.rawDrops && record.rawDrops.length > 0) {
+        initialDrops = record.rawDrops.map((d: any, idx: number) => {
+          let storeName = "";
+          let location = d.locationName || "";
+          if (isIpi && location.includes(" - ")) {
+            const parts = location.split(" - ");
+            storeName = parts[0].trim();
+            location = parts.slice(1).join(" - ").trim();
+          }
+          return {
+            id: Date.now() + idx,
+            storeName,
+            location,
+          };
+        });
+      } else if (record.dropOffLocation && record.dropOffLocation !== "—") {
+        const locParts = record.dropOffLocation.split(",").map((s) => s.trim()).filter(Boolean);
+        initialDrops = locParts.map((loc, idx) => {
+          let storeName = "";
+          let location = loc;
+          if (isIpi && location.includes(" - ")) {
+            const parts = location.split(" - ");
+            storeName = parts[0].trim();
+            location = parts.slice(1).join(" - ").trim();
+          }
+          return {
+            id: Date.now() + idx,
+            storeName,
+            location,
+          };
+        });
+      }
+
+      if (initialDrops.length === 0) {
+        initialDrops = [{ id: Date.now(), storeName: "", location: "" }];
+      }
+
+      const finalDropsVal = Math.max(dropsVal, initialDrops.length);
+      while (initialDrops.length < finalDropsVal) {
+        initialDrops.push({ id: Date.now() + initialDrops.length, storeName: "", location: "" });
+      }
+
+      setDrops(initialDrops);
+      setNoOfDrops(initialDrops.length);
     }
-  }, [record]);
+  }, [record, isIpi]);
 
   function setTripRemarksState() {
     if (record) {
@@ -74,12 +136,57 @@ export function EditBillingTripModal({
     }
   }
 
+  const handleAddDrop = () => {
+    setDrops((prev) => {
+      const next = [...prev, { id: Date.now() + Math.random(), storeName: "", location: "" }];
+      setNoOfDrops(next.length);
+      const fee = calculateExcessDropFee(next.length, false);
+      setExcessDropRate(String(fee));
+      return next;
+    });
+  };
+
+  const handleRemoveDrop = (index: number) => {
+    setDrops((prev) => {
+      if (prev.length <= 1) return prev;
+      const next = prev.filter((_, i) => i !== index);
+      setNoOfDrops(next.length);
+      const fee = calculateExcessDropFee(next.length, false);
+      setExcessDropRate(String(fee));
+      return next;
+    });
+  };
+
+  const handleDropChange = (index: number, field: "storeName" | "location", value: string) => {
+    setDrops((prev) => {
+      const next = [...prev];
+      next[index] = { ...next[index], [field]: value };
+      return next;
+    });
+  };
+
   async function handleSave() {
     if (!record) return;
     setSaving(true);
 
     try {
-      // 1. Update trip rates, DR #, No. of Drops, and Excess Drop Charge
+      // Build drops payload
+      const payloadDrops = drops
+        .map((d, idx) => {
+          const loc = d.location.trim();
+          const store = d.storeName.trim();
+          let finalLocationName = loc;
+          if (isIpi && store) {
+            finalLocationName = loc ? `${store} - ${loc}` : store;
+          }
+          return {
+            sequenceNumber: idx + 1,
+            locationName: finalLocationName,
+          };
+        })
+        .filter((d) => d.locationName.length > 0);
+
+      // 1. Update trip rates, DR #, No. of Drops, Excess Drop Charge, and Drops
       await updateBillingTripRateAction({
         bookingId: String(record.id),
         clientRate: String(clientRate),
@@ -88,6 +195,7 @@ export function EditBillingTripModal({
         tripRemarks: remarks,
         numberOfDrops: noOfDrops,
         excessDropRate: String(excessDropRate),
+        drops: payloadDrops.length > 0 ? payloadDrops : undefined,
       });
 
       // 2. Update SOA metadata & billing status
@@ -106,6 +214,18 @@ export function EditBillingTripModal({
         icon: <IconCheck size={16} />,
       });
 
+      const finalRawDrops =
+        payloadDrops.length > 0
+          ? payloadDrops.map((d) => ({
+              locationName: d.locationName.toUpperCase(),
+            }))
+          : record.rawDrops || [];
+
+      const finalDropOffLocation =
+        finalRawDrops.map((d) => d.locationName).join(", ") ||
+        record.dropOffLocation ||
+        "—";
+
       onSuccess({
         bookingDr,
         bookingDRNo: bookingDr,
@@ -118,6 +238,8 @@ export function EditBillingTripModal({
         dueDate,
         amountPaid,
         tripRemarks: remarks,
+        rawDrops: finalRawDrops,
+        dropOffLocation: finalDropOffLocation,
       });
 
       onClose();
@@ -189,15 +311,28 @@ export function EditBillingTripModal({
             />
             <NumberInput
               label="No. of Drops"
-              description={noOfDrops > 3 ? `+${noOfDrops - 3} excess (${record?.isSubcon ? "₱200/drop" : "₱300/drop"})` : "3 drops included"}
+              description={noOfDrops > 3 ? `+${noOfDrops - 3} excess (₱300/drop)` : "3 drops included"}
               size="xs"
               min={1}
               value={noOfDrops}
               onChange={(val) => {
-                const newDrops = Number(val) || 1;
+                const newDrops = Math.max(1, Number(val) || 1);
                 setNoOfDrops(newDrops);
-                const fee = calculateExcessDropFee(newDrops, !!record?.isSubcon);
+                const fee = calculateExcessDropFee(newDrops, false);
                 setExcessDropRate(String(fee));
+                setDrops((prev) => {
+                  if (newDrops > prev.length) {
+                    const added = Array.from({ length: newDrops - prev.length }, (_, i) => ({
+                      id: Date.now() + prev.length + i,
+                      storeName: "",
+                      location: "",
+                    }));
+                    return [...prev, ...added];
+                  } else if (newDrops < prev.length) {
+                    return prev.slice(0, newDrops);
+                  }
+                  return prev;
+                });
               }}
             />
             <TextInput
@@ -219,6 +354,104 @@ export function EditBillingTripModal({
               onChange={(e) => setTruckerRate(e.currentTarget.value)}
             />
           )}
+
+          {/* Drop-off Locations */}
+          <Divider
+            label={
+              <Group gap={6}>
+                <IconMapPin size={14} color="var(--mantine-color-blue-6)" />
+                <Text size="xs" fw={700}>
+                  Drop-off Locations ({drops.length})
+                </Text>
+              </Group>
+            }
+            labelPosition="center"
+            my={4}
+          />
+
+          <Stack gap="xs">
+            {drops.map((drop, idx) => (
+              <Paper key={drop.id} withBorder p="xs" radius="sm" bg="gray.0">
+                <Group gap="xs" align="flex-start" wrap="nowrap">
+                  <Badge
+                    size="sm"
+                    variant="filled"
+                    color="blue"
+                    circle
+                    style={{ flexShrink: 0, marginTop: 20 }}
+                  >
+                    {idx + 1}
+                  </Badge>
+
+                  <Box style={{ flexGrow: 1 }}>
+                    {isIpi ? (
+                      <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="xs">
+                        <TextInput
+                          label="Store Name"
+                          placeholder="e.g. SUPER 8 / ROBINSONS"
+                          size="xs"
+                          value={drop.storeName}
+                          onChange={(e) =>
+                            handleDropChange(idx, "storeName", e.currentTarget.value)
+                          }
+                        />
+                        <TextInput
+                          label="Drop Address / Location"
+                          placeholder="e.g. SAN PEDRO, LAGUNA"
+                          size="xs"
+                          value={drop.location}
+                          onChange={(e) =>
+                            handleDropChange(idx, "location", e.currentTarget.value)
+                          }
+                        />
+                      </SimpleGrid>
+                    ) : (
+                      <TextInput
+                        label={`Drop Location #${idx + 1}`}
+                        placeholder="e.g. Warehouse A, Cavite"
+                        size="xs"
+                        value={drop.location}
+                        onChange={(e) =>
+                          handleDropChange(idx, "location", e.currentTarget.value)
+                        }
+                      />
+                    )}
+                  </Box>
+
+                  <Tooltip
+                    label={
+                      drops.length <= 1
+                        ? "At least one drop is required"
+                        : "Remove drop"
+                    }
+                  >
+                    <ActionIcon
+                      color="red"
+                      variant="subtle"
+                      size="sm"
+                      disabled={drops.length <= 1}
+                      onClick={() => handleRemoveDrop(idx)}
+                      style={{ marginTop: 20 }}
+                    >
+                      <IconTrash size={15} />
+                    </ActionIcon>
+                  </Tooltip>
+                </Group>
+              </Paper>
+            ))}
+
+            <Group justify="flex-start">
+              <Button
+                variant="light"
+                color="blue"
+                size="xs"
+                leftSection={<IconPlus size={14} />}
+                onClick={handleAddDrop}
+              >
+                Add Drop Location
+              </Button>
+            </Group>
+          </Stack>
 
           <Divider label="SOA & Payment Details" labelPosition="center" my={4} />
 

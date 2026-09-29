@@ -209,23 +209,27 @@ export function StatementOfAccountModal({
 
     displayRecords.forEach((r) => {
       const isSub = isSubconRecord(r);
-      const rate = targetType === "subcon"
+      const rawRate = targetType === "subcon"
         ? Number(r.truckerRate || r.tripRate || 0)
         : Number(r.tripRate || 0);
+      const rate = isIpiClient && targetType !== "subcon"
+        ? Number((rawRate / 1.12).toFixed(2))
+        : rawRate;
       baseTotal += rate;
 
+      const isSubTarget = targetType === "subcon";
       const excess = calculateExcessDropFee(
         r.noOfDrops || (r.rawDrops ? r.rawDrops.length : 1),
-        targetType === "subcon" || isSub,
-        r.excessDropRate
+        isSubTarget,
+        isIpiClient && !isSubTarget && r.excessDropRate && Number(r.excessDropRate) < 300 ? undefined : r.excessDropRate
       );
       excessDropTotal += excess;
     });
 
-    const netOfVat = baseTotal + excessDropTotal;
-    const vatAmount = includeVat ? netOfVat * 0.12 : 0;
-    const ewtAmount = includeEwt ? netOfVat * 0.02 : 0;
-    const totalDue = netOfVat + vatAmount - ewtAmount;
+    const netOfVat = Number((baseTotal + excessDropTotal).toFixed(2));
+    const vatAmount = includeVat ? Number((netOfVat * 0.12).toFixed(2)) : 0;
+    const ewtAmount = includeEwt ? Number((netOfVat * 0.02).toFixed(2)) : 0;
+    const totalDue = Number((netOfVat + vatAmount - ewtAmount).toFixed(2));
 
     return {
       baseTotal,
@@ -235,7 +239,7 @@ export function StatementOfAccountModal({
       ewtAmount,
       totalDue,
     };
-  }, [displayRecords, includeVat, includeEwt, targetType]);
+  }, [displayRecords, includeVat, includeEwt, targetType, isIpiClient]);
 
   const [editTripModalOpen, setEditTripModalOpen] = useState(false);
   const [selectedEditRecord, setSelectedEditRecord] = useState<BillingRecord | null>(null);
@@ -441,15 +445,19 @@ export function StatementOfAccountModal({
     let totalGross = 0;
 
     selectedRecords.forEach((r, idx) => {
-      const rate = targetType === "subcon"
+      const rawRate = targetType === "subcon"
         ? Number(r.truckerRate || r.tripRate || 0)
         : Number(r.tripRate || 0);
+      const rate = isIpiClient && targetType !== "subcon"
+        ? Number((rawRate / 1.12).toFixed(2))
+        : rawRate;
+      const isSubTarget = targetType === "subcon";
       const excess = calculateExcessDropFee(
         r.noOfDrops || (r.rawDrops ? r.rawDrops.length : 1),
-        targetType === "subcon" || isSubconRecord(r),
-        r.excessDropRate
+        isSubTarget,
+        isIpiClient && !isSubTarget && r.excessDropRate && Number(r.excessDropRate) < 300 ? undefined : r.excessDropRate
       );
-      const total = rate + excess;
+      const total = Number((rate + excess).toFixed(2));
 
       totalBase += rate;
       totalExcess += excess;
@@ -495,7 +503,7 @@ export function StatementOfAccountModal({
     currentRow++;
 
     if (includeVat) {
-      setCell(currentRow, summaryColLabel, "Add: 12% VAT", totalRowLabel);
+      setCell(currentRow, summaryColLabel, isIpiClient ? "Add: VAT12 %" : "Add: 12% VAT", totalRowLabel);
       setCell(currentRow, summaryColVal, calculations.vatAmount, dataCellRightBold);
       currentRow++;
     }
@@ -1059,7 +1067,7 @@ export function StatementOfAccountModal({
               </Group>
               {includeVat && (
                 <Group justify="space-between">
-                  <Text style={{ fontSize: "11px" }} c="gray.7">Add: 12% VAT:</Text>
+                  <Text style={{ fontSize: "11px" }} c="gray.7">{isIpiClient ? "Add: VAT12 %:" : "Add: 12% VAT:"}</Text>
                   <Text style={{ fontSize: "11px" }} fw={700} c="blue.7">
                     +₱{calculations.vatAmount.toLocaleString("en-PH", { minimumFractionDigits: 2 })}
                   </Text>
