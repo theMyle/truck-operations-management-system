@@ -1,4 +1,4 @@
-import {
+﻿import {
   decimal,
   pgTable,
   text,
@@ -105,6 +105,7 @@ export const booking = pgTable("booking", {
   // ** BILLING STATUS & SOA **
   billingStatus: text("billingStatus").default("unpaid").notNull(),
   soaNumber: text("soaNumber"),
+  subconSoaNumber: text("subconSoaNumber"),
   invoiceDate: date("invoiceDate", { mode: "string" }),
   dueDate: date("dueDate", { mode: "string" }),
   amountPaid: decimal("amountPaid", { precision: 10, scale: 2 }).default("0.00").notNull(),

@@ -100,6 +100,7 @@ export type BillingRecord = DispatchRecord & {
 
   billingStatus?: string;
   soaNumber?: string;
+  subconSoaNumber?: string;
   invoiceDate?: string;
   dueDate?: string;
   amountPaid?: string;
@@ -330,6 +331,7 @@ export default function BillingModule() {
   const [soaWarningRecords, setSoaWarningRecords] = useState<BillingRecord[]>([]);
 
   const [soaNumberInput, setSoaNumberInput] = useState("");
+  const [subconSoaNumberInput, setSubconSoaNumberInput] = useState("");
   const [invoiceDateInput, setInvoiceDateInput] = useState("");
   const [dueDateInput, setDueDateInput] = useState("");
   const [amountPaidInput, setAmountPaidInput] = useState("");
@@ -376,8 +378,10 @@ export default function BillingModule() {
       targetRecords = subconOnly;
     }
 
-    const alreadyBilled = targetRecords.filter(
-      (r) => r.soaNumber && r.soaNumber.trim().length > 0
+    const alreadyBilled = targetRecords.filter((r) =>
+      target === "subcon"
+        ? r.subconSoaNumber && r.subconSoaNumber.trim().length > 0
+        : r.soaNumber && r.soaNumber.trim().length > 0
     );
 
     if (alreadyBilled.length > 0) {
@@ -392,6 +396,7 @@ export default function BillingModule() {
     setSelectedBillingRecord(record);
     // Keep soaNumberInput as record.soaNumber || "" so unbilled records don't get auto-assigned an SOA
     setSoaNumberInput(record.soaNumber || "");
+    setSubconSoaNumberInput(record.subconSoaNumber || "");
     setInvoiceDateInput(record.invoiceDate ?? new Date().toISOString().split("T")[0]);
     setDueDateInput(
       record.dueDate ??
@@ -422,6 +427,7 @@ export default function BillingModule() {
     const result = await updateBillingStatusAction({
       bookingIds: [selectedBillingRecord.id.toString()],
       soaNumber: soaNumberInput,
+      subconSoaNumber: subconSoaNumberInput,
       invoiceDate: invoiceDateInput || null,
       dueDate: dueDateInput || null,
       amountPaid: amountPaidInput,
@@ -470,6 +476,7 @@ export default function BillingModule() {
               tripRate: tripRateInput,
               truckerRate: truckerRateInput,
               soaNumber: soaNumberInput,
+              subconSoaNumber: subconSoaNumberInput,
               invoiceDate: invoiceDateInput,
               dueDate: dueDateInput,
               amountPaid: amountPaidInput,
@@ -823,7 +830,8 @@ export default function BillingModule() {
       "Drop off Location": route.dropoff,
       "Rate (PHP)": numOrBlank(r.tripRate),
       "Amount Paid (PHP)": numOrBlank(r.amountPaid),
-      "SoA #": r.soaNumber || "",
+      "Client SoA #": r.soaNumber || "",
+      "Subcon SoA #": r.subconSoaNumber || (isSubconRecord(r, subconPlates) ? "" : "N/A"),
       "Payment Status": BILL_STATUS_LABEL[getRecordBillStatusKey(r)] || "For Billing",
       "Invoice Date": r.invoiceDate || "",
       "Due Date": r.dueDate || "",
@@ -1491,14 +1499,17 @@ export default function BillingModule() {
             >
               🔒 Locked Paid Record: This trip is fully Paid. The Statement of Account (SOA #) is permanently locked and cannot be edited.
             </Alert>
-          ) : selectedBillingRecord?.soaNumber ? (
+          ) : (selectedBillingRecord?.soaNumber || selectedBillingRecord?.subconSoaNumber) ? (
             <Alert
               color="orange"
               icon={<IconAlertTriangle size={15} />}
               radius="sm"
               styles={{ title: { fontSize: "11px", fontWeight: 700 }, message: { fontSize: "11px" } }}
             >
-              Notice: This record already has an assigned SOA (<strong>{selectedBillingRecord.soaNumber}</strong>). Updating will modify existing SOA details.
+              Notice: This record already has an assigned SOA ({[
+                selectedBillingRecord?.soaNumber ? `Client: ${selectedBillingRecord.soaNumber}` : null,
+                selectedBillingRecord?.subconSoaNumber ? `Subcon: ${selectedBillingRecord.subconSoaNumber}` : null
+              ].filter(Boolean).join(" | ")}). Updating will modify existing SOA details.
             </Alert>
           ) : null}
           {selectedBillingRecord && (
@@ -1532,13 +1543,24 @@ export default function BillingModule() {
           )}
 
           <TextInput
-            label="Statement of Account (SoA) #"
-            placeholder="e.g. SOA-2025-001"
+            label="Client Statement of Account (SoA) #"
+            placeholder="e.g. KTS-IPI-2026-001"
             value={soaNumberInput}
             disabled={Boolean(selectedBillingRecord && getRecordBillStatusKey(selectedBillingRecord) === "paid")}
             onChange={(e) => setSoaNumberInput(e.currentTarget.value)}
             radius="md"
           />
+
+          {selectedBillingRecord?.isSubcon && (
+            <TextInput
+              label="Subcon Statement of Account (SoA) #"
+              placeholder="e.g. KTS-TRA-2026-001"
+              value={subconSoaNumberInput}
+              disabled={Boolean(selectedBillingRecord && getRecordBillStatusKey(selectedBillingRecord) === "paid")}
+              onChange={(e) => setSubconSoaNumberInput(e.currentTarget.value)}
+              radius="md"
+            />
+          )}
 
           <TextInput
             label="Invoice Date"
@@ -1777,7 +1799,7 @@ export default function BillingModule() {
                 const isPaid = getRecordBillStatusKey(r) === "paid";
                 return (
                   <Text key={r.id} style={{ fontSize: "11px" }}>
-                    • <strong>DR #: {r.bookingDr || r.bookingDRNo || r.displayBookingNo || "N/A"}</strong> — SOA #: <strong style={{ color: "var(--mantine-color-blue-7)" }}>{r.soaNumber}</strong> ({r.client}) {isPaid && <strong style={{ color: "var(--mantine-color-red-6)" }}>[Paid - SOA Locked]</strong>}
+                    • <strong>DR #: {r.bookingDr || r.bookingDRNo || r.displayBookingNo || "N/A"}</strong> — SOA #: <strong style={{ color: "var(--mantine-color-blue-7)" }}>{soaTargetType === "subcon" ? (r.subconSoaNumber || r.soaNumber) : (r.soaNumber || r.subconSoaNumber)}</strong> ({r.client}) {isPaid && <strong style={{ color: "var(--mantine-color-red-6)" }}>[Paid - SOA Locked]</strong>}
                   </Text>
                 );
               })}

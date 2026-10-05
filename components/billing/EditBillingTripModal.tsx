@@ -52,6 +52,7 @@ export function EditBillingTripModal({
   const [noOfDrops, setNoOfDrops] = useState<number>(1);
   const [excessDropRate, setExcessDropRate] = useState("0.00");
   const [soaNumber, setSoaNumber] = useState("");
+  const [subconSoaNumber, setSubconSoaNumber] = useState("");
   const [invoiceDate, setInvoiceDate] = useState("");
   const [dueDate, setDueDate] = useState("");
   const [amountPaid, setAmountPaid] = useState("");
@@ -79,6 +80,7 @@ export function EditBillingTripModal({
       );
       setExcessDropRate(String(fee));
       setSoaNumber(record.soaNumber || "");
+      setSubconSoaNumber(record.subconSoaNumber || "");
       setInvoiceDate(record.invoiceDate || "");
       setDueDate(record.dueDate || "");
       setAmountPaid(record.amountPaid !== undefined && record.amountPaid !== null ? String(record.amountPaid) : "0.00");
@@ -294,6 +296,7 @@ export function EditBillingTripModal({
         ruta: effectiveRuta || undefined,
         numberOfDrops: noOfDrops,
         excessDropRate: String(excessDropRate),
+        subconSoaNumber: subconSoaNumber || undefined,
         drops: payloadDrops.length > 0 ? payloadDrops : undefined,
       });
 
@@ -301,6 +304,7 @@ export function EditBillingTripModal({
       await updateBillingStatusAction({
         bookingIds: [String(record.id)],
         soaNumber: soaNumber || undefined,
+        subconSoaNumber: subconSoaNumber || undefined,
         invoiceDate: invoiceDate || null,
         dueDate: dueDate || null,
         amountPaid: String(amountPaid),
@@ -335,6 +339,7 @@ export function EditBillingTripModal({
         noOfDrops: noOfDrops,
         excessDropRate: excessDropRate,
         soaNumber,
+        subconSoaNumber,
         invoiceDate,
         dueDate,
         amountPaid,
@@ -630,14 +635,23 @@ export function EditBillingTripModal({
 
           <Divider label="SOA & Payment Details" labelPosition="center" my={4} />
 
-          <SimpleGrid cols={{ base: 1, sm: 4 }} spacing="sm">
+          <SimpleGrid cols={{ base: 1, sm: record?.isSubcon ? 5 : 4 }} spacing="sm">
             <TextInput
-              label="SOA #"
+              label="Client SOA #"
               size="xs"
               placeholder="e.g. KTS-IPI-2026-001"
               value={soaNumber}
               onChange={(e) => setSoaNumber(e.currentTarget.value.toUpperCase())}
             />
+            {record?.isSubcon && (
+              <TextInput
+                label="Subcon SOA #"
+                size="xs"
+                placeholder="e.g. KTS-TRA-2026-001"
+                value={subconSoaNumber}
+                onChange={(e) => setSubconSoaNumber(e.currentTarget.value.toUpperCase())}
+              />
+            )}
             <TextInput
               label="Invoice Date"
               type="date"

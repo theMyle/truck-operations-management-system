@@ -1,4 +1,4 @@
-import { Driver, Helper } from "@/lib/db/schema";
+﻿import { Driver, Helper } from "@/lib/db/schema";
 
 export interface PickupLocation {
   id: number;
@@ -80,4 +80,5 @@ export interface DispatchRecord {
   isSubcon?: boolean;
   lastRecordedOdoEnd?: number;
   excessDropRate?: string | number | null;
+  subconSoaNumber?: string;
 }

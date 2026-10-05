@@ -1,4 +1,4 @@
-"use server";
+﻿"use server";
 
 import { actionClient } from "@/lib/safe-action";
 import { db } from "@/lib/db";
@@ -168,6 +168,7 @@ export const getBillingRecordsAction = actionClient
         helperRate: b.helperRate ?? null,
         billingStatus: effectiveBillingStatus,
         soaNumber: b.soaNumber ?? "",
+        subconSoaNumber: b.subconSoaNumber ?? "",
         invoiceDate: b.invoiceDate ?? "",
         dueDate: b.dueDate ?? "",
         amountPaid: effectiveAmountPaid,
@@ -263,6 +264,8 @@ function computeBillingStatus(
 const UpdateBillingStatusSchema = z.object({
   bookingIds: z.array(z.string().uuid()),
   soaNumber: z.string().optional(),
+  subconSoaNumber: z.string().optional(),
+  targetType: z.enum(["client", "subcon"]).optional(),
   invoiceDate: z.string().nullable().optional(),
   dueDate: z.string().nullable().optional(),
   amountPaid: z.string().optional(),
@@ -271,7 +274,7 @@ const UpdateBillingStatusSchema = z.object({
 export const updateBillingStatusAction = actionClient
   .schema(UpdateBillingStatusSchema)
   .action(async ({ parsedInput }) => {
-    const { bookingIds, soaNumber, invoiceDate, dueDate, amountPaid } = parsedInput;
+    const { bookingIds, soaNumber, subconSoaNumber, targetType, invoiceDate, dueDate, amountPaid } = parsedInput;
 
     if (!bookingIds.length) return { success: false, error: "No booking IDs provided" };
 
@@ -294,7 +297,16 @@ export const updateBillingStatusAction = actionClient
         const billingStatus = computeBillingStatus(current, isSub, amountPaidVal, soaNumber, dueDate);
 
         const updateData: Record<string, any> = { billingStatus };
-        if (soaNumber !== undefined) updateData.soaNumber = soaNumber || null;
+        if (targetType === "subcon") {
+          if (subconSoaNumber !== undefined) {
+            updateData.subconSoaNumber = subconSoaNumber || null;
+          } else if (soaNumber !== undefined) {
+            updateData.subconSoaNumber = soaNumber || null;
+          }
+        } else {
+          if (soaNumber !== undefined) updateData.soaNumber = soaNumber || null;
+          if (subconSoaNumber !== undefined) updateData.subconSoaNumber = subconSoaNumber || null;
+        }
         if (invoiceDate !== undefined) updateData.invoiceDate = invoiceDate || null;
         if (dueDate !== undefined) updateData.dueDate = dueDate || null;
         if (amountPaid !== undefined) updateData.amountPaid = amountPaid;
@@ -314,6 +326,8 @@ const BatchUpdateBillingStatusSchema = z.object({
     })
   ),
   soaNumber: z.string().optional(),
+  subconSoaNumber: z.string().optional(),
+  targetType: z.enum(["client", "subcon"]).optional(),
   invoiceDate: z.string().nullable().optional(),
   dueDate: z.string().nullable().optional(),
 });
@@ -321,7 +335,7 @@ const BatchUpdateBillingStatusSchema = z.object({
 export const batchUpdateBillingStatusAction = actionClient
   .schema(BatchUpdateBillingStatusSchema)
   .action(async ({ parsedInput }) => {
-    const { updates, soaNumber, invoiceDate, dueDate } = parsedInput;
+    const { updates, soaNumber, subconSoaNumber, targetType, invoiceDate, dueDate } = parsedInput;
 
     if (!updates.length) return { success: false, error: "No updates provided" };
 
@@ -350,7 +364,16 @@ export const batchUpdateBillingStatusAction = actionClient
         const billingStatus = computeBillingStatus(current, isSub, amountPaidVal, soaNumber, dueDate);
 
         const updateData: Record<string, any> = { billingStatus };
-        if (soaNumber !== undefined) updateData.soaNumber = soaNumber || null;
+        if (targetType === "subcon") {
+          if (subconSoaNumber !== undefined) {
+            updateData.subconSoaNumber = subconSoaNumber || null;
+          } else if (soaNumber !== undefined) {
+            updateData.subconSoaNumber = soaNumber || null;
+          }
+        } else {
+          if (soaNumber !== undefined) updateData.soaNumber = soaNumber || null;
+          if (subconSoaNumber !== undefined) updateData.subconSoaNumber = subconSoaNumber || null;
+        }
         if (invoiceDate !== undefined) updateData.invoiceDate = invoiceDate || null;
         if (dueDate !== undefined) updateData.dueDate = dueDate || null;
         if (amountPaidStr !== undefined) updateData.amountPaid = amountPaidStr;
@@ -363,7 +386,12 @@ export const batchUpdateBillingStatusAction = actionClient
   });
 
 export const getNextSoaNumberAction = actionClient
-  .schema(z.object({ clientName: z.string() }))
+  .schema(
+    z.object({
+      clientName: z.string(),
+      targetType: z.enum(["client", "subcon"]).optional(),
+    })
+  )
   .action(async ({ parsedInput }) => {
     try {
       const code = generateClientCode(parsedInput.clientName);
@@ -371,12 +399,17 @@ export const getNextSoaNumberAction = actionClient
       const prefix = `KTS-${code}-${year}-`;
       const pattern = `${prefix}%`;
 
+      const targetCol =
+        parsedInput.targetType === "subcon"
+          ? booking.subconSoaNumber
+          : booking.soaNumber;
+
       // Fast single-row indexed DB query
       const latest = await db
-        .select({ soaNumber: booking.soaNumber })
+        .select({ soaNumber: targetCol })
         .from(booking)
-        .where(like(booking.soaNumber, pattern))
-        .orderBy(desc(booking.soaNumber))
+        .where(like(targetCol, pattern))
+        .orderBy(desc(targetCol))
         .limit(1);
 
       let maxSeq = 0;
@@ -402,6 +435,7 @@ const UpdateBillingTripRateSchema = z.object({
   numberOfDrops: z.number().min(0).optional(),
   excessDropRate: z.string().optional(),
   ruta: z.string().optional(),
+  subconSoaNumber: z.string().optional(),
   drops: z.array(z.object({
     sequenceNumber: z.number(),
     locationName: z.string(),
@@ -412,7 +446,7 @@ const UpdateBillingTripRateSchema = z.object({
 export const updateBillingTripRateAction = actionClient
   .schema(UpdateBillingTripRateSchema)
   .action(async ({ parsedInput }) => {
-    const { bookingId, clientRate, truckerRate, bookingDRNo, tripRemarks, numberOfDrops, excessDropRate, ruta, drops } = parsedInput;
+    const { bookingId, clientRate, truckerRate, bookingDRNo, tripRemarks, numberOfDrops, excessDropRate, ruta, subconSoaNumber, drops } = parsedInput;
 
     const current = await db.query.booking.findFirst({
       where: (b, { eq }) => eq(b.id, bookingId),
@@ -429,6 +463,7 @@ export const updateBillingTripRateAction = actionClient
     if (numberOfDrops !== undefined) updateData.numberOfDrops = numberOfDrops;
     if (excessDropRate !== undefined) updateData.excessDropRate = excessDropRate;
     if (ruta !== undefined) updateData.ruta = ruta;
+    if (subconSoaNumber !== undefined) updateData.subconSoaNumber = subconSoaNumber;
 
     // Recalculate billing status against correct basis rate (trucker rate for subcon, client rate for KTS)
     const truck = current.plateNumber

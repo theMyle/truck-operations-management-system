@@ -188,18 +188,18 @@ export function StatementOfAccountModal({
     if (opened && displayRecords.length > 0 && !soaNumber) {
       // Immediate local fallback
       const existingSoas = displayRecords
-        .map((r) => r.soaNumber)
+        .map((r) => (targetType === "subcon" ? r.subconSoaNumber : r.soaNumber))
         .filter((s): s is string => typeof s === "string" && s.trim().length > 0);
       setSoaNumber(generateSoaNumber(clientName, existingSoas));
 
       // Fast async DB lookup for true max sequence across all records
-      getNextSoaNumberAction({ clientName }).then((res) => {
+      getNextSoaNumberAction({ clientName, targetType }).then((res) => {
         if (res?.data?.success && res.data.soaNumber) {
           setSoaNumber(res.data.soaNumber);
         }
       });
     }
-  }, [opened, displayRecords, clientName, soaNumber]);
+  }, [opened, displayRecords, clientName, soaNumber, targetType]);
 
   /* ── Financial Calculations ── */
   const calculations = useMemo(() => {
@@ -268,7 +268,9 @@ export function StatementOfAccountModal({
     try {
       const res = await updateBillingStatusAction({
         bookingIds: selectedRecords.map((r) => String(r.id)),
-        soaNumber: soaNumber.trim().toUpperCase(),
+        targetType,
+        soaNumber: targetType === "client" ? soaNumber.trim().toUpperCase() : undefined,
+        subconSoaNumber: targetType === "subcon" ? soaNumber.trim().toUpperCase() : undefined,
         invoiceDate,
         dueDate,
       });
@@ -813,7 +815,10 @@ export function StatementOfAccountModal({
           >
             🔒 One or more selected records are marked as Paid. SOA numbers for Paid trips are permanently locked and cannot be edited.
           </Alert>
-        ) : selectedRecords.some((r) => r.soaNumber && r.soaNumber.trim().length > 0) ? (
+        ) : selectedRecords.some((r) => {
+          const val = targetType === "subcon" ? r.subconSoaNumber : r.soaNumber;
+          return val && val.trim().length > 0;
+        }) ? (
           <Alert
             color="orange"
             icon={<IconAlertTriangle size={16} />}

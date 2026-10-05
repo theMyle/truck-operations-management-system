@@ -297,6 +297,7 @@ export function TripDetailsModal({
             drops: [],
             billingStatus: (record as any).billingStatus || "unpaid",
             soaNumber: (record as any).soaNumber || null,
+            subconSoaNumber: (record as any).subconSoaNumber || null,
             invoiceDate: (record as any).invoiceDate || null,
             dueDate: (record as any).dueDate || null,
             amountPaid: (record as any).amountPaid || "0.00",
