@@ -209,7 +209,8 @@ export function BillingTable({
                     "Fleet Type",
                     "Plate No.",
                     "Booking / DR #",
-                    "SoA #",
+                    "Client SoA #",
+                    "Subcon SoA #",
                     "No. of Drops",
                     "Pickup Location",
                     "Drop-off Location",
@@ -257,7 +258,7 @@ export function BillingTable({
                 {!activeFilters ? (
                   <Table.Tr>
                     <Table.Td
-                      colSpan={16}
+                      colSpan={21}
                       style={{ textAlign: "center", padding: "40px 0" }}
                     >
                       <Stack align="center" gap={6}>
@@ -274,7 +275,7 @@ export function BillingTable({
                 ) : filteredLength === 0 ? (
                   <Table.Tr>
                     <Table.Td
-                      colSpan={16}
+                      colSpan={21}
                       style={{ textAlign: "center", padding: "32px 0" }}
                     >
                       <Stack align="center" gap={6}>
@@ -375,6 +376,9 @@ export function BillingTable({
                       </Table.Td>
                       <Table.Td style={cell}>
                         {record.soaNumber || "—"}
+                      </Table.Td>
+                      <Table.Td style={cell}>
+                        {record.subconSoaNumber || (record.isSubcon ? "—" : "N/A")}
                       </Table.Td>
                       <Table.Td style={{ ...cell, textAlign: "center" }}>
                         {record.noOfDrops ?? "—"}
