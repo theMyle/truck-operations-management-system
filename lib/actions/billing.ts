@@ -4,7 +4,7 @@ import { actionClient } from "@/lib/safe-action";
 import { db } from "@/lib/db";
 import { booking, bookingDrops } from "@/lib/db/schema";
 import { z } from "zod";
-import { and, eq, gte, lte, desc, like } from "drizzle-orm";
+import { and, eq, gte, lte, desc, like, sql } from "drizzle-orm";
 import { formatTime12Hour, formatTimeHHMM, generateClientCode } from "@/lib/utils/stringFormat";
 
 const GetBillingSchema = z.object({
@@ -201,7 +201,14 @@ export const getIncomeRecordsAction = actionClient
         clientRate: booking.clientRate,
       })
       .from(booking)
-      .where(and(gte(booking.pickupDate, from), lte(booking.pickupDate, to)));
+      .where(
+        and(
+          gte(booking.pickupDate, from),
+          lte(booking.pickupDate, to),
+          // exclude Cancel/No Show and Foul Trip (same matching as isCanceledDeliveryStatus)
+          sql`coalesce(${booking.deliveryStatus}, '') !~* '(cancel|foul)'`,
+        ),
+      );
 
     return rows.map((r) => ({
       date: r.pickupDate,
