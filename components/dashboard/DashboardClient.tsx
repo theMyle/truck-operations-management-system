@@ -125,12 +125,25 @@ export default function DashboardClient({
       return d >= startOfMonth && d <= todayMidnight;
     });
 
-    const fmt = (n: number) => `₱${n.toLocaleString()}`;
+    const fmt = (n: number) =>
+      `₱${n.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
     return [
-      { label: "Daily Income", value: fmt(daily) },
-      { label: "Weekly Income", value: fmt(weekly) },
-      { label: "Monthly Income", value: fmt(monthly) },
+      {
+        label: "Daily Income",
+        value: fmt(daily),
+        tooltip: "Booked revenue for today (client rates). Excludes cancelled trips and foul trips.",
+      },
+      {
+        label: "Weekly Income",
+        value: fmt(weekly),
+        tooltip: "Booked revenue from Monday to today. Excludes cancelled trips and foul trips.",
+      },
+      {
+        label: "Monthly Income",
+        value: fmt(monthly),
+        tooltip: "Booked revenue from the 1st of the month to today. Excludes cancelled trips and foul trips.",
+      },
     ];
   }, [incomeRecords]);
 
