@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React, { useState, useMemo } from "react";
 import {
@@ -48,6 +48,7 @@ import {
   IPI_SOA_COLUMN_KEYS,
   SoaColumnDefinition,
   isIpiClient as checkIsIpiClient,
+  getClientPaymentTermsDays,
 } from "@/lib/utils/soaColumns";
 import { EditBillingTripModal } from "./EditBillingTripModal";
 import { calculateExcessDropFee } from "@/lib/utils/excessDrop";
@@ -128,6 +129,22 @@ export function StatementOfAccountModal({
   const isIpiClient = useMemo(() => {
     return checkIsIpiClient(clientName);
   }, [clientName]);
+
+  const termsDays = useMemo(() => {
+    return getClientPaymentTermsDays(clientName, targetType);
+  }, [clientName, targetType]);
+
+  React.useEffect(() => {
+    if (opened) {
+      queueMicrotask(() => {
+        const d = new Date(invoiceDate);
+        if (!isNaN(d.getTime())) {
+          d.setDate(d.getDate() + termsDays);
+          setDueDate(d.toISOString().split("T")[0]);
+        }
+      });
+    }
+  }, [opened, termsDays, invoiceDate]);
 
   // Maintain exact column order based on activeColumns array
   const activeColsList = useMemo(() => {
@@ -517,7 +534,7 @@ export function StatementOfAccountModal({
     currentRow += 2;
 
     // Signatories and Terms
-    setCell(currentRow, 0, "Terms: 15 days", labelBoldStyle);
+    setCell(currentRow, 0, `Terms: ${termsDays} days`, labelBoldStyle);
     currentRow += 2;
 
     const signatureUnderlineStyle = {
@@ -748,7 +765,7 @@ export function StatementOfAccountModal({
         </div>
 
         <div class="signatories">
-          <div style="font-weight: bold; margin-bottom: 25px; font-size: 10px;">Terms: 15 days</div>
+          <div style="font-weight: bold; margin-bottom: 25px; font-size: 10px;">Terms: ${termsDays} days</div>
           <div class="sig-row">
             <div class="sig-col">
               <div class="sig-line">${preparedBy || "Billing Officer"}</div>
