@@ -76,6 +76,7 @@ import { DeleteConfirmModal } from "@/components/booking/DeleteConfirmModal";
 import { BILLING_TABLE_HEADERS } from "@/components/ui/ModuleSkeletons";
 import { TableSkeleton } from "@/components/ui/TableSkeleton";
 import { formatTime12Hour, capitalizeWords, formatEmployeeName, splitRoute } from "@/lib/utils/stringFormat";
+import { getClientPaymentTermsDays } from "@/lib/utils/soaColumns";
 import { useUser } from "@clerk/nextjs";
 
 export type BillingRecord = DispatchRecord & {
@@ -401,8 +402,9 @@ export default function BillingModule() {
     setDueDateInput(
       record.dueDate ??
       (() => {
+        const terms = getClientPaymentTermsDays(record.client || record.clientName);
         const d = new Date();
-        d.setDate(d.getDate() + 15);
+        d.setDate(d.getDate() + terms);
         return d.toISOString().split("T")[0];
       })()
     );

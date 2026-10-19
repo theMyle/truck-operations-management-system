@@ -1,4 +1,4 @@
-﻿import { calculateExcessDropFee } from "./excessDrop";
+import { calculateExcessDropFee } from "./excessDrop";
 import { BillingRecord } from "@/app/(app)/billing/page";
 
 export interface SoaColumnDefinition {
@@ -275,3 +275,14 @@ export function isIpiClient(clientName?: string | null): boolean {
   const lower = clientName.toLowerCase();
   return lower.includes("ipi") || lower.includes("international pharmaceutical");
 }
+
+export function isLimketkaiClient(clientName?: string | null): boolean {
+  if (!clientName) return false;
+  return clientName.toLowerCase().includes("limketkai");
+}
+
+export function getClientPaymentTermsDays(clientName?: string | null, targetType?: "client" | "subcon"): number {
+  if (targetType === "subcon") return 15;
+  return isLimketkaiClient(clientName) ? 30 : 15;
+}
+
