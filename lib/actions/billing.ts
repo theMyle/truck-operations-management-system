@@ -1,4 +1,4 @@
-﻿"use server";
+"use server";
 
 import { actionClient } from "@/lib/safe-action";
 import { db } from "@/lib/db";
@@ -70,8 +70,10 @@ export const getBillingRecordsAction = actionClient
       const hasDr = !!b.bookingDRNo?.trim();
       const isCompleted = b.deliveryStatus === "Completed";
 
-      // Subcon trucks require valid Booking DR# and Completed delivery status
-      if (isSub) {
+      // Transportify subcon trucks only need DR# and Completed status
+      const isTransportify =
+        (b.clientName || "").toLowerCase().includes("transportify");
+      if (isSub && isTransportify) {
         return hasDr && isCompleted;
       }
 
